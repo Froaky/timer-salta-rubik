@@ -14,6 +14,8 @@ class CompeteBloc extends Bloc<CompeteEvent, CompeteState> {
     on<AddCompeteSolve>(_onAddCompeteSolve);
     on<ResetCompete>(_onResetCompete);
     on<UpdateLaneTimer>(_onUpdateLaneTimer);
+    on<GenerateCompeteScrambles>(_onGenerateCompeteScrambles);
+    on<AwardPoint>(_onAwardPoint);
   }
 
   Future<void> _onStartCompeteRound(StartCompeteRound event, Emitter<CompeteState> emit) async {
@@ -84,6 +86,32 @@ class CompeteBloc extends Bloc<CompeteEvent, CompeteState> {
         currentTimeMs: event.elapsedMs,
       );
       emit(state.copyWith(lane2: updatedLane2));
+    }
+  }
+  
+  Future<void> _onGenerateCompeteScrambles(GenerateCompeteScrambles event, Emitter<CompeteState> emit) async {
+    try {
+      final scramble1 = generateScramble('3x3');
+      final scramble2 = state.useSameScramble ? scramble1 : generateScramble('3x3');
+      
+      emit(state.copyWith(
+        scrambleLane1: scramble1,
+        scrambleLane2: scramble2,
+      ));
+    } catch (e) {
+      // Handle error
+    }
+  }
+  
+  Future<void> _onAwardPoint(AwardPoint event, Emitter<CompeteState> emit) async {
+    if (event.lane == 1) {
+      emit(state.copyWith(
+        lane1Score: state.lane1Score + 1,
+      ));
+    } else if (event.lane == 2) {
+      emit(state.copyWith(
+        lane2Score: state.lane2Score + 1,
+      ));
     }
   }
 }

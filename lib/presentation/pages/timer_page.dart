@@ -17,6 +17,7 @@ import '../widgets/scramble_display.dart';
 import '../widgets/statistics_panel.dart';
 import '../widgets/solve_list.dart';
 import '../widgets/session_selector.dart';
+import 'compete_page.dart';
 
 class TimerPage extends StatefulWidget {
   const TimerPage({super.key});
@@ -54,7 +55,19 @@ class _TimerPageState extends State<TimerPage> {
       child: Scaffold(
       appBar: AppBar(
         title: const Text('Salta Rubik'),
+        backgroundColor: AppTheme.primaryColor,
         actions: [
+          IconButton(
+            icon: const Icon(Icons.sports_esports),
+            tooltip: 'Modo Competencia',
+            onPressed: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (context) => const CompetePage(),
+                ),
+              );
+            },
+          ),
           IconButton(
             icon: Icon(_showStatistics ? Icons.timer : Icons.analytics),
             onPressed: () {
@@ -122,107 +135,190 @@ class _TimerPageState extends State<TimerPage> {
             child: ScrambleDisplay(),
           ),
           
-          // Timer display
+          // Timer display with overlaid controls
           Expanded(
-            flex: 4,
-            child: _buildTimerDisplay(),
-          ),
-          
-          // Controls
-          Expanded(
-            flex: 1,
-            child: _buildControls(),
+            flex: 5,
+            child: _buildTimerWithControls(),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildTimerDisplay() {
+  Widget _buildTimerWithControls() {
     return BlocBuilder<TimerBloc, TimerState>(
-      builder: (context, TimerState state) {
-        return GestureDetector(
-          onTapDown: (_) {
-            if (state.status == TimerStatus.idle || state.status == TimerStatus.stopped) {
-              context.read<TimerBloc>().add(TimerStartHold());
-            } else if (state.status == TimerStatus.running) {
-              context.read<TimerBloc>().add(TimerStop());
-            }
-          },
-          onTapUp: (_) {
-            if (state.status == TimerStatus.holdPending || state.status == TimerStatus.armed) {
-              context.read<TimerBloc>().add(TimerStopHold());
-            }
-          },
-          onTapCancel: () {
-            if (state.status == TimerStatus.holdPending || state.status == TimerStatus.armed) {
-              context.read<TimerBloc>().add(TimerStopHold());
-            }
-          },
-          child: Container(
-            width: double.infinity,
-            decoration: BoxDecoration(
-              color: AppTheme.getTimerColor(state.color.name),
-              borderRadius: BorderRadius.circular(16),
-            ),
-            child: Center(
-              child: Text(
-                state.formattedTime,
-                style: Theme.of(context).textTheme.displayLarge?.copyWith(
-                  color: state.color == TimerColor.white ? Colors.black : Colors.white,
-                  fontSize: _getTimerFontSize(state.formattedTime),
-                ),
-              ),
-            ),
-          ),
-        );
-      },
-    );
-  }
-
-  Widget _buildControls() {
-    return BlocBuilder<TimerBloc, TimerState>(
-      builder: (context, timerState) {
+      builder: (context, TimerState timerState) {
         return BlocBuilder<SessionBloc, SessionState>(
           builder: (context, sessionState) {
             return BlocBuilder<SolveBloc, SolveState>(
               builder: (context, solveState) {
-                return Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                return Container(
+                  margin: const EdgeInsets.all(16),
+                  child: Stack(
                     children: [
-                      // Reset button
-                      ElevatedButton(
-                        onPressed: timerState.status != TimerStatus.running
-                            ? () {
-                                context.read<TimerBloc>().add(TimerReset());
-                              }
-                            : null,
-                        child: const Text('Reset'),
+                      // Timer background
+                      GestureDetector(
+                        onTapDown: (_) {
+                          if (timerState.status == TimerStatus.idle || timerState.status == TimerStatus.stopped) {
+                            context.read<TimerBloc>().add(TimerStartHold());
+                          } else if (timerState.status == TimerStatus.running) {
+                            context.read<TimerBloc>().add(TimerStop());
+                          }
+                        },
+                        onTapUp: (_) {
+                          if (timerState.status == TimerStatus.holdPending || timerState.status == TimerStatus.armed) {
+                            context.read<TimerBloc>().add(TimerStopHold());
+                          }
+                        },
+                        onTapCancel: () {
+                          if (timerState.status == TimerStatus.holdPending || timerState.status == TimerStatus.armed) {
+                            context.read<TimerBloc>().add(TimerStopHold());
+                          }
+                        },
+                        child: Container(
+                          width: double.infinity,
+                          height: double.infinity,
+                          decoration: BoxDecoration(
+                            color: AppTheme.getTimerColor(timerState.color.name),
+                            borderRadius: BorderRadius.circular(24),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withValues(alpha: 0.1),
+                                blurRadius: 20,
+                                offset: const Offset(0, 8),
+                                spreadRadius: 0,
+                              ),
+                            ],
+                          ),
+                          child: Center(
+                            child: Text(
+                              timerState.formattedTime,
+                              style: Theme.of(context).textTheme.displayLarge?.copyWith(
+                                color: timerState.color == TimerColor.white ? Colors.black : Colors.white,
+                                fontSize: _getTimerFontSize(timerState.formattedTime),
+                                fontWeight: FontWeight.w300,
+                              ),
+                            ),
+                          ),
+                        ),
                       ),
                       
-                      // New scramble button
-                      ElevatedButton(
-                        onPressed: timerState.status == TimerStatus.idle ||
-                                timerState.status == TimerStatus.stopped
-                            ? () {
-                                final sessionState = context.read<SessionBloc>().state;
-                                final currentSession = sessionState.currentSession;
-                                if (currentSession != null) {
-                                  context.read<SolveBloc>().add(GenerateNewScramble(currentSession.cubeType));
-                                }
-                              }
-                            : null,
-                    child: solveState.isGeneratingScramble
-                        ? const SizedBox(
-                            width: 16,
-                            height: 16,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          )
-                        : const Text('New Scramble'),
-                  ),
-                    ],
+                      // Floating action buttons
+                      if (timerState.status != TimerStatus.running)
+                        // Reset button - top left
+                        Positioned(
+                          top: 20,
+                          left: 20,
+                          child: Container(
+                            decoration: BoxDecoration(
+                              color: Colors.black.withValues(alpha: 0.7),
+                              borderRadius: BorderRadius.circular(16),
+                              border: Border.all(
+                                color: Colors.white.withValues(alpha: 0.2),
+                                width: 1,
+                              ),
+                            ),
+                            child: Material(
+                              color: Colors.transparent,
+                              child: InkWell(
+                                borderRadius: BorderRadius.circular(16),
+                                onTap: timerState.status != TimerStatus.running
+                                    ? () {
+                                        context.read<TimerBloc>().add(TimerReset());
+                                      }
+                                    : null,
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(
+                                        Icons.refresh_rounded,
+                                        color: Colors.white.withValues(alpha: 0.9),
+                                        size: 18,
+                                      ),
+                                      const SizedBox(width: 8),
+                                      Text(
+                                        'Reset',
+                                        style: TextStyle(
+                                          color: Colors.white.withValues(alpha: 0.9),
+                                          fontSize: 14,
+                                          fontWeight: FontWeight.w500,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      
+                      // New scramble button - top right
+                      if (timerState.status != TimerStatus.running)
+                        Positioned(
+                          top: 20,
+                          right: 20,
+                          child: Container(
+                            decoration: BoxDecoration(
+                              color: Colors.black.withValues(alpha: 0.7),
+                              borderRadius: BorderRadius.circular(16),
+                              border: Border.all(
+                                color: Colors.white.withValues(alpha: 0.2),
+                                width: 1,
+                              ),
+                            ),
+                            child: Material(
+                              color: Colors.transparent,
+                              child: InkWell(
+                                borderRadius: BorderRadius.circular(16),
+                                onTap: (timerState.status == TimerStatus.idle ||
+                                        timerState.status == TimerStatus.stopped)
+                                    ? () {
+                                        final currentSession = sessionState.currentSession;
+                                        if (currentSession != null) {
+                                          context.read<SolveBloc>().add(GenerateNewScramble(currentSession.cubeType));
+                                        }
+                                      }
+                                    : null,
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      solveState.isGeneratingScramble
+                                          ? SizedBox(
+                                              width: 18,
+                                              height: 18,
+                                              child: CircularProgressIndicator(
+                                                strokeWidth: 2,
+                                                valueColor: AlwaysStoppedAnimation<Color>(
+                                                  Colors.white.withValues(alpha: 0.9),
+                                                ),
+                                              ),
+                                            )
+                                          : Icon(
+                                              Icons.shuffle_rounded,
+                                              color: Colors.white.withValues(alpha: 0.9),
+                                              size: 18,
+                                            ),
+                                      const SizedBox(width: 8),
+                                      Text(
+                                        'Scramble',
+                                        style: TextStyle(
+                                          color: Colors.white.withValues(alpha: 0.9),
+                                          fontSize: 14,
+                                          fontWeight: FontWeight.w500,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                    ]
                   ),
                 );
               },
@@ -232,6 +328,8 @@ class _TimerPageState extends State<TimerPage> {
       },
     );
   }
+
+
 
   double _getTimerFontSize(String timeText) {
     // Adjust font size based on text length

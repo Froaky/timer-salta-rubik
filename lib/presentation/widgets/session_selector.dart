@@ -21,20 +21,20 @@ class SessionSelector extends StatelessWidget {
         }
 
         return Container(
-          margin: const EdgeInsets.all(16),
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+          margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
           decoration: BoxDecoration(
             color: AppTheme.cardColor,
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: BorderRadius.circular(12),
             border: Border.all(
               color: AppTheme.textMuted.withValues(alpha: 0.1),
               width: 1,
             ),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withValues(alpha: 0.05),
-                blurRadius: 10,
-                offset: const Offset(0, 2),
+                color: Colors.black.withValues(alpha: 0.03),
+                blurRadius: 6,
+                offset: const Offset(0, 1),
               ),
             ],
           ),
@@ -43,10 +43,10 @@ class SessionSelector extends StatelessWidget {
               // Current session dropdown
               Expanded(
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   decoration: BoxDecoration(
                     color: AppTheme.backgroundColor.withValues(alpha: 0.5),
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(10),
                     border: Border.all(
                       color: AppTheme.textMuted.withValues(alpha: 0.2),
                       width: 1,
@@ -59,13 +59,14 @@ class SessionSelector extends StatelessWidget {
                         'Select a session',
                         style: TextStyle(
                           color: AppTheme.textSecondary,
-                          fontSize: 16,
+                          fontSize: 12,
                         ),
                       ),
                       isExpanded: true,
                       icon: Icon(
                         Icons.keyboard_arrow_down_rounded,
                         color: AppTheme.textSecondary,
+                        size: 16,
                       ),
                       dropdownColor: AppTheme.cardColor,
                       items: state.sessions.map((session) {
@@ -74,18 +75,18 @@ class SessionSelector extends StatelessWidget {
                           child: Row(
                             children: [
                               Container(
-                                padding: const EdgeInsets.all(6),
+                                padding: const EdgeInsets.all(2),
                                 decoration: BoxDecoration(
                                   color: AppTheme.accentColor.withValues(alpha: 0.1),
-                                  borderRadius: BorderRadius.circular(8),
+                                  borderRadius: BorderRadius.circular(4),
                                 ),
                                 child: Icon(
                                   _getCubeIcon(session.cubeType),
-                                  size: 18,
+                                  size: 12,
                                   color: AppTheme.accentColor,
                                 ),
                               ),
-                              const SizedBox(width: 12),
+                              const SizedBox(width: 6),
                               Expanded(
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -93,9 +94,10 @@ class SessionSelector extends StatelessWidget {
                                   children: [
                                     Text(
                                       session.name,
-                                      style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                                         color: AppTheme.textPrimary,
                                         fontWeight: FontWeight.w500,
+                                        fontSize: 12,
                                       ),
                                       overflow: TextOverflow.ellipsis,
                                     ),
@@ -103,7 +105,7 @@ class SessionSelector extends StatelessWidget {
                                       session.cubeType.toUpperCase(),
                                       style: Theme.of(context).textTheme.bodySmall?.copyWith(
                                         color: AppTheme.textSecondary,
-                                        fontSize: 12,
+                                        fontSize: 9,
                                       ),
                                     ),
                                   ],
@@ -126,36 +128,40 @@ class SessionSelector extends StatelessWidget {
                 ),
               ),
               
-              const SizedBox(width: 12),
+              const SizedBox(width: 4),
               
               // Add session button
               Container(
                 decoration: BoxDecoration(
                   color: AppTheme.accentColor.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(6),
                 ),
                 child: IconButton(
-                  icon: const Icon(Icons.add_rounded, size: 20),
+                  icon: const Icon(Icons.add_rounded, size: 14),
                   onPressed: () => _showCreateSessionDialog(context),
                   tooltip: 'Create new session',
                   color: AppTheme.accentColor,
+                  padding: const EdgeInsets.all(4),
+                  constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
                 ),
               ),
               
               // Session menu
               if (state.currentSession != null) ...[
-                const SizedBox(width: 8),
+                const SizedBox(width: 4),
                 Container(
                   decoration: BoxDecoration(
                     color: AppTheme.textMuted.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(6),
                   ),
                   child: PopupMenuButton<String>(
                     icon: Icon(
                       Icons.more_vert_rounded,
                       color: AppTheme.textSecondary,
-                      size: 20,
+                      size: 14,
                     ),
+                    padding: const EdgeInsets.all(4),
+                    constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
                     color: AppTheme.cardColor,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12),

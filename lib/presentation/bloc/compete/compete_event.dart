@@ -51,3 +51,18 @@ class UpdateLaneTimer extends CompeteEvent {
   @override
   List<Object> get props => [lane, elapsedMs];
 }
+
+class GenerateCompeteScrambles extends CompeteEvent {
+  const GenerateCompeteScrambles();
+}
+
+class AwardPoint extends CompeteEvent {
+  final int lane;
+
+  const AwardPoint({
+    required this.lane,
+  });
+
+  @override
+  List<Object> get props => [lane];
+}

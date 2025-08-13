@@ -45,6 +45,8 @@ class CompeteState extends Equatable {
   final LaneData lane2;
   final String? winner; // 'lane1', 'lane2', or 'tie'
   final bool useSameScramble;
+  final int lane1Score;
+  final int lane2Score;
 
   const CompeteState({
     required this.status,
@@ -54,6 +56,8 @@ class CompeteState extends Equatable {
     required this.lane2,
     this.winner,
     this.useSameScramble = true,
+    this.lane1Score = 0,
+    this.lane2Score = 0,
   });
 
   factory CompeteState.initial() {
@@ -61,6 +65,8 @@ class CompeteState extends Equatable {
       status: CompeteStatus.initial,
       lane1: LaneData(solves: []),
       lane2: LaneData(solves: []),
+      lane1Score: 0,
+      lane2Score: 0,
     );
   }
 
@@ -72,6 +78,8 @@ class CompeteState extends Equatable {
     LaneData? lane2,
     String? winner,
     bool? useSameScramble,
+    int? lane1Score,
+    int? lane2Score,
   }) {
     return CompeteState(
       status: status ?? this.status,
@@ -81,6 +89,8 @@ class CompeteState extends Equatable {
       lane2: lane2 ?? this.lane2,
       winner: winner ?? this.winner,
       useSameScramble: useSameScramble ?? this.useSameScramble,
+      lane1Score: lane1Score ?? this.lane1Score,
+      lane2Score: lane2Score ?? this.lane2Score,
     );
   }
 
@@ -110,5 +120,7 @@ class CompeteState extends Equatable {
         lane2,
         winner,
         useSameScramble,
+        lane1Score,
+        lane2Score,
       ];
 }

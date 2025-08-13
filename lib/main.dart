@@ -22,6 +22,7 @@ import 'domain/usecases/generate_scramble.dart';
 import 'presentation/bloc/timer/timer_bloc.dart';
 import 'presentation/bloc/solve/solve_bloc.dart';
 import 'presentation/bloc/session/session_bloc.dart';
+import 'presentation/bloc/compete/compete_bloc.dart';
 import 'presentation/theme/app_theme.dart';
 import 'presentation/pages/timer_page.dart';
 
@@ -100,6 +101,11 @@ class SaltaRubikApp extends StatelessWidget {
             create: (context) => SessionBloc(
               createSession: context.read<CreateSession>(),
               getSessions: context.read<GetSessions>(),
+            ),
+          ),
+          BlocProvider<CompeteBloc>(
+            create: (context) => CompeteBloc(
+              generateScramble: context.read<GenerateScramble>(),
             ),
           ),
         ],
