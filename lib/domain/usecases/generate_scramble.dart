@@ -456,10 +456,15 @@ class GenerateScramble implements UseCaseSync<Scramble, String> {
       lastFace = face;
     }
     
-    // Agregar 2-4 movimientos de tips aleatorios
-    final tipMoves = 2 + random.nextInt(3);
-    for (int i = 0; i < tipMoves; i++) {
-      final tip = tips[random.nextInt(tips.length)];
+    // Agregar movimientos de tips aleatorios (máximo uno de cada tipo)
+    // Mezclar los tips para seleccionar aleatoriamente cuáles usar
+    final shuffledTips = [...tips]..shuffle(random);
+    
+    // Seleccionar entre 0-4 tips para usar (puede ser ninguno o todos)
+    final tipsToUse = shuffledTips.take(random.nextInt(5));
+    
+    // Agregar cada tip seleccionado con un modificador aleatorio
+    for (final tip in tipsToUse) {
       final modifier = modifiers[random.nextInt(modifiers.length)];
       moves.add('$tip$modifier');
     }
