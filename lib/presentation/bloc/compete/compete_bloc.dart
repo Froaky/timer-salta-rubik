@@ -91,12 +91,14 @@ class CompeteBloc extends Bloc<CompeteEvent, CompeteState> {
   
   Future<void> _onGenerateCompeteScrambles(GenerateCompeteScrambles event, Emitter<CompeteState> emit) async {
     try {
-      final scramble1 = generateScramble('3x3');
-      final scramble2 = state.useSameScramble ? scramble1 : generateScramble('3x3');
+      final scramble1 = generateScramble(event.cubeType);
+      final useSameScramble = event.useSameScramble ?? state.useSameScramble;
+      final scramble2 = useSameScramble ? scramble1 : generateScramble(event.cubeType);
       
       emit(state.copyWith(
         scrambleLane1: scramble1,
         scrambleLane2: scramble2,
+        useSameScramble: useSameScramble,
       ));
     } catch (e) {
       // Handle error

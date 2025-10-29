@@ -53,7 +53,16 @@ class UpdateLaneTimer extends CompeteEvent {
 }
 
 class GenerateCompeteScrambles extends CompeteEvent {
-  const GenerateCompeteScrambles();
+  final String cubeType;
+  final bool? useSameScramble;
+
+  const GenerateCompeteScrambles({
+    required this.cubeType,
+    this.useSameScramble,
+  });
+
+  @override
+  List<Object?> get props => [cubeType, useSameScramble];
 }
 
 class AwardPoint extends CompeteEvent {

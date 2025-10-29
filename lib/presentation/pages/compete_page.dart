@@ -152,6 +152,7 @@ class _CompetePageState extends State<CompetePage> {
                       DropdownMenuItem(value: '4x4', child: Text('4x4x4')),
                       DropdownMenuItem(value: '5x5', child: Text('5x5x5')),
                       DropdownMenuItem(value: 'pyraminx', child: Text('Pyraminx')),
+                      DropdownMenuItem(value: 'megaminx', child: Text('Megaminx')),
                       DropdownMenuItem(value: 'skewb', child: Text('Skewb')),
                     ],
                     onChanged: (value) {
@@ -213,7 +214,10 @@ class _CompetePageState extends State<CompetePage> {
                       
                       // Generate initial scrambles
                       context.read<CompeteBloc>().add(
-                        const GenerateCompeteScrambles(),
+                        GenerateCompeteScrambles(
+                          cubeType: _selectedCubeType ?? '3x3',
+                          useSameScramble: _useSameScramble,
+                        ),
                       );
                     }
                   : null,
@@ -942,7 +946,10 @@ class _CompetePageState extends State<CompetePage> {
 
   void _generateNewScrambles() {
     context.read<CompeteBloc>().add(
-      const GenerateCompeteScrambles(),
+      GenerateCompeteScrambles(
+        cubeType: _selectedCubeType ?? '3x3',
+        useSameScramble: _useSameScramble,
+      ),
     );
   }
 
