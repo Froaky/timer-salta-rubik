@@ -78,8 +78,8 @@ class GenerateScramble implements UseCaseSync<Scramble, String> {
     String? lastFace;
     String? secondLastFace;
     
-    // Generar entre 9-14 movimientos para asegurar mínimo 4 para resolver
-    final moveCount = 9 + random.nextInt(6);
+    // Generar entre 6-8 movimientos (estándar WCA actual)
+    final moveCount = 6 + random.nextInt(3);
     
     for (int i = 0; i < moveCount; i++) {
       String face;
@@ -490,8 +490,8 @@ class GenerateScramble implements UseCaseSync<Scramble, String> {
     String? lastFace;
     String? secondLastFace;
     
-    // Generar entre 8-12 movimientos para asegurar mínimo 7 para resolver
-    final moveCount = 8 + random.nextInt(5);
+    // Generar entre 7-9 movimientos según ejemplos WCA
+    final moveCount = 7 + random.nextInt(3);
     
     for (int i = 0; i < moveCount; i++) {
       String face;
