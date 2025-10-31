@@ -59,10 +59,12 @@ class _CompetePageState extends State<CompetePage> {
   Timer? _lane2HoldTimer;
   Timer? _lane1RunTimer;
   Timer? _lane2RunTimer;
-  DateTime? _lane1HoldStartTime;
-  DateTime? _lane2HoldStartTime;
-  DateTime? _lane1RunStartTime;
-  DateTime? _lane2RunStartTime;
+  // Usar reloj monotónico (Stopwatch) también para el hold
+  Stopwatch? _lane1HoldStopwatch;
+  Stopwatch? _lane2HoldStopwatch;
+  // Use monotonic clocks via Stopwatch for competition timers
+  Stopwatch? _lane1Stopwatch;
+  Stopwatch? _lane2Stopwatch;
   
   // Timer thresholds (same as main timer)
   static const int redThreshold = 0;
@@ -573,17 +575,21 @@ class _CompetePageState extends State<CompetePage> {
     _lane2HoldTimer = null;
     _lane1RunTimer = null;
     _lane2RunTimer = null;
-    _lane1HoldStartTime = null;
-    _lane2HoldStartTime = null;
-    _lane1RunStartTime = null;
-    _lane2RunStartTime = null;
+    _lane1HoldStopwatch?.stop();
+    _lane2HoldStopwatch?.stop();
+    _lane1Stopwatch?.stop();
+    _lane2Stopwatch?.stop();
+    _lane1HoldStopwatch = null;
+    _lane2HoldStopwatch = null;
+    _lane1Stopwatch = null;
+    _lane2Stopwatch = null;
   }
 
   // Lane 1 timer methods
   void _onLane1TapDown() {
     if (_lane1Status != CompeteTimerStatus.idle && _lane1Status != CompeteTimerStatus.stopped) return;
     
-    _lane1HoldStartTime = DateTime.now();
+    _lane1HoldStopwatch = Stopwatch()..start();
     setState(() {
       _lane1Status = CompeteTimerStatus.holdPending;
       _lane1Color = CompeteTimerColor.red;
@@ -596,6 +602,7 @@ class _CompetePageState extends State<CompetePage> {
   void _onLane1TapUp() {
     _lane1HoldTimer?.cancel();
     _lane1HoldTimer = null;
+    _lane1HoldStopwatch?.stop();
     
     if (_lane1Status == CompeteTimerStatus.armed) {
       _startLane1Timer();
@@ -608,11 +615,12 @@ class _CompetePageState extends State<CompetePage> {
   void _onLane1TapCancel() {
     _lane1HoldTimer?.cancel();
     _lane1HoldTimer = null;
+    _lane1HoldStopwatch?.stop();
     _resetLane1Timer();
   }
 
   void _startLane1Timer() {
-    _lane1RunStartTime = DateTime.now();
+    _lane1Stopwatch = Stopwatch()..start();
     setState(() {
       _lane1Status = CompeteTimerStatus.running;
       _lane1Color = CompeteTimerColor.white;
@@ -621,6 +629,8 @@ class _CompetePageState extends State<CompetePage> {
     
     _startLane1RunTimer();
     _triggerHapticFeedback();
+    // Notify bloc start (for round control logic)
+    context.read<CompeteBloc>().add(const StartLane(lane: 1));
   }
 
   void _stopLane1Timer() {
@@ -628,8 +638,9 @@ class _CompetePageState extends State<CompetePage> {
     
     _lane1RunTimer?.cancel();
     _lane1RunTimer = null;
-    
-    final finalTime = DateTime.now().difference(_lane1RunStartTime!).inMilliseconds;
+    final finalTime = _lane1Stopwatch?.elapsedMilliseconds ?? _lane1ElapsedMs;
+    _lane1Stopwatch?.stop();
+    _lane1Stopwatch = null;
     
     setState(() {
       _lane1Status = CompeteTimerStatus.stopped;
@@ -637,6 +648,8 @@ class _CompetePageState extends State<CompetePage> {
     });
     
     _triggerHapticFeedback();
+    // Notify bloc stop with monotonic ms
+    context.read<CompeteBloc>().add(StopLane(lane: 1, finishedAtMs: finalTime));
     _saveLane1Solve();
   }
 
@@ -653,7 +666,7 @@ class _CompetePageState extends State<CompetePage> {
   void _onLane2TapDown() {
     if (_lane2Status != CompeteTimerStatus.idle && _lane2Status != CompeteTimerStatus.stopped) return;
     
-    _lane2HoldStartTime = DateTime.now();
+    _lane2HoldStopwatch = Stopwatch()..start();
     setState(() {
       _lane2Status = CompeteTimerStatus.holdPending;
       _lane2Color = CompeteTimerColor.red;
@@ -666,6 +679,7 @@ class _CompetePageState extends State<CompetePage> {
   void _onLane2TapUp() {
     _lane2HoldTimer?.cancel();
     _lane2HoldTimer = null;
+    _lane2HoldStopwatch?.stop();
     
     if (_lane2Status == CompeteTimerStatus.armed) {
       _startLane2Timer();
@@ -678,11 +692,12 @@ class _CompetePageState extends State<CompetePage> {
   void _onLane2TapCancel() {
     _lane2HoldTimer?.cancel();
     _lane2HoldTimer = null;
+    _lane2HoldStopwatch?.stop();
     _resetLane2Timer();
   }
 
   void _startLane2Timer() {
-    _lane2RunStartTime = DateTime.now();
+    _lane2Stopwatch = Stopwatch()..start();
     setState(() {
       _lane2Status = CompeteTimerStatus.running;
       _lane2Color = CompeteTimerColor.white;
@@ -691,6 +706,8 @@ class _CompetePageState extends State<CompetePage> {
     
     _startLane2RunTimer();
     _triggerHapticFeedback();
+    // Notify bloc start (for round control logic)
+    context.read<CompeteBloc>().add(const StartLane(lane: 2));
   }
 
   void _stopLane2Timer() {
@@ -698,8 +715,9 @@ class _CompetePageState extends State<CompetePage> {
     
     _lane2RunTimer?.cancel();
     _lane2RunTimer = null;
-    
-    final finalTime = DateTime.now().difference(_lane2RunStartTime!).inMilliseconds;
+    final finalTime = _lane2Stopwatch?.elapsedMilliseconds ?? _lane2ElapsedMs;
+    _lane2Stopwatch?.stop();
+    _lane2Stopwatch = null;
     
     setState(() {
       _lane2Status = CompeteTimerStatus.stopped;
@@ -707,6 +725,8 @@ class _CompetePageState extends State<CompetePage> {
     });
     
     _triggerHapticFeedback();
+    // Notify bloc stop with monotonic ms
+    context.read<CompeteBloc>().add(StopLane(lane: 2, finishedAtMs: finalTime));
     _saveLane2Solve();
   }
 
@@ -745,9 +765,9 @@ class _CompetePageState extends State<CompetePage> {
   }
 
   void _updateLane1HoldState() {
-    if (_lane1HoldStartTime == null) return;
+    if (_lane1HoldStopwatch == null) return;
     
-    final holdDuration = DateTime.now().difference(_lane1HoldStartTime!).inMilliseconds;
+    final holdDuration = _lane1HoldStopwatch!.elapsedMilliseconds;
     CompeteTimerColor newColor = CompeteTimerColor.red;
     CompeteTimerStatus newStatus = CompeteTimerStatus.holdPending;
     
@@ -761,6 +781,8 @@ class _CompetePageState extends State<CompetePage> {
         newStatus = CompeteTimerStatus.idle;
         _lane1HoldTimer?.cancel();
         _lane1HoldTimer = null;
+        _lane1HoldStopwatch?.stop();
+        _lane1HoldStopwatch = null;
         setState(() {
           _lane1Status = CompeteTimerStatus.idle;
           _lane1Color = CompeteTimerColor.white;
@@ -795,9 +817,9 @@ class _CompetePageState extends State<CompetePage> {
   }
 
   void _updateLane2HoldState() {
-    if (_lane2HoldStartTime == null) return;
+    if (_lane2HoldStopwatch == null) return;
     
-    final holdDuration = DateTime.now().difference(_lane2HoldStartTime!).inMilliseconds;
+    final holdDuration = _lane2HoldStopwatch!.elapsedMilliseconds;
     CompeteTimerColor newColor = CompeteTimerColor.red;
     CompeteTimerStatus newStatus = CompeteTimerStatus.holdPending;
     
@@ -811,6 +833,8 @@ class _CompetePageState extends State<CompetePage> {
         newStatus = CompeteTimerStatus.idle;
         _lane2HoldTimer?.cancel();
         _lane2HoldTimer = null;
+        _lane2HoldStopwatch?.stop();
+        _lane2HoldStopwatch = null;
         setState(() {
           _lane2Status = CompeteTimerStatus.idle;
           _lane2Color = CompeteTimerColor.white;
@@ -845,18 +869,14 @@ class _CompetePageState extends State<CompetePage> {
   }
 
   void _updateLane1RunningState() {
-    if (_lane1RunStartTime == null) return;
-    
-    final elapsed = DateTime.now().difference(_lane1RunStartTime!).inMilliseconds;
+    final elapsed = _lane1Stopwatch?.elapsedMilliseconds ?? 0;
     setState(() {
       _lane1ElapsedMs = elapsed;
     });
   }
 
   void _updateLane2RunningState() {
-    if (_lane2RunStartTime == null) return;
-    
-    final elapsed = DateTime.now().difference(_lane2RunStartTime!).inMilliseconds;
+    final elapsed = _lane2Stopwatch?.elapsedMilliseconds ?? 0;
     setState(() {
       _lane2ElapsedMs = elapsed;
     });
@@ -919,8 +939,8 @@ class _CompetePageState extends State<CompetePage> {
     );
     
     context.read<CompeteBloc>().add(AddCompeteSolve(solve: solve, lane: 1));
-    _checkAndAwardPoint(solve, 1);
-    _generateNewScrambles();
+    // No generamos nuevos scrambles aquí para no cambiar la ronda en curso.
+    // Los scrambles para la siguiente ronda se generan cuando se inicia una nueva ronda.
   }
 
   void _saveLane2Solve() {
@@ -940,8 +960,8 @@ class _CompetePageState extends State<CompetePage> {
     );
     
     context.read<CompeteBloc>().add(AddCompeteSolve(solve: solve, lane: 2));
-    _checkAndAwardPoint(solve, 2);
-    _generateNewScrambles();
+    // No generamos nuevos scrambles aquí para no cambiar la ronda en curso.
+    // Los scrambles para la siguiente ronda se generan cuando se inicia una nueva ronda.
   }
 
   void _generateNewScrambles() {
@@ -953,23 +973,6 @@ class _CompetePageState extends State<CompetePage> {
     );
   }
 
-  void _checkAndAwardPoint(Solve newSolve, int laneNumber) {
-    Future.delayed(const Duration(milliseconds: 100), () {
-      final updatedState = context.read<CompeteBloc>().state;
-      
-      if (updatedState.lane1.solves.length == updatedState.lane2.solves.length && 
-          updatedState.lane1.solves.isNotEmpty && 
-          updatedState.lane2.solves.isNotEmpty) {
-        
-        final lane1LastSolve = updatedState.lane1.solves.last;
-        final lane2LastSolve = updatedState.lane2.solves.last;
-        
-        if (lane1LastSolve.timeMs < lane2LastSolve.timeMs) {
-          context.read<CompeteBloc>().add(const AwardPoint(lane: 1));
-        } else if (lane2LastSolve.timeMs < lane1LastSolve.timeMs) {
-          context.read<CompeteBloc>().add(const AwardPoint(lane: 2));
-        }
-      }
-    });
-  }
+  // La asignación de puntos ahora se realiza de forma centralizada en CompeteBloc
+  // cuando ambas pistas han terminado, para evitar dobles asignaciones y manejar empates.
 }

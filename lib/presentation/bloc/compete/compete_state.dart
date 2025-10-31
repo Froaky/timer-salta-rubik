@@ -47,6 +47,12 @@ class CompeteState extends Equatable {
   final bool useSameScramble;
   final int lane1Score;
   final int lane2Score;
+  // Competition round control states
+  final bool lane1Running;
+  final bool lane2Running;
+  final int? lane1FinishedAtMs;
+  final int? lane2FinishedAtMs;
+  final bool roundScored;
 
   const CompeteState({
     required this.status,
@@ -58,6 +64,11 @@ class CompeteState extends Equatable {
     this.useSameScramble = true,
     this.lane1Score = 0,
     this.lane2Score = 0,
+    this.lane1Running = false,
+    this.lane2Running = false,
+    this.lane1FinishedAtMs,
+    this.lane2FinishedAtMs,
+    this.roundScored = false,
   });
 
   factory CompeteState.initial() {
@@ -67,6 +78,11 @@ class CompeteState extends Equatable {
       lane2: LaneData(solves: []),
       lane1Score: 0,
       lane2Score: 0,
+      lane1Running: false,
+      lane2Running: false,
+      lane1FinishedAtMs: null,
+      lane2FinishedAtMs: null,
+      roundScored: false,
     );
   }
 
@@ -80,6 +96,11 @@ class CompeteState extends Equatable {
     bool? useSameScramble,
     int? lane1Score,
     int? lane2Score,
+    bool? lane1Running,
+    bool? lane2Running,
+    int? lane1FinishedAtMs,
+    int? lane2FinishedAtMs,
+    bool? roundScored,
   }) {
     return CompeteState(
       status: status ?? this.status,
@@ -91,6 +112,11 @@ class CompeteState extends Equatable {
       useSameScramble: useSameScramble ?? this.useSameScramble,
       lane1Score: lane1Score ?? this.lane1Score,
       lane2Score: lane2Score ?? this.lane2Score,
+      lane1Running: lane1Running ?? this.lane1Running,
+      lane2Running: lane2Running ?? this.lane2Running,
+      lane1FinishedAtMs: lane1FinishedAtMs ?? this.lane1FinishedAtMs,
+      lane2FinishedAtMs: lane2FinishedAtMs ?? this.lane2FinishedAtMs,
+      roundScored: roundScored ?? this.roundScored,
     );
   }
 
@@ -122,5 +148,10 @@ class CompeteState extends Equatable {
         useSameScramble,
         lane1Score,
         lane2Score,
+        lane1Running,
+        lane2Running,
+        lane1FinishedAtMs,
+        lane2FinishedAtMs,
+        roundScored,
       ];
 }

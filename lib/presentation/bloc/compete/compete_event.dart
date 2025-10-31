@@ -75,3 +75,27 @@ class AwardPoint extends CompeteEvent {
   @override
   List<Object> get props => [lane];
 }
+
+class StartLane extends CompeteEvent {
+  final int lane; // 1 or 2
+
+  const StartLane({
+    required this.lane,
+  });
+
+  @override
+  List<Object> get props => [lane];
+}
+
+class StopLane extends CompeteEvent {
+  final int lane; // 1 or 2
+  final int finishedAtMs;
+
+  const StopLane({
+    required this.lane,
+    required this.finishedAtMs,
+  });
+
+  @override
+  List<Object> get props => [lane, finishedAtMs];
+}
