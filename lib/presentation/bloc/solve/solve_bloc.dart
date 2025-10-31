@@ -4,6 +4,8 @@ import '../../../domain/usecases/add_solve.dart';
 import '../../../domain/usecases/get_solves.dart';
 import '../../../domain/usecases/get_statistics.dart';
 import '../../../domain/usecases/generate_scramble.dart';
+import '../../../domain/usecases/update_solve.dart';
+import '../../../domain/usecases/delete_solve.dart';
 import 'solve_event.dart';
 import 'solve_state.dart';
 
@@ -12,12 +14,16 @@ class SolveBloc extends Bloc<SolveEvent, SolveState> {
   final GetSolves getSolves;
   final GetStatistics getStatistics;
   final GenerateScramble generateScramble;
+  final UpdateSolve updateSolve;
+  final DeleteSolve deleteSolve;
 
   SolveBloc({
     required this.addSolve,
     required this.getSolves,
     required this.getStatistics,
     required this.generateScramble,
+    required this.updateSolve,
+    required this.deleteSolve,
   }) : super(SolveState.initial()) {
     on<LoadSolves>(_onLoadSolves);
     on<AddSolveEvent>(_onAddSolve);
@@ -75,8 +81,8 @@ class SolveBloc extends Bloc<SolveEvent, SolveState> {
 
   Future<void> _onUpdateSolve(UpdateSolveEvent event, Emitter<SolveState> emit) async {
     try {
-      // Update solve in repository would be implemented here
-      // For now, just reload
+      await updateSolve(event.solve);
+      // Reload solves and statistics after update
       add(LoadSolves(sessionId: event.solve.sessionId));
       add(LoadStatistics(event.solve.sessionId));
     } catch (e) {
@@ -89,8 +95,8 @@ class SolveBloc extends Bloc<SolveEvent, SolveState> {
 
   Future<void> _onDeleteSolve(DeleteSolveEvent event, Emitter<SolveState> emit) async {
     try {
-      // Delete solve would be implemented here
-      // For now, just reload
+      await deleteSolve(event.solveId);
+      // Determine session to reload
       final currentSessionId = state.solves.isNotEmpty ? state.solves.first.sessionId : 'default';
       add(LoadSolves(sessionId: currentSessionId));
       add(LoadStatistics(currentSessionId));

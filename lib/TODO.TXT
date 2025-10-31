@@ -1,9 +1,10 @@
--|  Deberia venir por default una sesion.
--|  Deberia poder cambiarse el nombre de la sesion.
--|  Los +2, DNF NO se estan guardando.
+-|  Deberia venir por default una sesion.✅
+-|  Deberia poder cambiarse el nombre de la sesion.✅
+-|  Los +2, DNF NO se estan guardando.✅
 -|  Deberia poder filtrar los tiempos por mas alto a mas bajo y viceversa, lo mismo con fecha
 -|  Agregar opcion de inspeccion
 -|  Agregar la opcion de insertar manualmente los tiempos
--|  Al cambiar de sesion deberia actualizar el scram a ese evento
--|  Deberia cambiarte a la sesion creada automaticamente
--|  Reducir el tiempo de presion para iniciar el tiempo
+-|  Al cambiar de sesion deberia actualizar el scram a ese evento✅
+-|  Deberia cambiarte a la sesion creada automaticamente✅
+-|  Reducir el tiempo de presion para iniciar el tiempo a 200ms
+-|  Al competir, no deberia dejar entrar al historial

@@ -1,4 +1,5 @@
 import 'dart:async';
+import '../../core/constants/timer_thresholds.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:vibration/vibration.dart';
@@ -67,9 +68,9 @@ class _CompetePageState extends State<CompetePage> {
   Stopwatch? _lane2Stopwatch;
   
   // Timer thresholds (same as main timer)
-  static const int redThreshold = 0;
-  static const int yellowThreshold = 200;
-  static const int greenThreshold = 500;
+  static const int redThreshold = TimerThresholds.red;
+  static const int yellowThreshold = TimerThresholds.yellow;
+  static const int greenThreshold = TimerThresholds.green;
   
   @override
   void dispose() {

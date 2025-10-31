@@ -17,6 +17,10 @@ import 'domain/usecases/get_statistics.dart';
 import 'domain/usecases/create_session.dart';
 import 'domain/usecases/get_sessions.dart';
 import 'domain/usecases/generate_scramble.dart';
+import 'domain/usecases/update_session.dart';
+import 'domain/usecases/update_solve.dart';
+import 'domain/usecases/delete_solve.dart';
+import 'domain/usecases/delete_session.dart';
 
 // Presentation layer
 import 'presentation/bloc/timer/timer_bloc.dart';
@@ -80,8 +84,20 @@ class SaltaRubikApp extends StatelessWidget {
         RepositoryProvider<GetSessions>(
           create: (context) => GetSessions(context.read<SessionRepository>()),
         ),
+        RepositoryProvider<UpdateSession>(
+          create: (context) => UpdateSession(context.read<SessionRepository>()),
+        ),
+        RepositoryProvider<DeleteSession>(
+          create: (context) => DeleteSession(context.read<SessionRepository>()),
+        ),
         RepositoryProvider<GenerateScramble>(
           create: (context) => GenerateScramble(),
+        ),
+        RepositoryProvider<UpdateSolve>(
+          create: (context) => UpdateSolve(context.read<SolveRepository>()),
+        ),
+        RepositoryProvider<DeleteSolve>(
+          create: (context) => DeleteSolve(context.read<SolveRepository>()),
         ),
       ],
       child: MultiBlocProvider(
@@ -95,12 +111,16 @@ class SaltaRubikApp extends StatelessWidget {
               getSolves: context.read<GetSolves>(),
               getStatistics: context.read<GetStatistics>(),
               generateScramble: context.read<GenerateScramble>(),
+              updateSolve: context.read<UpdateSolve>(),
+              deleteSolve: context.read<DeleteSolve>(),
             ),
           ),
           BlocProvider<SessionBloc>(
             create: (context) => SessionBloc(
               createSession: context.read<CreateSession>(),
               getSessions: context.read<GetSessions>(),
+              updateSession: context.read<UpdateSession>(),
+              deleteSession: context.read<DeleteSession>(),
             ),
           ),
           BlocProvider<CompeteBloc>(

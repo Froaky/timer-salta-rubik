@@ -29,6 +29,8 @@ class TimerPage extends StatefulWidget {
 class _TimerPageState extends State<TimerPage> {
   bool _showStatistics = false;
   bool _showSolveList = false;
+  String? _lastSessionId;
+  String? _lastCubeType;
 
   @override
   void initState() {
@@ -51,6 +53,17 @@ class _TimerPageState extends State<TimerPage> {
     return BlocListener<SessionBloc, SessionState>(
       listener: (context, sessionState) {
         _onSessionChanged(sessionState);
+        // Auto-generate scramble when session changes or its cube type changes
+        final current = sessionState.currentSession;
+        if (current != null) {
+          final changedId = current.id != _lastSessionId;
+          final changedCube = current.cubeType != _lastCubeType;
+          if (changedId || changedCube) {
+            _lastSessionId = current.id;
+            _lastCubeType = current.cubeType;
+            context.read<SolveBloc>().add(GenerateNewScramble(current.cubeType));
+          }
+        }
       },
       child: Scaffold(
       appBar: AppBar(

@@ -1,4 +1,5 @@
 import 'dart:async';
+import '../../../core/constants/timer_thresholds.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:vibration/vibration.dart';
 
@@ -11,10 +12,10 @@ class TimerBloc extends Bloc<TimerEvent, TimerState> {
   DateTime? _holdStartTime;
   DateTime? _runStartTime;
 
-  // Timer thresholds in milliseconds
-  static const int redThreshold = 0;
-  static const int yellowThreshold = 200;
-  static const int greenThreshold = 500;
+  // Timer thresholds in milliseconds (shared constants)
+  static const int redThreshold = TimerThresholds.red;
+  static const int yellowThreshold = TimerThresholds.yellow;
+  static const int greenThreshold = TimerThresholds.green;
 
   TimerBloc() : super(TimerState.initial()) {
     on<TimerStartHold>(_onStartHold);

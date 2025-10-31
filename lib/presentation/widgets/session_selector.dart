@@ -121,6 +121,8 @@ class SessionSelector extends StatelessWidget {
                           // Load solves and statistics for the new session
                           context.read<SolveBloc>().add(LoadSolves(sessionId: session.id));
                           context.read<SolveBloc>().add(LoadStatistics(session.id));
+                          // Generate scramble for the selected session's category
+                          context.read<SolveBloc>().add(GenerateNewScramble(session.cubeType));
                         }
                       },
                     ),
@@ -418,6 +420,9 @@ class _CreateSessionDialogState extends State<_CreateSessionDialog> {
                 createdAt: DateTime.now(),
               );
               context.read<SessionBloc>().add(CreateSessionEvent(session));
+              // Scramble will be refreshed by TimerPage listener when the new session becomes current.
+              // In case the UI does not switch automatically, also refresh scramble to the chosen category.
+              context.read<SolveBloc>().add(GenerateNewScramble(session.cubeType));
               Navigator.of(context).pop();
             }
           },
@@ -544,6 +549,14 @@ class _EditSessionDialogState extends State<_EditSessionDialog> {
                 cubeType: _selectedCubeType,
               );
               context.read<SessionBloc>().add(UpdateSessionEvent(updatedSession));
+              // If we are editing the currently selected session and its category changed,
+              // update the scramble to reflect the new category.
+              final current = context.read<SessionBloc>().state.currentSession;
+              if (current != null && current.id == updatedSession.id) {
+                context.read<SolveBloc>().add(GenerateNewScramble(updatedSession.cubeType));
+                // Optionally refresh statistics for the session after editing
+                context.read<SolveBloc>().add(LoadStatistics(updatedSession.id));
+              }
               Navigator.of(context).pop();
             }
           },

@@ -207,7 +207,7 @@ class SolveList extends StatelessWidget {
                 Row(
                   children: [
                     Text(
-                      solve.formattedTime,
+                      _buildTimeDisplay(solve),
                       style: Theme.of(context).textTheme.titleMedium?.copyWith(
                         fontFamily: 'RobotoMono',
                         fontWeight: FontWeight.w600,
@@ -215,24 +215,6 @@ class SolveList extends StatelessWidget {
                         fontSize: 18,
                       ),
                     ),
-                    if (solve.penalty != Penalty.none) ...[
-                      const SizedBox(width: 8),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: _getPenaltyColor(solve.penalty),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Text(
-                          _getPenaltyText(solve.penalty),
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 11,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ),
-                    ],
                   ],
                 ),
                 
@@ -358,6 +340,33 @@ class SolveList extends StatelessWidget {
         return '+2';
       case Penalty.dnf:
         return 'DNF';
+    }
+  }
+
+  String _buildTimeDisplay(Solve solve) {
+    // For +2, show: original +2 (effective)
+    if (solve.penalty == Penalty.plus2) {
+      final original = _formatMs(solve.timeMs);
+      final effective = _formatMs(solve.effectiveTimeMs);
+      return '$original +2 ($effective)';
+    }
+    // For DNF, just show DNF
+    if (solve.penalty == Penalty.dnf) {
+      return 'DNF';
+    }
+    // No penalty: show normal formatted time
+    return _formatMs(solve.timeMs);
+  }
+
+  String _formatMs(int milliseconds) {
+    if (milliseconds < 0) return 'DNF';
+    final seconds = milliseconds / 1000;
+    if (seconds >= 60) {
+      final minutes = (seconds / 60).floor();
+      final remainingSeconds = seconds % 60;
+      return '$minutes:${remainingSeconds.toStringAsFixed(2).padLeft(5, '0')}';
+    } else {
+      return seconds.toStringAsFixed(2);
     }
   }
 
