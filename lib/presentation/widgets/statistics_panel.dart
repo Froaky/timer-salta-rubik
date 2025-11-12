@@ -167,6 +167,45 @@ class StatisticsPanel extends StatelessWidget {
                   ? Statistics.formatTime(statistics.averageOf12!)
                   : 'N/A',
             ),
+            _buildStatRow(
+              context,
+              'Average of 25 (ao25)',
+              statistics.averageOf25 != null
+                  ? Statistics.formatTime(statistics.averageOf25!)
+                  : 'N/A',
+            ),
+            const SizedBox(height: 8),
+            _buildStatRow(
+              context,
+              'Average of 100 (ao100)',
+              statistics.averageOf100 != null
+                  ? Statistics.formatTime(statistics.averageOf100!)
+                  : 'N/A',
+            ),
+            const SizedBox(height: 8),
+            _buildStatRow(
+              context,
+              'Average of 200 (ao200)',
+              statistics.averageOf200 != null
+                  ? Statistics.formatTime(statistics.averageOf200!)
+                  : 'N/A',
+            ),
+            const SizedBox(height: 8),
+            _buildStatRow(
+              context,
+              'Average of 500 (ao500)',
+              statistics.averageOf500 != null
+                  ? Statistics.formatTime(statistics.averageOf500!)
+                  : 'N/A',
+            ),
+            const SizedBox(height: 8),
+            _buildStatRow(
+              context,
+              'Average of 1000 (ao1000)',
+              statistics.averageOf1000 != null
+                  ? Statistics.formatTime(statistics.averageOf1000!)
+                  : 'N/A',
+            ),
           ],
         ),
       ),
@@ -206,6 +245,45 @@ class StatisticsPanel extends StatelessWidget {
               'Best ao12',
               statistics.bestAverageOf12 != null
                   ? Statistics.formatTime(statistics.bestAverageOf12!)
+                  : 'N/A',
+            ),
+            _buildStatRow(
+              context,
+              'Best ao25',
+              statistics.bestAverageOf25 != null
+                  ? Statistics.formatTime(statistics.bestAverageOf25!)
+                  : 'N/A',
+            ),
+            const SizedBox(height: 8),
+            _buildStatRow(
+              context,
+              'Best ao100',
+              statistics.bestAverageOf100 != null
+                  ? Statistics.formatTime(statistics.bestAverageOf100!)
+                  : 'N/A',
+            ),
+            const SizedBox(height: 8),
+            _buildStatRow(
+              context,
+              'Best ao200',
+              statistics.bestAverageOf200 != null
+                  ? Statistics.formatTime(statistics.bestAverageOf200!)
+                  : 'N/A',
+            ),
+            const SizedBox(height: 8),
+            _buildStatRow(
+              context,
+              'Best ao500',
+              statistics.bestAverageOf500 != null
+                  ? Statistics.formatTime(statistics.bestAverageOf500!)
+                  : 'N/A',
+            ),
+            const SizedBox(height: 8),
+            _buildStatRow(
+              context,
+              'Best ao1000',
+              statistics.bestAverageOf1000 != null
+                  ? Statistics.formatTime(statistics.bestAverageOf1000!)
                   : 'N/A',
             ),
           ],

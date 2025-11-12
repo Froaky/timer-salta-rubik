@@ -4,6 +4,7 @@ enum TimerStatus {
   idle,
   holdPending,
   armed,
+  inspection,
   running,
   stopped,
 }
@@ -21,6 +22,10 @@ class TimerState extends Equatable {
   final int elapsedMs;
   final int holdDurationMs;
   final DateTime? startTime;
+  final bool inspectionEnabled;
+  final bool hideTimerEnabled;
+  final int inspectionRemainingMs;
+  final bool competeMode;
 
   const TimerState({
     required this.status,
@@ -28,6 +33,10 @@ class TimerState extends Equatable {
     required this.elapsedMs,
     required this.holdDurationMs,
     this.startTime,
+    this.inspectionEnabled = false,
+    this.hideTimerEnabled = false,
+    this.inspectionRemainingMs = 15000,
+    this.competeMode = false,
   });
 
   factory TimerState.initial() {
@@ -36,6 +45,10 @@ class TimerState extends Equatable {
       color: TimerColor.white,
       elapsedMs: 0,
       holdDurationMs: 0,
+      inspectionEnabled: false,
+      hideTimerEnabled: false,
+      inspectionRemainingMs: 15000,
+      competeMode: false,
     );
   }
 
@@ -45,6 +58,10 @@ class TimerState extends Equatable {
     int? elapsedMs,
     int? holdDurationMs,
     DateTime? startTime,
+    bool? inspectionEnabled,
+    bool? hideTimerEnabled,
+    int? inspectionRemainingMs,
+    bool? competeMode,
   }) {
     return TimerState(
       status: status ?? this.status,
@@ -52,6 +69,10 @@ class TimerState extends Equatable {
       elapsedMs: elapsedMs ?? this.elapsedMs,
       holdDurationMs: holdDurationMs ?? this.holdDurationMs,
       startTime: startTime ?? this.startTime,
+      inspectionEnabled: inspectionEnabled ?? this.inspectionEnabled,
+      hideTimerEnabled: hideTimerEnabled ?? this.hideTimerEnabled,
+      inspectionRemainingMs: inspectionRemainingMs ?? this.inspectionRemainingMs,
+      competeMode: competeMode ?? this.competeMode,
     );
   }
 
@@ -59,6 +80,17 @@ class TimerState extends Equatable {
   String get formattedTime {
     if (status == TimerStatus.idle) {
       return '0.00';
+    }
+
+    // Si el timer está oculto y está corriendo, mostrar RESOLUCIÓN
+    if (hideTimerEnabled && status == TimerStatus.running) {
+      return 'RESOLUCIÓN';
+    }
+
+    // Si está en inspección, mostrar el tiempo restante
+    if (inspectionEnabled && status == TimerStatus.inspection) {
+      final seconds = inspectionRemainingMs / 1000;
+      return seconds.toStringAsFixed(1);
     }
 
     final timeToShow = status == TimerStatus.running ? elapsedMs : elapsedMs;
@@ -89,5 +121,9 @@ class TimerState extends Equatable {
         elapsedMs,
         holdDurationMs,
         startTime,
+        inspectionEnabled,
+        hideTimerEnabled,
+        inspectionRemainingMs,
+        competeMode,
       ];
 }

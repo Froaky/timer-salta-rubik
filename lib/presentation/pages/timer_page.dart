@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'settings_page.dart';
 
 import '../../domain/entities/solve.dart';
 
@@ -84,6 +85,23 @@ class _TimerPageState extends State<TimerPage> {
           IconButton(
             icon: Icon(_showStatistics ? Icons.timer : Icons.analytics),
             onPressed: () {
+              final timerState = context.read<TimerBloc>().state;
+              final isTimerActive = timerState.status == TimerStatus.running || 
+                                  timerState.status == TimerStatus.inspection ||
+                                  timerState.status == TimerStatus.holdPending ||
+                                  timerState.status == TimerStatus.armed;
+              
+              // Si está en modo competir y el timer está activo, no permitir acceso
+              if (timerState.competeMode && isTimerActive) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('No se puede ver estadísticas durante una resolución en modo competir'),
+                    duration: Duration(seconds: 2),
+                  ),
+                );
+                return;
+              }
+              
               setState(() {
                 _showStatistics = !_showStatistics;
                 if (_showStatistics) _showSolveList = false;
@@ -93,6 +111,23 @@ class _TimerPageState extends State<TimerPage> {
           IconButton(
             icon: Icon(_showSolveList ? Icons.timer : Icons.list),
             onPressed: () {
+              final timerState = context.read<TimerBloc>().state;
+              final isTimerActive = timerState.status == TimerStatus.running || 
+                                  timerState.status == TimerStatus.inspection ||
+                                  timerState.status == TimerStatus.holdPending ||
+                                  timerState.status == TimerStatus.armed;
+              
+              // Si está en modo competir y el timer está activo, no permitir acceso
+              if (timerState.competeMode && isTimerActive) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('No se puede ver el historial durante una resolución en modo competir'),
+                    duration: Duration(seconds: 2),
+                  ),
+                );
+                return;
+              }
+              
               setState(() {
                 _showSolveList = !_showSolveList;
                 if (_showSolveList) _showStatistics = false;
@@ -102,7 +137,7 @@ class _TimerPageState extends State<TimerPage> {
           IconButton(
             icon: const Icon(Icons.more_vert),
             onPressed: () {
-              // Show menu
+              _showMenu();
             },
           ),
         ],
@@ -176,23 +211,29 @@ class _TimerPageState extends State<TimerPage> {
                             context.read<TimerBloc>().add(TimerStartHold());
                           } else if (timerState.status == TimerStatus.running) {
                             context.read<TimerBloc>().add(TimerStop());
+                          } else if (timerState.status == TimerStatus.inspection) {
+                            // Durante inspección, detenerla y comenzar el timer
+                            context.read<TimerBloc>().add(TimerStopHold());
                           }
                         },
                         onTapUp: (_) {
                           if (timerState.status == TimerStatus.holdPending || timerState.status == TimerStatus.armed) {
                             context.read<TimerBloc>().add(TimerStopHold());
                           }
+                          // No hacer nada en inspección - el usuario debe tocar nuevamente para iniciar
                         },
                         onTapCancel: () {
                           if (timerState.status == TimerStatus.holdPending || timerState.status == TimerStatus.armed) {
                             context.read<TimerBloc>().add(TimerStopHold());
                           }
+                          // No hacer nada en inspección
                         },
                         child: Container(
                           width: double.infinity,
                           height: double.infinity,
                           decoration: BoxDecoration(
-                            color: AppTheme.getTimerColor(timerState.color.name),
+                            color: timerState.status == TimerStatus.inspection ? Colors.white :
+                                   AppTheme.getTimerColor(timerState.color.name),
                             borderRadius: BorderRadius.circular(24),
                             boxShadow: [
                               BoxShadow(
@@ -207,7 +248,8 @@ class _TimerPageState extends State<TimerPage> {
                             child: Text(
                               timerState.formattedTime,
                               style: Theme.of(context).textTheme.displayLarge?.copyWith(
-                                color: timerState.color == TimerColor.white ? Colors.black : Colors.white,
+                                color: timerState.status == TimerStatus.inspection ? Colors.orange : 
+                                       timerState.color == TimerColor.white ? Colors.black : Colors.white,
                                 fontSize: _getTimerFontSize(timerState.formattedTime),
                                 fontWeight: FontWeight.w300,
                               ),
@@ -345,7 +387,8 @@ class _TimerPageState extends State<TimerPage> {
 
 
   double _getTimerFontSize(String timeText) {
-    // Adjust font size based on text length
+    // Ajustar tamaño de fuente basado en longitud del texto
+    if (timeText == 'RESOLUCIÓN') return 48; // Texto más largo, fuente más pequeña
     if (timeText.length <= 5) return 72; // "12.34"
     if (timeText.length <= 8) return 60; // "1:23.45"
     return 48; // "12:34.56"
@@ -385,5 +428,79 @@ class _TimerPageState extends State<TimerPage> {
 
     context.read<SolveBloc>().add(AddSolveEvent(solve));
     context.read<SolveBloc>().add(GenerateNewScramble(currentSession.cubeType));
+  }
+
+  void _showMenu() {
+    showModalBottomSheet(
+      context: context,
+      builder: (BuildContext context) {
+        return BlocBuilder<TimerBloc, TimerState>(
+          builder: (context, timerState) {
+            final isTimerActive = timerState.status == TimerStatus.running || 
+                                timerState.status == TimerStatus.inspection ||
+                                timerState.status == TimerStatus.holdPending ||
+                                timerState.status == TimerStatus.armed;
+            
+            return Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                ListTile(
+                  leading: const Icon(Icons.person),
+                  title: const Text('Perfil'),
+                  onTap: () {
+                    Navigator.pop(context);
+                    // TODO: Implementar navegación a perfil
+                  },
+                ),
+                ListTile(
+                  leading: const Icon(Icons.history),
+                  title: const Text('Historial'),
+                  enabled: !(timerState.competeMode && isTimerActive),
+                  onTap: () {
+                    if (timerState.competeMode && isTimerActive) {
+                      Navigator.pop(context);
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('No se puede ver el historial durante una resolución en modo competir'),
+                          duration: Duration(seconds: 2),
+                        ),
+                      );
+                      return;
+                    }
+                    Navigator.pop(context);
+                    // Alternar a la vista de lista de solves
+                    setState(() {
+                      _showSolveList = true;
+                      _showStatistics = false;
+                    });
+                  },
+                ),
+                ListTile(
+                  leading: const Icon(Icons.settings),
+                  title: const Text('Configuración'),
+                  onTap: () {
+                    Navigator.pop(context);
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const SettingsPage(),
+                      ),
+                    );
+                  },
+                ),
+                ListTile(
+                  leading: const Icon(Icons.logout),
+                  title: const Text('Cerrar sesión'),
+                  onTap: () {
+                    Navigator.pop(context);
+                    // TODO: Implementar cierre de sesión
+                  },
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
   }
 }

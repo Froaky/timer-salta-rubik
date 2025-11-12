@@ -10,8 +10,22 @@ import '../bloc/solve/solve_state.dart';
 import '../bloc/solve/solve_event.dart';
 import '../theme/app_theme.dart';
 
-class SolveList extends StatelessWidget {
+enum SortOption {
+  timeAsc,
+  timeDesc,
+  dateAsc,
+  dateDesc,
+}
+
+class SolveList extends StatefulWidget {
   const SolveList({super.key});
+
+  @override
+  State<SolveList> createState() => _SolveListState();
+}
+
+class _SolveListState extends State<SolveList> {
+  SortOption _currentSort = SortOption.dateDesc;
 
   @override
   Widget build(BuildContext context) {
@@ -47,6 +61,9 @@ class SolveList extends StatelessWidget {
                 child: Text('No solves yet'),
               );
             }
+
+            // Ordenar solves según la opción seleccionada
+            final sortedSolves = _sortSolves(solveState.solves);
 
             return Column(
               children: [
@@ -103,6 +120,69 @@ class SolveList extends StatelessWidget {
                         ],
                       ),
                       const Spacer(),
+                      // Sort button
+                      Container(
+                        decoration: BoxDecoration(
+                          color: AppTheme.textMuted.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: PopupMenuButton<SortOption>(
+                          icon: const Icon(Icons.sort_rounded, size: 20),
+                          tooltip: 'Sort solves',
+                          color: AppTheme.cardColor,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          onSelected: (option) {
+                            setState(() {
+                              _currentSort = option;
+                            });
+                          },
+                          itemBuilder: (context) => [
+                            const PopupMenuItem(
+                              value: SortOption.dateDesc,
+                              child: Row(
+                                children: [
+                                  Icon(Icons.schedule, size: 16),
+                                  SizedBox(width: 10),
+                                  Text('Date (newest first)'),
+                                ],
+                              ),
+                            ),
+                            const PopupMenuItem(
+                              value: SortOption.dateAsc,
+                              child: Row(
+                                children: [
+                                  Icon(Icons.schedule, size: 16),
+                                  SizedBox(width: 10),
+                                  Text('Date (oldest first)'),
+                                ],
+                              ),
+                            ),
+                            const PopupMenuItem(
+                              value: SortOption.timeAsc,
+                              child: Row(
+                                children: [
+                                  Icon(Icons.timer, size: 16),
+                                  SizedBox(width: 10),
+                                  Text('Time (fastest first)'),
+                                ],
+                              ),
+                            ),
+                            const PopupMenuItem(
+                              value: SortOption.timeDesc,
+                              child: Row(
+                                children: [
+                                  Icon(Icons.timer, size: 16),
+                                  SizedBox(width: 10),
+                                  Text('Time (slowest first)'),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 8),
                       Container(
                         decoration: BoxDecoration(
                           color: AppTheme.textMuted.withOpacity(0.1),
@@ -127,10 +207,10 @@ class SolveList extends StatelessWidget {
                 Expanded(
                   child: ListView.builder(
                     padding: const EdgeInsets.symmetric(horizontal: 16),
-                    itemCount: solveState.solves.length,
+                    itemCount: sortedSolves.length,
                     itemBuilder: (context, index) {
-                      final solve = solveState.solves[index];
-                      final isLatest = index == 0;
+                      final solve = sortedSolves[index];
+                      final isLatest = _currentSort == SortOption.dateDesc && index == 0;
                       
                       return _buildSolveItem(
                         context,
@@ -344,17 +424,17 @@ class SolveList extends StatelessWidget {
   }
 
   String _buildTimeDisplay(Solve solve) {
-    // For +2, show: original +2 (effective)
+    // Para +2, mostrar: tiempo original +2 (tiempo final)
     if (solve.penalty == Penalty.plus2) {
       final original = _formatMs(solve.timeMs);
       final effective = _formatMs(solve.effectiveTimeMs);
-      return '$original +2 ($effective)';
+      return '$original +2';
     }
-    // For DNF, just show DNF
+    // Para DNF, mostrar DNF
     if (solve.penalty == Penalty.dnf) {
       return 'DNF';
     }
-    // No penalty: show normal formatted time
+    // Sin penalización: mostrar tiempo normal
     return _formatMs(solve.timeMs);
   }
 
@@ -383,6 +463,41 @@ class SolveList extends StatelessWidget {
     } else {
       return 'Just now';
     }
+  }
+
+  List<Solve> _sortSolves(List<Solve> solves) {
+    final sorted = List<Solve>.from(solves);
+    
+    switch (_currentSort) {
+      case SortOption.timeAsc:
+        sorted.sort((a, b) {
+          // Primero ordenar por DNF (DNF va al final)
+          if (a.isDnf && !b.isDnf) return 1;
+          if (!a.isDnf && b.isDnf) return -1;
+          if (a.isDnf && b.isDnf) return 0;
+          // Luego por tiempo efectivo
+          return a.effectiveTimeMs.compareTo(b.effectiveTimeMs);
+        });
+        break;
+      case SortOption.timeDesc:
+        sorted.sort((a, b) {
+          // Primero ordenar por DNF (DNF va al principio)
+          if (a.isDnf && !b.isDnf) return -1;
+          if (!a.isDnf && b.isDnf) return 1;
+          if (a.isDnf && b.isDnf) return 0;
+          // Luego por tiempo efectivo descendente
+          return b.effectiveTimeMs.compareTo(a.effectiveTimeMs);
+        });
+        break;
+      case SortOption.dateAsc:
+        sorted.sort((a, b) => a.createdAt.compareTo(b.createdAt));
+        break;
+      case SortOption.dateDesc:
+        sorted.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+        break;
+    }
+    
+    return sorted;
   }
 
   void _showEditDialog(BuildContext context, Solve solve) {

@@ -30,3 +30,23 @@ class TimerStop extends TimerEvent {
 class TimerReset extends TimerEvent {
   const TimerReset();
 }
+
+class TimerToggleInspection extends TimerEvent {
+  const TimerToggleInspection();
+}
+
+class TimerToggleHideTimer extends TimerEvent {
+  const TimerToggleHideTimer();
+}
+
+class TimerStartInspection extends TimerEvent {
+  const TimerStartInspection();
+}
+
+class TimerStopInspection extends TimerEvent {
+  const TimerStopInspection();
+}
+
+class TimerToggleCompeteMode extends TimerEvent {
+  const TimerToggleCompeteMode();
+}

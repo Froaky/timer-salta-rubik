@@ -53,6 +53,7 @@ class CompeteState extends Equatable {
   final int? lane1FinishedAtMs;
   final int? lane2FinishedAtMs;
   final bool roundScored;
+  final String? cubeType; // Agregado para almacenar el tipo de cubo actual
 
   const CompeteState({
     required this.status,
@@ -69,6 +70,7 @@ class CompeteState extends Equatable {
     this.lane1FinishedAtMs,
     this.lane2FinishedAtMs,
     this.roundScored = false,
+    this.cubeType,
   });
 
   factory CompeteState.initial() {
@@ -83,6 +85,7 @@ class CompeteState extends Equatable {
       lane1FinishedAtMs: null,
       lane2FinishedAtMs: null,
       roundScored: false,
+      cubeType: null,
     );
   }
 
@@ -101,6 +104,7 @@ class CompeteState extends Equatable {
     int? lane1FinishedAtMs,
     int? lane2FinishedAtMs,
     bool? roundScored,
+    String? cubeType,
   }) {
     return CompeteState(
       status: status ?? this.status,
@@ -117,6 +121,7 @@ class CompeteState extends Equatable {
       lane1FinishedAtMs: lane1FinishedAtMs ?? this.lane1FinishedAtMs,
       lane2FinishedAtMs: lane2FinishedAtMs ?? this.lane2FinishedAtMs,
       roundScored: roundScored ?? this.roundScored,
+      cubeType: cubeType ?? this.cubeType,
     );
   }
 
@@ -153,5 +158,6 @@ class CompeteState extends Equatable {
         lane1FinishedAtMs,
         lane2FinishedAtMs,
         roundScored,
+        cubeType,
       ];
 }

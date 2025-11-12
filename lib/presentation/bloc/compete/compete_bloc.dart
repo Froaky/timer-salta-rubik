@@ -33,6 +33,7 @@ class CompeteBloc extends Bloc<CompeteEvent, CompeteState> {
         lane2: const LaneData(solves: []),
         winner: null,
         useSameScramble: event.useSameScramble,
+        cubeType: event.cubeType,
       ));
     } catch (e) {
       // Handle error
@@ -125,6 +126,21 @@ class CompeteBloc extends Bloc<CompeteEvent, CompeteState> {
         status: CompeteStatus.finished,
         winner: winner,
       );
+
+      // Generar nuevos scrambles automáticamente después de completar la ronda
+      try {
+        final cubeType = updated.cubeType ?? '3x3'; // Usar el tipo de cubo actual o 3x3 por defecto
+        final newScramble1 = generateScramble(cubeType);
+        final newUseSameScramble = updated.useSameScramble;
+        final newScramble2 = newUseSameScramble ? newScramble1 : generateScramble(cubeType);
+        
+        updated = updated.copyWith(
+          scrambleLane1: newScramble1,
+          scrambleLane2: newScramble2,
+        );
+      } catch (e) {
+        // Si hay error al generar scrambles, mantener los actuales
+      }
     }
 
     emit(updated);

@@ -65,10 +65,11 @@ class GenerateScramble implements UseCaseSync<Scramble, String> {
     }
   }
 
-  /// Genera scramble para 2x2x2 siguiendo estándares WCA oficiales
-  /// Orientación: WHITE arriba, GREEN al frente
-  /// Mínimo 4 movimientos para resolver (WCA 4b3b)
-  /// Notación: R, U, F (D, L, B son redundantes para 2x2x2)
+  /// Genera scramble para 2x2x2 con algoritmo optimizado
+  /// - Entre 9-10 movimientos exactamente
+  /// - Prioriza mezcla de U, F, R con variantes
+  /// - Evita patrones repetitivos tipo "R U R U'"
+  /// - Mayor aleatoriedad y desorden
   Scramble _generate2x2Scramble() {
     final random = Random();
     final faces = ['R', 'U', 'F'];
@@ -77,21 +78,38 @@ class GenerateScramble implements UseCaseSync<Scramble, String> {
     
     String? lastFace;
     String? secondLastFace;
+    String? thirdLastFace;
     
-    // Generar entre 6-8 movimientos (estándar WCA actual)
-    final moveCount = 6 + random.nextInt(3);
+    // Generar exactamente entre 9-10 movimientos
+    final moveCount = 9 + random.nextInt(2);
     
     for (int i = 0; i < moveCount; i++) {
       String face;
+      String modifier;
+      int attempts = 0;
       
-      // Evitar movimientos consecutivos en la misma cara
+      // Selección inteligente de cara con mayor aleatoriedad
       do {
         face = faces[random.nextInt(faces.length)];
-      } while (_isInvalidMove(face, lastFace, secondLastFace));
+        attempts++;
+        
+        // Si hay muchos intentos, forzar cambio de cara
+        if (attempts > 15) {
+          final availableFaces = faces.where((f) => f != lastFace).toList();
+          if (availableFaces.isNotEmpty) {
+            face = availableFaces[random.nextInt(availableFaces.length)];
+            break;
+          }
+        }
+      } while (_isInvalidMove2x2(face, lastFace, secondLastFace, thirdLastFace, moves, i));
       
-      final modifier = modifiers[random.nextInt(modifiers.length)];
+      // Selección de modificador con lógica para evitar patrones
+      modifier = _selectSmartModifier(face, lastFace, secondLastFace, moves, i, random);
+      
       moves.add('$face$modifier');
       
+      // Actualizar historial
+      thirdLastFace = secondLastFace;
       secondLastFace = lastFace;
       lastFace = face;
     }
@@ -102,6 +120,71 @@ class GenerateScramble implements UseCaseSync<Scramble, String> {
       moves: moves,
       generatedAt: DateTime.now(),
     );
+  }
+  
+  /// Selecciona modificador inteligentemente para evitar patrones repetitivos
+  String _selectSmartModifier(String face, String? lastFace, String? secondLastFace, 
+                               List<String> moves, int currentIndex, Random random) {
+    final modifiers = ['', '\'', '2'];
+    
+    // Si es el primer movimiento, completamente aleatorio
+    if (currentIndex == 0) {
+      return modifiers[random.nextInt(3)];
+    }
+    
+    // Obtener el modificador anterior del mismo tipo de cara
+    String? lastModifier;
+    if (currentIndex > 0) {
+      final lastMove = moves[currentIndex - 1];
+      if (lastMove.startsWith(face)) {
+        lastModifier = lastMove.substring(1);
+      }
+    }
+    
+    // Evitar patrones como "R U R U'" o similares
+    if (lastFace == face && currentIndex >= 3) {
+      final prevPrevMove = currentIndex >= 2 ? moves[currentIndex - 2] : '';
+      final prevMove = moves[currentIndex - 1];
+      
+      // Si tenemos patrón potencial, elegir modificador que lo rompa
+      if (prevPrevMove.startsWith(face) && prevMove.startsWith(face)) {
+        // Forzar un modificador diferente al último
+        final availableModifiers = modifiers.where((m) => m != lastModifier).toList();
+        return availableModifiers[random.nextInt(availableModifiers.length)];
+      }
+    }
+    
+    // Distribución ponderada para más aleatoriedad
+    final rand = random.nextDouble();
+    if (rand < 0.4) return '';        // 40% sin modificador
+    if (rand < 0.7) return '\'';      // 30% prima
+    return '2';                       // 30% doble
+  }
+  
+  /// Validación mejorada para 2x2 con mayor restricción de patrones
+  bool _isInvalidMove2x2(String face, String? lastFace, String? secondLastFace, 
+                         String? thirdLastFace, List<String> moves, int currentIndex) {
+    // No repetir la misma cara consecutivamente
+    if (face == lastFace) return true;
+    
+    // Evitar patrones de alternancia muy comunes (R U R U, etc.)
+    if (currentIndex >= 3 && lastFace != null && secondLastFace != null && thirdLastFace != null) {
+      // Detectar patrones como R-U-R-U o F-R-F-R
+      if ((face == thirdLastFace && lastFace == secondLastFace) ||
+          (face == secondLastFace && lastFace == thirdLastFace)) {
+        return true;
+      }
+    }
+    
+    // Evitar que una cara domine demasiado (máximo 40% de los movimientos)
+    if (currentIndex > 6) {
+      final faceCount = moves.where((move) => move.startsWith(face)).length;
+      if (faceCount > (currentIndex * 0.4).ceil()) {
+        return true;
+      }
+    }
+    
+    return false;
   }
 
   /// Genera scramble para 4x4x4 siguiendo estándares WCA oficiales
