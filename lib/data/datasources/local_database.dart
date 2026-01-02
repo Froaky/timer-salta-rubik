@@ -32,6 +32,14 @@ class LocalDatabase {
       )
     ''');
 
+    // Create default session
+    await db.insert('sessions', {
+      'id': 'default',
+      'name': 'Default Session',
+      'cube_type': '3x3',
+      'created_at': DateTime.now().millisecondsSinceEpoch,
+    });
+
     // Create solves table
     await db.execute('''
       CREATE TABLE solves (
@@ -94,7 +102,8 @@ class LocalDatabase {
     return await db.rawQuery(query, whereArgs);
   }
 
-  Future<List<Map<String, dynamic>>> getSolvesBySession(String sessionId) async {
+  Future<List<Map<String, dynamic>>> getSolvesBySession(
+      String sessionId) async {
     final db = await database;
     return await db.query(
       'solves',

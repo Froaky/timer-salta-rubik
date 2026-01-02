@@ -1,7 +1,5 @@
 import 'package:get_it/get_it.dart';
 import 'package:injectable/injectable.dart';
-import 'package:sqflite/sqflite.dart';
-import 'package:path/path.dart';
 
 import 'data/datasources/local_database.dart';
 import 'data/datasources/solve_local_datasource.dart';
@@ -29,32 +27,29 @@ final sl = GetIt.instance;
 
 @InjectableInit()
 Future<void> configureDependencies() async {
-  // Database
-  final database = await _initDatabase();
-  sl.registerSingleton<Database>(database);
-  
-  // Data sources
+  // Database helper
   sl.registerLazySingleton<LocalDatabase>(
     () => LocalDatabase(),
   );
-  
+
+  // Data sources
   sl.registerLazySingleton<SolveLocalDataSource>(
-    () => SolveLocalDataSourceImpl(sl()),
+    () => SolveLocalDataSourceImpl(sl<LocalDatabase>()),
   );
-  
+
   sl.registerLazySingleton<SessionLocalDataSource>(
-    () => SessionLocalDataSourceImpl(sl()),
+    () => SessionLocalDataSourceImpl(sl<LocalDatabase>()),
   );
-  
+
   // Repositories
   sl.registerLazySingleton<SolveRepository>(
     () => SolveRepositoryImpl(sl()),
   );
-  
+
   sl.registerLazySingleton<SessionRepository>(
     () => SessionRepositoryImpl(sl()),
   );
-  
+
   // Use cases
   sl.registerLazySingleton(() => AddSolve(sl()));
   sl.registerLazySingleton(() => GetSolves(sl()));
@@ -66,66 +61,24 @@ Future<void> configureDependencies() async {
   sl.registerLazySingleton(() => UpdateSession(sl()));
   sl.registerLazySingleton(() => DeleteSession(sl()));
   sl.registerLazySingleton(() => GenerateScramble());
-  
+
   // BLoCs
   sl.registerFactory(() => TimerBloc());
   sl.registerFactory(() => SolveBloc(
-    addSolve: sl(),
-    getSolves: sl(),
-    getStatistics: sl(),
-    generateScramble: sl(),
-    updateSolve: sl(),
-    deleteSolve: sl(),
-  ));
+        addSolve: sl(),
+        getSolves: sl(),
+        getStatistics: sl(),
+        generateScramble: sl(),
+        updateSolve: sl(),
+        deleteSolve: sl(),
+      ));
   sl.registerFactory(() => SessionBloc(
-    createSession: sl(),
-    getSessions: sl(),
-    updateSession: sl(),
-    deleteSession: sl(),
-  ));
+        createSession: sl(),
+        getSessions: sl(),
+        updateSession: sl(),
+        deleteSession: sl(),
+      ));
   sl.registerFactory(() => CompeteBloc(
-    generateScramble: sl(),
-  ));
-}
-
-Future<Database> _initDatabase() async {
-  final databasesPath = await getDatabasesPath();
-  final path = join(databasesPath, 'salta_rubik.db');
-  
-  return await openDatabase(
-    path,
-    version: 1,
-    onCreate: (db, version) async {
-      await db.execute('''
-        CREATE TABLE sessions(
-          id TEXT PRIMARY KEY,
-          name TEXT NOT NULL,
-          cube_type TEXT NOT NULL DEFAULT '3x3',
-          created_at INTEGER NOT NULL
-        )
-      ''');
-      
-      await db.execute('''
-        CREATE TABLE solves(
-          id TEXT PRIMARY KEY,
-          session_id TEXT NOT NULL,
-          time_ms INTEGER NOT NULL,
-          penalty TEXT,
-          scramble TEXT NOT NULL,
-          cube_type TEXT NOT NULL DEFAULT '3x3',
-          lane INTEGER DEFAULT 0,
-          created_at INTEGER NOT NULL,
-          FOREIGN KEY (session_id) REFERENCES sessions (id)
-        )
-      ''');
-      
-      // Create default session
-      await db.insert('sessions', {
-        'id': 'default',
-        'name': 'Default Session',
-        'cube_type': '3x3',
-        'created_at': DateTime.now().millisecondsSinceEpoch,
-      });
-    },
-  );
+        generateScramble: sl(),
+      ));
 }

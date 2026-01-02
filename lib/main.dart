@@ -1,27 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-// Data layer
-import 'data/datasources/local_database.dart';
-import 'data/datasources/solve_local_datasource.dart';
-import 'data/datasources/session_local_datasource.dart';
-import 'data/repositories/solve_repository_impl.dart';
-import 'data/repositories/session_repository_impl.dart';
-
-// Domain layer
-import 'domain/repositories/solve_repository.dart';
-import 'domain/repositories/session_repository.dart';
-import 'domain/usecases/add_solve.dart';
-import 'domain/usecases/get_solves.dart';
-import 'domain/usecases/get_statistics.dart';
-import 'domain/usecases/create_session.dart';
-import 'domain/usecases/get_sessions.dart';
-import 'domain/usecases/generate_scramble.dart';
-import 'domain/usecases/update_session.dart';
-import 'domain/usecases/update_solve.dart';
-import 'domain/usecases/delete_solve.dart';
-import 'domain/usecases/delete_session.dart';
-
 // Presentation layer
 import 'presentation/bloc/timer/timer_bloc.dart';
 import 'presentation/bloc/solve/solve_bloc.dart';
@@ -30,111 +9,42 @@ import 'presentation/bloc/compete/compete_bloc.dart';
 import 'presentation/theme/app_theme.dart';
 import 'presentation/pages/timer_page.dart';
 
+import 'injection_container.dart';
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  
-  // Initialize database
-  final database = LocalDatabase();
-  
-  runApp(SaltaRubikApp(database: database));
+
+  // Initialize dependency injection
+  await configureDependencies();
+
+  runApp(const SaltaRubikApp());
 }
 
 class SaltaRubikApp extends StatelessWidget {
-  final LocalDatabase database;
-  
-  const SaltaRubikApp({super.key, required this.database});
+  const SaltaRubikApp({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return MultiRepositoryProvider(
+    return MultiBlocProvider(
       providers: [
-        // Data sources
-        RepositoryProvider<SolveLocalDataSource>(
-          create: (context) => SolveLocalDataSourceImpl(database),
+        BlocProvider<TimerBloc>(
+          create: (context) => sl<TimerBloc>(),
         ),
-        RepositoryProvider<SessionLocalDataSource>(
-          create: (context) => SessionLocalDataSourceImpl(database),
+        BlocProvider<SolveBloc>(
+          create: (context) => sl<SolveBloc>(),
         ),
-        
-        // Repositories
-        RepositoryProvider<SolveRepository>(
-          create: (context) => SolveRepositoryImpl(
-            context.read<SolveLocalDataSource>(),
-          ),
+        BlocProvider<SessionBloc>(
+          create: (context) => sl<SessionBloc>(),
         ),
-        RepositoryProvider<SessionRepository>(
-          create: (context) => SessionRepositoryImpl(
-            context.read<SessionLocalDataSource>(),
-          ),
-        ),
-        
-        // Use cases
-        RepositoryProvider<AddSolve>(
-          create: (context) => AddSolve(context.read<SolveRepository>()),
-        ),
-        RepositoryProvider<GetSolves>(
-          create: (context) => GetSolves(context.read<SolveRepository>()),
-        ),
-        RepositoryProvider<GetStatistics>(
-          create: (context) => GetStatistics(context.read<SolveRepository>()),
-        ),
-        RepositoryProvider<CreateSession>(
-          create: (context) => CreateSession(context.read<SessionRepository>()),
-        ),
-        RepositoryProvider<GetSessions>(
-          create: (context) => GetSessions(context.read<SessionRepository>()),
-        ),
-        RepositoryProvider<UpdateSession>(
-          create: (context) => UpdateSession(context.read<SessionRepository>()),
-        ),
-        RepositoryProvider<DeleteSession>(
-          create: (context) => DeleteSession(context.read<SessionRepository>()),
-        ),
-        RepositoryProvider<GenerateScramble>(
-          create: (context) => GenerateScramble(),
-        ),
-        RepositoryProvider<UpdateSolve>(
-          create: (context) => UpdateSolve(context.read<SolveRepository>()),
-        ),
-        RepositoryProvider<DeleteSolve>(
-          create: (context) => DeleteSolve(context.read<SolveRepository>()),
+        BlocProvider<CompeteBloc>(
+          create: (context) => sl<CompeteBloc>(),
         ),
       ],
-      child: MultiBlocProvider(
-        providers: [
-          BlocProvider<TimerBloc>(
-            create: (context) => TimerBloc(),
-          ),
-          BlocProvider<SolveBloc>(
-            create: (context) => SolveBloc(
-              addSolve: context.read<AddSolve>(),
-              getSolves: context.read<GetSolves>(),
-              getStatistics: context.read<GetStatistics>(),
-              generateScramble: context.read<GenerateScramble>(),
-              updateSolve: context.read<UpdateSolve>(),
-              deleteSolve: context.read<DeleteSolve>(),
-            ),
-          ),
-          BlocProvider<SessionBloc>(
-            create: (context) => SessionBloc(
-              createSession: context.read<CreateSession>(),
-              getSessions: context.read<GetSessions>(),
-              updateSession: context.read<UpdateSession>(),
-              deleteSession: context.read<DeleteSession>(),
-            ),
-          ),
-          BlocProvider<CompeteBloc>(
-            create: (context) => CompeteBloc(
-              generateScramble: context.read<GenerateScramble>(),
-            ),
-          ),
-        ],
-        child: MaterialApp(
-          title: 'Salta Rubik',
-          theme: AppTheme.darkTheme,
-          home: const TimerPage(),
-          debugShowCheckedModeBanner: false,
-        ),
+      child: MaterialApp(
+        title: 'Salta Rubik',
+        theme: AppTheme.darkTheme,
+        home: const TimerPage(),
+        debugShowCheckedModeBanner: false,
       ),
     );
   }
