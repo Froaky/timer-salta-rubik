@@ -6,24 +6,30 @@ class AppTheme {
   static const Color timerRed = Color(0xFFEF4444);
   static const Color timerYellow = Color(0xFFF59E0B);
   static const Color timerGreen = Color(0xFF10B981);
-  
-  // App colors - Modern dark theme with subtle gradients
-  static const Color primaryColor = Color(0xFF0F172A);  // Slate 900
+
+  // App colors - Modern dark theme with deep vibrant tones
+  static const Color primaryColor = Color(0xFF0F172A); // Slate 900
   static const Color secondaryColor = Color(0xFF1E293B); // Slate 800
-  static const Color accentColor = Color(0xFF3B82F6);    // Blue 500
+  static const Color accentColor =
+      Color(0xFF6366F1); // Indigo 500 (more vibrant)
   static const Color backgroundColor = Color(0xFF020617); // Slate 950
-  static const Color surfaceColor = Color(0xFF0F172A);   // Slate 900
-  static const Color cardColor = Color(0xFF1E293B);      // Slate 800
-  static const Color errorColor = Color(0xFFEF4444);     // Red 500
-  static const Color successColor = Color(0xFF10B981);   // Emerald 500
-  static const Color warningColor = Color(0xFFF59E0B);   // Amber 500
-  
-  // Text colors - Better contrast
-  static const Color textPrimary = Color(0xFFF8FAFC);    // Slate 50
-  static const Color textSecondary = Color(0xFFCBD5E1); // Slate 300
-  static const Color textMuted = Color(0xFF64748B);      // Slate 500
-  static const Color textAccent = Color(0xFF60A5FA);     // Blue 400
-  
+  static const Color surfaceColor = Color(0xFF0F172A); // Slate 900
+  static const Color cardColor = Color(0xFF1E293B); // Slate 800
+  static const Color errorColor = Color(0xFFF43F5E); // Rose 500
+  static const Color successColor = Color(0xFF10B981); // Emerald 500
+  static const Color warningColor = Color(0xFFF59E0B); // Amber 500
+
+  // Glassmorphism effects
+  static final Color glassBackground = Colors.white.withValues(alpha: 0.05);
+  static final Color glassBorder = Colors.white.withValues(alpha: 0.1);
+  static const double glassBlur = 12.0;
+
+  // Text colors - High precision contrast
+  static const Color textPrimary = Color(0xFFF8FAFC); // Slate 50
+  static const Color textSecondary = Color(0xFF94A3B8); // Slate 400
+  static const Color textMuted = Color(0xFF475569); // Slate 600
+  static const Color textAccent = Color(0xFF818CF8); // Indigo 400
+
   static ThemeData get darkTheme {
     return ThemeData(
       useMaterial3: true,
@@ -31,13 +37,11 @@ class AppTheme {
       colorScheme: const ColorScheme.dark(
         primary: accentColor,
         secondary: secondaryColor,
-        surface: cardColor,
-        background: backgroundColor,
+        surface: backgroundColor,
         error: errorColor,
         onPrimary: textPrimary,
         onSecondary: textPrimary,
         onSurface: textPrimary,
-        onBackground: textPrimary,
         onError: textPrimary,
       ),
       scaffoldBackgroundColor: backgroundColor,
@@ -55,11 +59,11 @@ class AppTheme {
       cardTheme: CardTheme(
         color: cardColor,
         elevation: 0,
-        shadowColor: Colors.black.withOpacity(0.1),
+        shadowColor: Colors.black.withValues(alpha: 0.1),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(16),
           side: BorderSide(
-            color: textMuted.withOpacity(0.1),
+            color: textMuted.withValues(alpha: 0.1),
             width: 1,
           ),
         ),
@@ -80,8 +84,8 @@ class AppTheme {
             fontWeight: FontWeight.w600,
           ),
         ).copyWith(
-          overlayColor: MaterialStateProperty.all(
-            textPrimary.withOpacity(0.1),
+          overlayColor: WidgetStateProperty.all(
+            textPrimary.withValues(alpha: 0.1),
           ),
         ),
       ),
@@ -97,8 +101,8 @@ class AppTheme {
             fontWeight: FontWeight.w500,
           ),
         ).copyWith(
-          overlayColor: MaterialStateProperty.all(
-            textAccent.withOpacity(0.1),
+          overlayColor: WidgetStateProperty.all(
+            textAccent.withValues(alpha: 0.1),
           ),
         ),
       ),
@@ -114,8 +118,8 @@ class AppTheme {
             borderRadius: BorderRadius.circular(12),
           ),
         ).copyWith(
-          overlayColor: MaterialStateProperty.all(
-            textSecondary.withOpacity(0.1),
+          overlayColor: WidgetStateProperty.all(
+            textSecondary.withValues(alpha: 0.1),
           ),
         ),
       ),
@@ -223,18 +227,19 @@ class AppTheme {
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
         fillColor: cardColor,
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+        contentPadding:
+            const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
           borderSide: BorderSide(
-            color: textMuted.withOpacity(0.2),
+            color: textMuted.withValues(alpha: 0.2),
             width: 1,
           ),
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
           borderSide: BorderSide(
-            color: textMuted.withOpacity(0.2),
+            color: textMuted.withValues(alpha: 0.2),
             width: 1,
           ),
         ),
@@ -267,7 +272,7 @@ class AppTheme {
       ),
     );
   }
-  
+
   static ThemeData get lightTheme {
     return ThemeData(
       useMaterial3: true,
@@ -275,20 +280,18 @@ class AppTheme {
       colorScheme: const ColorScheme.light(
         primary: Color(0xFF2D3748),
         secondary: Color(0xFF4A5568),
-        surface: Colors.white,
-        background: Color(0xFFF7FAFC),
+        surface: Color(0xFFF7FAFC),
         error: Color(0xFFE53E3E),
         onPrimary: Colors.white,
         onSecondary: Colors.white,
         onSurface: Color(0xFF1A202C),
-        onBackground: Color(0xFF1A202C),
         onError: Colors.white,
       ),
       scaffoldBackgroundColor: const Color(0xFFF7FAFC),
       // Similar structure to dark theme but with light colors
     );
   }
-  
+
   /// Get timer color based on timer state
   static Color getTimerColor(String colorName) {
     switch (colorName.toLowerCase()) {

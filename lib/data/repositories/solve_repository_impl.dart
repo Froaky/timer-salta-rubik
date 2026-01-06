@@ -11,11 +11,8 @@ class SolveRepositoryImpl implements SolveRepository {
 
   @override
   Future<void> addSolve(Solve solve) async {
-    print('DEBUG: SolveRepositoryImpl.addSolve called');
     final solveModel = SolveModel.fromEntity(solve);
-    print('DEBUG: Created SolveModel: ${solveModel.toMap()}');
     await localDataSource.addSolve(solveModel);
-    print('DEBUG: localDataSource.addSolve completed');
   }
 
   @override

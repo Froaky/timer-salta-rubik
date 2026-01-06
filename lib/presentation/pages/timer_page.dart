@@ -21,6 +21,7 @@ import '../widgets/session_selector.dart';
 import '../widgets/timer/timer_display.dart';
 import '../widgets/timer/timer_actions.dart';
 import 'compete_page.dart';
+import '../widgets/common/fade_scale_transition.dart';
 
 class TimerPage extends StatefulWidget {
   const TimerPage({super.key});
@@ -161,11 +162,13 @@ class _TimerPageState extends State<TimerPage> {
 
               // Main content
               Expanded(
-                child: _showStatistics
-                    ? const StatisticsPanel()
-                    : _showSolveList
-                        ? const SolveList()
-                        : _buildTimerView(),
+                child: FadeScaleTransition(
+                  child: _showStatistics
+                      ? const StatisticsPanel()
+                      : _showSolveList
+                          ? const SolveList()
+                          : _buildTimerView(),
+                ),
               ),
             ],
           ),
@@ -271,29 +274,14 @@ class _TimerPageState extends State<TimerPage> {
     );
   }
 
-  double _getTimerFontSize(String timeText) {
-    // Ajustar tamaño de fuente basado en longitud del texto
-    if (timeText == 'RESOLUCIÓN')
-      return 48; // Texto más largo, fuente más pequeña
-    if (timeText.length <= 5) return 72; // "12.34"
-    if (timeText.length <= 8) return 60; // "1:23.45"
-    return 48; // "12:34.56"
-  }
-
   void _saveSolve(int timeMs) {
-    print('DEBUG: _saveSolve called with timeMs: $timeMs');
-
     final sessionState = context.read<SessionBloc>().state;
     final solveState = context.read<SolveBloc>().state;
 
     final currentSession = sessionState.currentSession;
     final currentScramble = solveState.currentScramble;
 
-    print('DEBUG: currentSession: ${currentSession?.id}');
-    print('DEBUG: currentScramble: ${currentScramble?.notation}');
-
     if (currentSession == null || currentScramble == null) {
-      print('DEBUG: Missing session or scramble, not saving');
       return;
     }
 
@@ -307,11 +295,6 @@ class _TimerPageState extends State<TimerPage> {
       lane: 0,
       createdAt: DateTime.now(),
     );
-
-    print(
-        'DEBUG: Created solve: ${solve.id}, time: ${solve.timeMs}ms, session: ${solve.sessionId}');
-    print('DEBUG: Solve scramble: ${solve.scramble}');
-    print('DEBUG: Solve createdAt: ${solve.createdAt}');
 
     context.read<SolveBloc>().add(AddSolveEvent(solve));
     context.read<SolveBloc>().add(GenerateNewScramble(currentSession.cubeType));
@@ -336,7 +319,9 @@ class _TimerPageState extends State<TimerPage> {
                   title: const Text('Perfil'),
                   onTap: () {
                     Navigator.pop(context);
-                    // TODO: Implementar navegación a perfil
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Perfil: Próximamente')),
+                    );
                   },
                 ),
                 ListTile(
@@ -381,7 +366,10 @@ class _TimerPageState extends State<TimerPage> {
                   title: const Text('Cerrar sesión'),
                   onTap: () {
                     Navigator.pop(context);
-                    // TODO: Implementar cierre de sesión
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                          content: Text('Cerrar sesión: Próximamente')),
+                    );
                   },
                 ),
               ],

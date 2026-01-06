@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../bloc/timer/timer_state.dart';
+import '../common/glass_container.dart';
 
 class TimerActions extends StatelessWidget {
   final TimerStatus status;
@@ -66,15 +67,11 @@ class _ActionButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.black.withValues(alpha: 0.7),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: Colors.white.withValues(alpha: 0.2),
-          width: 1,
-        ),
-      ),
+    final bool isEnabled = onPressed != null;
+
+    return GlassContainer(
+      borderRadius: 16,
+      blur: 8,
       child: Material(
         color: Colors.transparent,
         child: InkWell(
@@ -82,36 +79,39 @@ class _ActionButton extends StatelessWidget {
           onTap: onPressed,
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                if (isLoading)
-                  SizedBox(
-                    width: 18,
-                    height: 18,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      valueColor: AlwaysStoppedAnimation<Color>(
-                        Colors.white.withValues(alpha: 0.9),
+            child: AnimatedOpacity(
+              duration: const Duration(milliseconds: 200),
+              opacity: isEnabled ? 1.0 : 0.4,
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (isLoading)
+                    const SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
                       ),
+                    )
+                  else
+                    Icon(
+                      icon,
+                      color: Colors.white,
+                      size: 18,
                     ),
-                  )
-                else
-                  Icon(
-                    icon,
-                    color: Colors.white.withValues(alpha: 0.9),
-                    size: 18,
+                  const SizedBox(width: 8),
+                  Text(
+                    label,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      letterSpacing: 0.5,
+                    ),
                   ),
-                const SizedBox(width: 8),
-                Text(
-                  label,
-                  style: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.9),
-                    fontSize: 14,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         ),

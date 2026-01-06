@@ -58,14 +58,10 @@ class LocalDatabase {
 
   // Solve operations
   Future<void> insertSolve(Map<String, dynamic> solve) async {
-    print('DEBUG: LocalDatabase.insertSolve called');
-    print('DEBUG: Inserting solve data: $solve');
     final db = await database;
     try {
-      final result = await db.insert('solves', solve);
-      print('DEBUG: Insert successful, row ID: $result');
+      await db.insert('solves', solve);
     } catch (e) {
-      print('DEBUG: Insert failed with error: $e');
       rethrow;
     }
   }

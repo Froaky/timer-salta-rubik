@@ -8,6 +8,7 @@ import '../bloc/solve/solve_bloc.dart';
 import '../bloc/solve/solve_state.dart';
 import '../bloc/solve/solve_event.dart';
 import '../theme/app_theme.dart';
+import 'common/glass_container.dart';
 
 class StatisticsPanel extends StatelessWidget {
   const StatisticsPanel({super.key});
@@ -40,8 +41,8 @@ class StatisticsPanel extends StatelessWidget {
             if (solveState.statistics == null) {
               // Load statistics for current session
               context.read<SolveBloc>().add(
-                LoadStatistics(currentSession.id),
-              );
+                    LoadStatistics(currentSession.id),
+                  );
               return const Center(
                 child: CircularProgressIndicator(),
               );
@@ -57,19 +58,19 @@ class StatisticsPanel extends StatelessWidget {
                 children: [
                   // Session info
                   _buildSessionInfo(context, currentSession.name, solveCount),
-                  
+
                   const SizedBox(height: 24),
-                  
+
                   // Main statistics
                   _buildMainStats(context, stats),
-                  
+
                   const SizedBox(height: 24),
-                  
+
                   // Current averages
                   _buildCurrentAverages(context, stats),
-                  
+
                   const SizedBox(height: 24),
-                  
+
                   // Best times
                   _buildBestTimes(context, stats),
                 ],
@@ -81,8 +82,9 @@ class StatisticsPanel extends StatelessWidget {
     );
   }
 
-  Widget _buildSessionInfo(BuildContext context, String sessionName, int solveCount) {
-    return Card(
+  Widget _buildSessionInfo(
+      BuildContext context, String sessionName, int solveCount) {
+    return GlassContainer(
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -90,12 +92,17 @@ class StatisticsPanel extends StatelessWidget {
           children: [
             Text(
               'Session: $sessionName',
-              style: Theme.of(context).textTheme.titleLarge,
+              style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                    fontWeight: FontWeight.w600,
+                    color: AppTheme.textPrimary,
+                  ),
             ),
             const SizedBox(height: 8),
             Text(
               '$solveCount solves',
-              style: Theme.of(context).textTheme.bodyMedium,
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: AppTheme.textSecondary,
+                  ),
             ),
           ],
         ),
@@ -104,7 +111,7 @@ class StatisticsPanel extends StatelessWidget {
   }
 
   Widget _buildMainStats(BuildContext context, statistics) {
-    return Card(
+    return GlassContainer(
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -112,7 +119,10 @@ class StatisticsPanel extends StatelessWidget {
           children: [
             Text(
               'Personal Best',
-              style: Theme.of(context).textTheme.titleLarge,
+              style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                    fontWeight: FontWeight.w600,
+                    color: AppTheme.textPrimary,
+                  ),
             ),
             const SizedBox(height: 16),
             Center(
@@ -123,6 +133,13 @@ class StatisticsPanel extends StatelessWidget {
                 style: Theme.of(context).textTheme.displayMedium?.copyWith(
                   color: AppTheme.timerGreen,
                   fontFamily: 'RobotoMono',
+                  fontWeight: FontWeight.w200,
+                  shadows: [
+                    Shadow(
+                      color: AppTheme.timerGreen.withValues(alpha: 0.3),
+                      blurRadius: 15,
+                    ),
+                  ],
                 ),
               ),
             ),
@@ -133,7 +150,7 @@ class StatisticsPanel extends StatelessWidget {
   }
 
   Widget _buildCurrentAverages(BuildContext context, statistics) {
-    return Card(
+    return GlassContainer(
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -141,7 +158,10 @@ class StatisticsPanel extends StatelessWidget {
           children: [
             Text(
               'Current Averages',
-              style: Theme.of(context).textTheme.titleLarge,
+              style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                    fontWeight: FontWeight.w600,
+                    color: AppTheme.textPrimary,
+                  ),
             ),
             const SizedBox(height: 16),
             _buildStatRow(
@@ -213,7 +233,7 @@ class StatisticsPanel extends StatelessWidget {
   }
 
   Widget _buildBestTimes(BuildContext context, statistics) {
-    return Card(
+    return GlassContainer(
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -221,7 +241,10 @@ class StatisticsPanel extends StatelessWidget {
           children: [
             Text(
               'Best Averages',
-              style: Theme.of(context).textTheme.titleLarge,
+              style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                    fontWeight: FontWeight.w600,
+                    color: AppTheme.textPrimary,
+                  ),
             ),
             const SizedBox(height: 16),
             _buildStatRow(
@@ -303,9 +326,9 @@ class StatisticsPanel extends StatelessWidget {
         Text(
           value,
           style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-            fontFamily: 'RobotoMono',
-            fontWeight: FontWeight.w600,
-          ),
+                fontFamily: 'RobotoMono',
+                fontWeight: FontWeight.w600,
+              ),
         ),
       ],
     );

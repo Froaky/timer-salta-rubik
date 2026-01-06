@@ -23,11 +23,8 @@ class SolveLocalDataSourceImpl implements SolveLocalDataSource {
 
   @override
   Future<void> addSolve(SolveModel solve) async {
-    print('DEBUG: SolveLocalDataSourceImpl.addSolve called');
     final solveMap = solve.toMap();
-    print('DEBUG: Solve map to insert: $solveMap');
     await localDatabase.insertSolve(solveMap);
-    print('DEBUG: localDatabase.insertSolve completed');
   }
 
   @override

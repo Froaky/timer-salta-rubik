@@ -9,6 +9,7 @@ import '../bloc/solve/solve_bloc.dart';
 import '../bloc/solve/solve_state.dart';
 import '../bloc/solve/solve_event.dart';
 import '../theme/app_theme.dart';
+import 'common/glass_container.dart';
 
 enum SortOption {
   timeAsc,
@@ -55,8 +56,8 @@ class _SolveListState extends State<SolveList> {
             if (solveState.solves.isEmpty) {
               // Load solves for current session
               context.read<SolveBloc>().add(
-                LoadSolves(sessionId: currentSession.id),
-              );
+                    LoadSolves(sessionId: currentSession.id),
+                  );
               return const Center(
                 child: Text('No solves yet'),
               );
@@ -68,30 +69,17 @@ class _SolveListState extends State<SolveList> {
             return Column(
               children: [
                 // Header
-                Container(
+                GlassContainer(
                   margin: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-                  decoration: BoxDecoration(
-                    color: AppTheme.cardColor,
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(
-                      color: AppTheme.textMuted.withOpacity(0.1),
-                      width: 1,
-                    ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.05),
-                        blurRadius: 10,
-                        offset: const Offset(0, 2),
-                      ),
-                    ],
-                  ),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                  borderRadius: 20,
                   child: Row(
                     children: [
                       Container(
                         padding: const EdgeInsets.all(8),
                         decoration: BoxDecoration(
-                          color: AppTheme.accentColor.withOpacity(0.1),
+                          color: AppTheme.accentColor.withValues(alpha: 0.1),
                           borderRadius: BorderRadius.circular(10),
                         ),
                         child: Icon(
@@ -106,16 +94,20 @@ class _SolveListState extends State<SolveList> {
                         children: [
                           Text(
                             'Solves',
-                            style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                              color: AppTheme.textPrimary,
-                              fontWeight: FontWeight.w600,
-                            ),
+                            style: Theme.of(context)
+                                .textTheme
+                                .titleMedium
+                                ?.copyWith(
+                                  color: AppTheme.textPrimary,
+                                  fontWeight: FontWeight.w600,
+                                ),
                           ),
                           Text(
                             '${solveState.solves.length} total',
-                            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                              color: AppTheme.textSecondary,
-                            ),
+                            style:
+                                Theme.of(context).textTheme.bodySmall?.copyWith(
+                                      color: AppTheme.textSecondary,
+                                    ),
                           ),
                         ],
                       ),
@@ -123,7 +115,7 @@ class _SolveListState extends State<SolveList> {
                       // Sort button
                       Container(
                         decoration: BoxDecoration(
-                          color: AppTheme.textMuted.withOpacity(0.1),
+                          color: AppTheme.textMuted.withValues(alpha: 0.1),
                           borderRadius: BorderRadius.circular(12),
                         ),
                         child: PopupMenuButton<SortOption>(
@@ -185,15 +177,15 @@ class _SolveListState extends State<SolveList> {
                       const SizedBox(width: 8),
                       Container(
                         decoration: BoxDecoration(
-                          color: AppTheme.textMuted.withOpacity(0.1),
+                          color: AppTheme.textMuted.withValues(alpha: 0.1),
                           borderRadius: BorderRadius.circular(12),
                         ),
                         child: IconButton(
                           icon: const Icon(Icons.refresh_rounded, size: 20),
                           onPressed: () {
                             context.read<SolveBloc>().add(
-                              LoadSolves(sessionId: currentSession.id),
-                            );
+                                  LoadSolves(sessionId: currentSession.id),
+                                );
                           },
                           tooltip: 'Refresh solves',
                           color: AppTheme.textSecondary,
@@ -202,7 +194,7 @@ class _SolveListState extends State<SolveList> {
                     ],
                   ),
                 ),
-                
+
                 // List
                 Expanded(
                   child: ListView.builder(
@@ -210,8 +202,9 @@ class _SolveListState extends State<SolveList> {
                     itemCount: sortedSolves.length,
                     itemBuilder: (context, index) {
                       final solve = sortedSolves[index];
-                      final isLatest = _currentSort == SortOption.dateDesc && index == 0;
-                      
+                      final isLatest =
+                          _currentSort == SortOption.dateDesc && index == 0;
+
                       return _buildSolveItem(
                         context,
                         solve,
@@ -229,27 +222,15 @@ class _SolveListState extends State<SolveList> {
     );
   }
 
-  Widget _buildSolveItem(BuildContext context, Solve solve, int number, bool isLatest) {
-    return Container(
+  Widget _buildSolveItem(
+      BuildContext context, Solve solve, int number, bool isLatest) {
+    return GlassContainer(
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: isLatest ? AppTheme.accentColor.withOpacity(0.05) : AppTheme.cardColor,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: isLatest 
-              ? AppTheme.accentColor.withOpacity(0.2)
-              : AppTheme.textMuted.withOpacity(0.1),
-          width: 1,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.03),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
+      borderRadius: 16,
+      color: isLatest ? AppTheme.accentColor.withValues(alpha: 0.05) : null,
+      borderColor:
+          isLatest ? AppTheme.accentColor.withValues(alpha: 0.3) : null,
       child: Row(
         children: [
           // Number badge
@@ -257,10 +238,10 @@ class _SolveListState extends State<SolveList> {
             width: 40,
             height: 40,
             decoration: BoxDecoration(
-              color: _getPenaltyColor(solve.penalty).withOpacity(0.1),
+              color: _getPenaltyColor(solve.penalty).withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(12),
               border: Border.all(
-                color: _getPenaltyColor(solve.penalty).withOpacity(0.3),
+                color: _getPenaltyColor(solve.penalty).withValues(alpha: 0.3),
                 width: 1,
               ),
             ),
@@ -275,9 +256,9 @@ class _SolveListState extends State<SolveList> {
               ),
             ),
           ),
-          
+
           const SizedBox(width: 16),
-          
+
           // Content
           Expanded(
             child: Column(
@@ -289,47 +270,47 @@ class _SolveListState extends State<SolveList> {
                     Text(
                       _buildTimeDisplay(solve),
                       style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        fontFamily: 'RobotoMono',
-                        fontWeight: FontWeight.w600,
-                        color: AppTheme.textPrimary,
-                        fontSize: 18,
-                      ),
+                            fontFamily: 'RobotoMono',
+                            fontWeight: FontWeight.w600,
+                            color: AppTheme.textPrimary,
+                            fontSize: 18,
+                          ),
                     ),
                   ],
                 ),
-                
+
                 const SizedBox(height: 8),
-                
+
                 // Scramble
                 Text(
                   solve.scramble,
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    fontFamily: 'RobotoMono',
-                    color: AppTheme.textSecondary,
-                    height: 1.4,
-                  ),
+                        fontFamily: 'RobotoMono',
+                        color: AppTheme.textSecondary,
+                        height: 1.4,
+                      ),
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                 ),
-                
+
                 const SizedBox(height: 6),
-                
+
                 // Time ago
                 Text(
                   _formatDateTime(solve.createdAt),
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: AppTheme.textMuted,
-                    fontSize: 12,
-                  ),
+                        color: AppTheme.textMuted,
+                        fontSize: 12,
+                      ),
                 ),
               ],
             ),
           ),
-          
+
           // Menu button
           Container(
             decoration: BoxDecoration(
-              color: AppTheme.textMuted.withOpacity(0.1),
+              color: AppTheme.textMuted.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(10),
             ),
             child: PopupMenuButton<String>(
@@ -412,22 +393,10 @@ class _SolveListState extends State<SolveList> {
     }
   }
 
-  String _getPenaltyText(Penalty penalty) {
-    switch (penalty) {
-      case Penalty.none:
-        return '';
-      case Penalty.plus2:
-        return '+2';
-      case Penalty.dnf:
-        return 'DNF';
-    }
-  }
-
   String _buildTimeDisplay(Solve solve) {
     // Para +2, mostrar: tiempo original +2 (tiempo final)
     if (solve.penalty == Penalty.plus2) {
       final original = _formatMs(solve.timeMs);
-      final effective = _formatMs(solve.effectiveTimeMs);
       return '$original +2';
     }
     // Para DNF, mostrar DNF
@@ -453,7 +422,7 @@ class _SolveListState extends State<SolveList> {
   String _formatDateTime(DateTime dateTime) {
     final now = DateTime.now();
     final difference = now.difference(dateTime);
-    
+
     if (difference.inDays > 0) {
       return '${difference.inDays}d ago';
     } else if (difference.inHours > 0) {
@@ -467,7 +436,7 @@ class _SolveListState extends State<SolveList> {
 
   List<Solve> _sortSolves(List<Solve> solves) {
     final sorted = List<Solve>.from(solves);
-    
+
     switch (_currentSort) {
       case SortOption.timeAsc:
         sorted.sort((a, b) {
@@ -496,7 +465,7 @@ class _SolveListState extends State<SolveList> {
         sorted.sort((a, b) => b.createdAt.compareTo(a.createdAt));
         break;
     }
-    
+
     return sorted;
   }
 
@@ -548,7 +517,7 @@ class _SolveListState extends State<SolveList> {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             decoration: BoxDecoration(
-              color: AppTheme.errorColor.withOpacity(0.1),
+              color: AppTheme.errorColor.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(12),
             ),
             child: TextButton(
@@ -693,7 +662,7 @@ class _EditSolveDialogState extends State<_EditSolveDialog> {
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
           decoration: BoxDecoration(
-            color: AppTheme.accentColor.withOpacity(0.1),
+            color: AppTheme.accentColor.withValues(alpha: 0.1),
             borderRadius: BorderRadius.circular(12),
           ),
           child: TextButton(
