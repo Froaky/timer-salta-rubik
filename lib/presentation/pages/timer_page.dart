@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'settings_page.dart';
+import 'auth_page.dart';
 
 import '../../domain/entities/solve.dart';
 
@@ -34,6 +35,7 @@ class _TimerPageState extends State<TimerPage> {
   bool _showSolveList = false;
   String? _lastSessionId;
   String? _lastCubeType;
+  int? _latchedStopElapsedMs;
 
   @override
   void initState() {
@@ -175,18 +177,22 @@ class _TimerPageState extends State<TimerPage> {
   Widget _buildTimerView() {
     return BlocListener<TimerBloc, TimerState>(
       listener: (context, timerState) {
+        if (timerState.status != TimerStatus.running &&
+            _latchedStopElapsedMs != null) {
+          setState(() {
+            _latchedStopElapsedMs = null;
+          });
+        }
+
         // When timer stops, save the solve and generate new scramble
         if (timerState.status == TimerStatus.stopped &&
             timerState.elapsedMs > 0) {
-          _saveSolve(timerState.elapsedMs);
-          // Generate new scramble automatically
-          final sessionState = context.read<SessionBloc>().state;
-          final currentSession = sessionState.currentSession;
-          if (currentSession != null) {
-            context
-                .read<SolveBloc>()
-                .add(GenerateNewScramble(currentSession.cubeType));
-          }
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (!mounted) {
+              return;
+            }
+            _saveSolve(timerState.elapsedMs);
+          });
         }
       },
       child: Column(
@@ -214,19 +220,35 @@ class _TimerPageState extends State<TimerPage> {
           builder: (context, sessionState) {
             return BlocBuilder<SolveBloc, SolveState>(
               builder: (context, solveState) {
+                final displayTimerState = _latchedStopElapsedMs != null &&
+                        timerState.status == TimerStatus.running
+                    ? timerState.copyWith(elapsedMs: _latchedStopElapsedMs)
+                    : timerState;
+
                 return Container(
                   margin: const EdgeInsets.all(16),
                   child: Stack(
                     children: [
                       // Timer Visualization
                       TimerDisplay(
-                        timerState: timerState,
+                        timerState: displayTimerState,
                         onTapDown: () {
                           if (timerState.status == TimerStatus.idle ||
                               timerState.status == TimerStatus.stopped) {
                             context.read<TimerBloc>().add(TimerStartHold());
                           } else if (timerState.status == TimerStatus.running) {
-                            context.read<TimerBloc>().add(TimerStop());
+                            final stoppedAt = DateTime.now();
+                            final startTime = timerState.startTime;
+                            if (startTime != null) {
+                              setState(() {
+                                _latchedStopElapsedMs = stoppedAt
+                                    .difference(startTime)
+                                    .inMilliseconds;
+                              });
+                            }
+                            context.read<TimerBloc>().add(
+                                  TimerStop(stoppedAt: stoppedAt),
+                                );
                           } else if (timerState.status ==
                               TimerStatus.inspection) {
                             context.read<TimerBloc>().add(TimerStopHold());
@@ -271,29 +293,14 @@ class _TimerPageState extends State<TimerPage> {
     );
   }
 
-  double _getTimerFontSize(String timeText) {
-    // Ajustar tamaño de fuente basado en longitud del texto
-    if (timeText == 'RESOLUCIÓN')
-      return 48; // Texto más largo, fuente más pequeña
-    if (timeText.length <= 5) return 72; // "12.34"
-    if (timeText.length <= 8) return 60; // "1:23.45"
-    return 48; // "12:34.56"
-  }
-
   void _saveSolve(int timeMs) {
-    print('DEBUG: _saveSolve called with timeMs: $timeMs');
-
     final sessionState = context.read<SessionBloc>().state;
     final solveState = context.read<SolveBloc>().state;
 
     final currentSession = sessionState.currentSession;
     final currentScramble = solveState.currentScramble;
 
-    print('DEBUG: currentSession: ${currentSession?.id}');
-    print('DEBUG: currentScramble: ${currentScramble?.notation}');
-
     if (currentSession == null || currentScramble == null) {
-      print('DEBUG: Missing session or scramble, not saving');
       return;
     }
 
@@ -308,13 +315,7 @@ class _TimerPageState extends State<TimerPage> {
       createdAt: DateTime.now(),
     );
 
-    print(
-        'DEBUG: Created solve: ${solve.id}, time: ${solve.timeMs}ms, session: ${solve.sessionId}');
-    print('DEBUG: Solve scramble: ${solve.scramble}');
-    print('DEBUG: Solve createdAt: ${solve.createdAt}');
-
     context.read<SolveBloc>().add(AddSolveEvent(solve));
-    context.read<SolveBloc>().add(GenerateNewScramble(currentSession.cubeType));
   }
 
   void _showMenu() {
@@ -336,7 +337,12 @@ class _TimerPageState extends State<TimerPage> {
                   title: const Text('Perfil'),
                   onTap: () {
                     Navigator.pop(context);
-                    // TODO: Implementar navegación a perfil
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const AuthPage(),
+                      ),
+                    );
                   },
                 ),
                 ListTile(

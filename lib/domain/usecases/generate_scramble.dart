@@ -12,12 +12,17 @@ class GenerateScramble implements UseCaseSync<Scramble, String> {
   Scramble call(String cubeType) {
     switch (cubeType) {
       case '3x3':
+      case '3x3oh':
+      case '3x3bf':
+      case '3x3fm':
         return _generate3x3Scramble();
       case '2x2':
         return _generate2x2Scramble();
       case '4x4':
+      case '444bf':
         return _generate4x4Scramble();
       case '5x5':
+      case '555bf':
         return _generate5x5Scramble();
       case '6x6':
         return _generate6x6Scramble();
@@ -29,6 +34,10 @@ class GenerateScramble implements UseCaseSync<Scramble, String> {
         return _generateMegaminxScramble();
       case 'skewb':
         return _generateSkewbScramble();
+      case 'clock':
+        return _generateClockScramble();
+      case 'sq1':
+        return _generateSquare1Scramble();
       default:
         return _generate3x3Scramble();
     }
@@ -40,25 +49,26 @@ class GenerateScramble implements UseCaseSync<Scramble, String> {
     try {
       // Generar un cubo con estado aleatorio usando cuber
       final randomCube = cuber.Cube.scrambled();
-      
+
       // Resolver el cubo usando algoritmo de Kociemba
-       final solution = randomCube.solve(maxDepth: 25, timeout: Duration(seconds: 5));
-       
-       if (solution != null && solution.algorithm.moves.isNotEmpty) {
-         // Invertir la solución para obtener el scramble
-         final scrambleMoves = _invertMoves(solution.algorithm.moves);
-         final scrambleNotation = scrambleMoves.join(' ');
-         
-         return Scramble(
-           notation: scrambleNotation,
-           cubeType: '3x3',
-           moves: scrambleMoves,
-           generatedAt: DateTime.now(),
-         );
-       } else {
-         // Si no se encuentra solución, usar fallback
-         return _generateFallbackScramble('3x3');
-       }
+      final solution =
+          randomCube.solve(maxDepth: 25, timeout: Duration(seconds: 5));
+
+      if (solution != null && solution.algorithm.moves.isNotEmpty) {
+        // Invertir la solución para obtener el scramble
+        final scrambleMoves = _invertMoves(solution.algorithm.moves);
+        final scrambleNotation = scrambleMoves.join(' ');
+
+        return Scramble(
+          notation: scrambleNotation,
+          cubeType: '3x3',
+          moves: scrambleMoves,
+          generatedAt: DateTime.now(),
+        );
+      } else {
+        // Si no se encuentra solución, usar fallback
+        return _generateFallbackScramble('3x3');
+      }
     } catch (e) {
       // Fallback a scramble básico si hay error
       return _generateFallbackScramble('3x3');
@@ -75,24 +85,24 @@ class GenerateScramble implements UseCaseSync<Scramble, String> {
     final faces = ['R', 'U', 'F'];
     final modifiers = ['', '\'', '2'];
     final moves = <String>[];
-    
+
     String? lastFace;
     String? secondLastFace;
     String? thirdLastFace;
-    
+
     // Generar exactamente entre 9-10 movimientos
     final moveCount = 9 + random.nextInt(2);
-    
+
     for (int i = 0; i < moveCount; i++) {
       String face;
       String modifier;
       int attempts = 0;
-      
+
       // Selección inteligente de cara con mayor aleatoriedad
       do {
         face = faces[random.nextInt(faces.length)];
         attempts++;
-        
+
         // Si hay muchos intentos, forzar cambio de cara
         if (attempts > 15) {
           final availableFaces = faces.where((f) => f != lastFace).toList();
@@ -101,19 +111,21 @@ class GenerateScramble implements UseCaseSync<Scramble, String> {
             break;
           }
         }
-      } while (_isInvalidMove2x2(face, lastFace, secondLastFace, thirdLastFace, moves, i));
-      
+      } while (_isInvalidMove2x2(
+          face, lastFace, secondLastFace, thirdLastFace, moves, i));
+
       // Selección de modificador con lógica para evitar patrones
-      modifier = _selectSmartModifier(face, lastFace, secondLastFace, moves, i, random);
-      
+      modifier = _selectSmartModifier(
+          face, lastFace, secondLastFace, moves, i, random);
+
       moves.add('$face$modifier');
-      
+
       // Actualizar historial
       thirdLastFace = secondLastFace;
       secondLastFace = lastFace;
       lastFace = face;
     }
-    
+
     return Scramble(
       notation: moves.join(' '),
       cubeType: '2x2',
@@ -121,17 +133,22 @@ class GenerateScramble implements UseCaseSync<Scramble, String> {
       generatedAt: DateTime.now(),
     );
   }
-  
+
   /// Selecciona modificador inteligentemente para evitar patrones repetitivos
-  String _selectSmartModifier(String face, String? lastFace, String? secondLastFace, 
-                               List<String> moves, int currentIndex, Random random) {
+  String _selectSmartModifier(
+      String face,
+      String? lastFace,
+      String? secondLastFace,
+      List<String> moves,
+      int currentIndex,
+      Random random) {
     final modifiers = ['', '\'', '2'];
-    
+
     // Si es el primer movimiento, completamente aleatorio
     if (currentIndex == 0) {
       return modifiers[random.nextInt(3)];
     }
-    
+
     // Obtener el modificador anterior del mismo tipo de cara
     String? lastModifier;
     if (currentIndex > 0) {
@@ -140,42 +157,46 @@ class GenerateScramble implements UseCaseSync<Scramble, String> {
         lastModifier = lastMove.substring(1);
       }
     }
-    
+
     // Evitar patrones como "R U R U'" o similares
     if (lastFace == face && currentIndex >= 3) {
       final prevPrevMove = currentIndex >= 2 ? moves[currentIndex - 2] : '';
       final prevMove = moves[currentIndex - 1];
-      
+
       // Si tenemos patrón potencial, elegir modificador que lo rompa
       if (prevPrevMove.startsWith(face) && prevMove.startsWith(face)) {
         // Forzar un modificador diferente al último
-        final availableModifiers = modifiers.where((m) => m != lastModifier).toList();
+        final availableModifiers =
+            modifiers.where((m) => m != lastModifier).toList();
         return availableModifiers[random.nextInt(availableModifiers.length)];
       }
     }
-    
+
     // Distribución ponderada para más aleatoriedad
     final rand = random.nextDouble();
-    if (rand < 0.4) return '';        // 40% sin modificador
-    if (rand < 0.7) return '\'';      // 30% prima
-    return '2';                       // 30% doble
+    if (rand < 0.4) return ''; // 40% sin modificador
+    if (rand < 0.7) return '\''; // 30% prima
+    return '2'; // 30% doble
   }
-  
+
   /// Validación mejorada para 2x2 con mayor restricción de patrones
-  bool _isInvalidMove2x2(String face, String? lastFace, String? secondLastFace, 
-                         String? thirdLastFace, List<String> moves, int currentIndex) {
+  bool _isInvalidMove2x2(String face, String? lastFace, String? secondLastFace,
+      String? thirdLastFace, List<String> moves, int currentIndex) {
     // No repetir la misma cara consecutivamente
     if (face == lastFace) return true;
-    
+
     // Evitar patrones de alternancia muy comunes (R U R U, etc.)
-    if (currentIndex >= 3 && lastFace != null && secondLastFace != null && thirdLastFace != null) {
+    if (currentIndex >= 3 &&
+        lastFace != null &&
+        secondLastFace != null &&
+        thirdLastFace != null) {
       // Detectar patrones como R-U-R-U o F-R-F-R
       if ((face == thirdLastFace && lastFace == secondLastFace) ||
           (face == secondLastFace && lastFace == thirdLastFace)) {
         return true;
       }
     }
-    
+
     // Evitar que una cara domine demasiado (máximo 40% de los movimientos)
     if (currentIndex > 6) {
       final faceCount = moves.where((move) => move.startsWith(face)).length;
@@ -183,7 +204,7 @@ class GenerateScramble implements UseCaseSync<Scramble, String> {
         return true;
       }
     }
-    
+
     return false;
   }
 
@@ -197,28 +218,28 @@ class GenerateScramble implements UseCaseSync<Scramble, String> {
     final allFaces = [...outerFaces, ...wideFaces];
     final modifiers = ['', '\'', '2'];
     final moves = <String>[];
-    
+
     String? lastFace;
     String? secondLastFace;
-    
+
     // WCA suele usar 40 movimientos para 4x4
     final moveCount = 40;
-    
+
     for (int i = 0; i < moveCount; i++) {
       String face;
-      
+
       // Evitar movimientos consecutivos en la misma cara o caras opuestas
       do {
         face = allFaces[random.nextInt(allFaces.length)];
       } while (_isInvalidMoveNxN(face, lastFace, secondLastFace));
-      
+
       final modifier = modifiers[random.nextInt(modifiers.length)];
       moves.add('$face$modifier');
-      
+
       secondLastFace = lastFace;
       lastFace = face;
     }
-    
+
     return Scramble(
       notation: moves.join(' '),
       cubeType: '4x4',
@@ -237,28 +258,28 @@ class GenerateScramble implements UseCaseSync<Scramble, String> {
     final allFaces = [...outerFaces, ...wideFaces];
     final modifiers = ['', '\'', '2'];
     final moves = <String>[];
-    
+
     String? lastFace;
     String? secondLastFace;
-    
+
     // WCA suele usar 60 movimientos para 5x5
     final moveCount = 60;
-    
+
     for (int i = 0; i < moveCount; i++) {
       String face;
-      
+
       // Evitar movimientos consecutivos en la misma cara o caras opuestas
       do {
         face = allFaces[random.nextInt(allFaces.length)];
       } while (_isInvalidMoveNxN(face, lastFace, secondLastFace));
-      
+
       final modifier = modifiers[random.nextInt(modifiers.length)];
       moves.add('$face$modifier');
-      
+
       secondLastFace = lastFace;
       lastFace = face;
     }
-    
+
     return Scramble(
       notation: moves.join(' '),
       cubeType: '5x5',
@@ -346,12 +367,12 @@ class GenerateScramble implements UseCaseSync<Scramble, String> {
   /// Invierte una lista de movimientos para generar scramble desde solución
   List<String> _invertMoves(List<cuber.Move> solutionMoves) {
     final invertedMoves = <String>[];
-    
+
     // Recorrer en orden inverso
     for (int i = solutionMoves.length - 1; i >= 0; i--) {
       final move = solutionMoves[i];
       final moveStr = move.toString();
-      
+
       // Invertir cada movimiento
       String invertedMove;
       if (moveStr.endsWith('\'')) {
@@ -364,10 +385,10 @@ class GenerateScramble implements UseCaseSync<Scramble, String> {
         // R -> R'
         invertedMove = moveStr + '\'';
       }
-      
+
       invertedMoves.add(invertedMove);
     }
-    
+
     return invertedMoves;
   }
 
@@ -384,19 +405,22 @@ class GenerateScramble implements UseCaseSync<Scramble, String> {
 
     for (int i = 0; i < length; i++) {
       String face;
-      
+
       // Evitar movimientos consecutivos en la misma cara o caras opuestas
       do {
-        face = faces[(DateTime.now().millisecondsSinceEpoch + i) % faces.length];
+        face =
+            faces[(DateTime.now().millisecondsSinceEpoch + i) % faces.length];
       } while (_isInvalidMove(face, lastFace, secondLastFace));
 
-      final modifier = modifiers[(DateTime.now().microsecondsSinceEpoch + i) % modifiers.length];
-      
+      final modifier = modifiers[
+          (DateTime.now().microsecondsSinceEpoch + i) % modifiers.length];
+
       // Para Pyraminx, agregar ocasionalmente movimientos de tips
       if (allowTips && (DateTime.now().millisecondsSinceEpoch + i) % 4 == 0) {
         final tips = ['r', 'l', 'u', 'b'];
         final tip = tips[i % tips.length];
-        final tipModifier = ['', '\''][(DateTime.now().microsecondsSinceEpoch + i) % 2];
+        final tipModifier =
+            ['', '\''][(DateTime.now().microsecondsSinceEpoch + i) % 2];
         moves.add('$tip$tipModifier');
       } else {
         moves.add('$face$modifier');
@@ -418,7 +442,7 @@ class GenerateScramble implements UseCaseSync<Scramble, String> {
     final faces = ['R', 'L', 'U', 'D', 'F', 'B'];
     final modifiers = ['', '\'', '2'];
     final moves = <String>[];
-    
+
     String? lastFace;
     String? secondLastFace;
 
@@ -427,7 +451,7 @@ class GenerateScramble implements UseCaseSync<Scramble, String> {
 
     for (int i = 0; i < moveCount; i++) {
       String face;
-      
+
       do {
         face = faces[random.nextInt(faces.length)];
       } while (_isInvalidMove(face, lastFace, secondLastFace));
@@ -444,8 +468,24 @@ class GenerateScramble implements UseCaseSync<Scramble, String> {
 
   /// Scramble de respaldo en caso de error
   Scramble _generateFallbackScramble(String cubeType) {
-    final moves = ['R', 'U', 'R\'', 'U\'', 'F', 'R', 'F\'', 'U2', 'R2', 'U\'', 'R', 'U', 'R\'', 'U\'', 'R'];
-    
+    final moves = [
+      'R',
+      'U',
+      'R\'',
+      'U\'',
+      'F',
+      'R',
+      'F\'',
+      'U2',
+      'R2',
+      'U\'',
+      'R',
+      'U',
+      'R\'',
+      'U\'',
+      'R'
+    ];
+
     return Scramble(
       notation: moves.join(' '),
       cubeType: cubeType,
@@ -461,17 +501,23 @@ class GenerateScramble implements UseCaseSync<Scramble, String> {
 
     // No hacer caras opuestas consecutivamente (R L R, etc.)
     final oppositeFaces = {
-      'R': 'L', 'L': 'R',
-      'U': 'D', 'D': 'U',
-      'F': 'B', 'B': 'F',
-      'Rw': 'Lw', 'Lw': 'Rw',
-      'Uw': 'Dw', 'Dw': 'Uw',
-      'Fw': 'Bw', 'Bw': 'Fw',
+      'R': 'L',
+      'L': 'R',
+      'U': 'D',
+      'D': 'U',
+      'F': 'B',
+      'B': 'F',
+      'Rw': 'Lw',
+      'Lw': 'Rw',
+      'Uw': 'Dw',
+      'Dw': 'Uw',
+      'Fw': 'Bw',
+      'Bw': 'Fw',
     };
 
-    if (lastFace != null && 
-        secondLastFace != null && 
-        oppositeFaces[face] == lastFace && 
+    if (lastFace != null &&
+        secondLastFace != null &&
+        oppositeFaces[face] == lastFace &&
         face == secondLastFace) {
       return true;
     }
@@ -480,30 +526,34 @@ class GenerateScramble implements UseCaseSync<Scramble, String> {
   }
 
   /// Verifica si un movimiento 4x4x4 es inválido
-  bool _isInvalidMove4x4(String face, String? lastFace, String? secondLastFace) {
+  bool _isInvalidMove4x4(
+      String face, String? lastFace, String? secondLastFace) {
     if (lastFace == null) return false;
-    
+
     // Extraer la cara base (sin w o minúscula)
     String getBaseFace(String f) {
       if (f.endsWith('w')) return f.substring(0, f.length - 1);
       return f.toUpperCase();
     }
-    
+
     final baseFace = getBaseFace(face);
     final lastBaseFace = getBaseFace(lastFace);
-    
+
     // No permitir movimientos consecutivos en la misma cara base
     if (baseFace == lastBaseFace) return true;
-    
+
     // No permitir caras opuestas consecutivas
     final oppositeFaces = {
-      'R': 'L', 'L': 'R',
-      'U': 'D', 'D': 'U',
-      'F': 'B', 'B': 'F',
+      'R': 'L',
+      'L': 'R',
+      'U': 'D',
+      'D': 'U',
+      'F': 'B',
+      'B': 'F',
     };
-    
+
     if (oppositeFaces[baseFace] == lastBaseFace) return true;
-    
+
     return false;
   }
 
@@ -517,41 +567,41 @@ class GenerateScramble implements UseCaseSync<Scramble, String> {
     final modifiers = ['', '\''];
     final tips = ['r', 'l', 'u', 'b'];
     final moves = <String>[];
-    
+
     String? lastFace;
     String? secondLastFace;
-    
+
     // Generar entre 8-12 movimientos principales para asegurar complejidad
     final mainMoves = 8 + random.nextInt(5);
-    
+
     for (int i = 0; i < mainMoves; i++) {
       String face;
-      
+
       // Evitar movimientos consecutivos en la misma cara
       do {
         face = faces[random.nextInt(faces.length)];
       } while (_isInvalidMove(face, lastFace, secondLastFace));
-      
+
       final modifier = modifiers[random.nextInt(modifiers.length)];
       moves.add('$face$modifier');
-      
+
       secondLastFace = lastFace;
       lastFace = face;
     }
-    
+
     // Agregar movimientos de tips aleatorios (máximo uno de cada tipo)
     // Mezclar los tips para seleccionar aleatoriamente cuáles usar
     final shuffledTips = [...tips]..shuffle(random);
-    
+
     // Seleccionar entre 0-4 tips para usar (puede ser ninguno o todos)
     final tipsToUse = shuffledTips.take(random.nextInt(5));
-    
+
     // Agregar cada tip seleccionado con un modificador aleatorio
     for (final tip in tipsToUse) {
       final modifier = modifiers[random.nextInt(modifiers.length)];
       moves.add('$tip$modifier');
     }
-    
+
     return Scramble(
       notation: moves.join(' '),
       cubeType: 'pyraminx',
@@ -569,28 +619,28 @@ class GenerateScramble implements UseCaseSync<Scramble, String> {
     final faces = ['R', 'U', 'L', 'B'];
     final modifiers = ['', '\''];
     final moves = <String>[];
-    
+
     String? lastFace;
     String? secondLastFace;
-    
+
     // Generar entre 7-9 movimientos según ejemplos WCA
     final moveCount = 7 + random.nextInt(3);
-    
+
     for (int i = 0; i < moveCount; i++) {
       String face;
-      
+
       // Evitar movimientos consecutivos en la misma cara
       do {
         face = faces[random.nextInt(faces.length)];
       } while (_isInvalidMove(face, lastFace, secondLastFace));
-      
+
       final modifier = modifiers[random.nextInt(modifiers.length)];
       moves.add('$face$modifier');
-      
+
       secondLastFace = lastFace;
       lastFace = face;
     }
-    
+
     return Scramble(
       notation: moves.join(' '),
       cubeType: 'skewb',
@@ -606,36 +656,83 @@ class GenerateScramble implements UseCaseSync<Scramble, String> {
   Scramble _generateMegaminxScramble() {
     final random = Random();
     final lines = <String>[];
-    
+
     // Generar 7 líneas de scramble según formato WCA oficial
     for (int line = 0; line < 7; line++) {
       final lineMoves = <String>[];
-      
+
       // 10 movimientos R/D por línea (patrón alternado R-D-R-D...)
       for (int move = 0; move < 10; move++) {
         // Alternar entre R y D según posición
         final face = move % 2 == 0 ? 'R' : 'D';
-        
+
         // Elegir aleatoriamente entre ++ y --
         final modifier = random.nextBool() ? '++' : '--';
-        
+
         lineMoves.add('$face$modifier');
       }
-      
+
       // Agregar movimiento U al final de cada línea
       final uMove = random.nextBool() ? 'U' : "U'";
       lineMoves.add(uMove);
-      
+
       lines.add(lineMoves.join(' '));
     }
-    
+
     final fullNotation = lines.join('\n');
-    final allMoves = lines.join(' ').split(' ').where((move) => move.isNotEmpty).toList();
-    
+    final allMoves =
+        lines.join(' ').split(' ').where((move) => move.isNotEmpty).toList();
+
     return Scramble(
       notation: fullNotation,
       cubeType: 'megaminx',
       moves: allMoves,
+      generatedAt: DateTime.now(),
+    );
+  }
+
+  /// Genera scramble para Clock (simplificado)
+  Scramble _generateClockScramble() {
+    final random = Random();
+    final moves = <String>[];
+    final pins = ['UR', 'DR', 'DL', 'UL', 'U', 'R', 'D', 'L', 'ALL'];
+
+    for (var pin in pins) {
+      int val = random.nextInt(12) - 5; // -5 a +6
+      if (val >= 0) {
+        moves.add('$pin${val}+');
+      } else {
+        moves.add('$pin${val.abs()}-');
+      }
+    }
+
+    final notation = moves.join(' ') +
+        (random.nextBool() ? ' UR' : '') +
+        (random.nextBool() ? ' DR' : '') +
+        (random.nextBool() ? ' DL' : '') +
+        (random.nextBool() ? ' UL' : '');
+
+    return Scramble(
+      notation: notation,
+      cubeType: 'clock',
+      moves: moves,
+      generatedAt: DateTime.now(),
+    );
+  }
+
+  /// Genera scramble para Square-1 (simplificado)
+  Scramble _generateSquare1Scramble() {
+    final random = Random();
+    final moves = <String>[];
+    for (int i = 0; i < 10; i++) {
+      int top = random.nextInt(12) - 5;
+      int bottom = random.nextInt(12) - 5;
+      moves.add('($top,$bottom)');
+    }
+    return Scramble(
+      notation: moves.join(' / '),
+      cubeType: 'sq1',
+      moves: moves,
       generatedAt: DateTime.now(),
     );
   }

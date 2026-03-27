@@ -71,7 +71,8 @@ class TimerState extends Equatable {
       startTime: startTime ?? this.startTime,
       inspectionEnabled: inspectionEnabled ?? this.inspectionEnabled,
       hideTimerEnabled: hideTimerEnabled ?? this.hideTimerEnabled,
-      inspectionRemainingMs: inspectionRemainingMs ?? this.inspectionRemainingMs,
+      inspectionRemainingMs:
+          inspectionRemainingMs ?? this.inspectionRemainingMs,
       competeMode: competeMode ?? this.competeMode,
     );
   }
@@ -95,7 +96,7 @@ class TimerState extends Equatable {
 
     final timeToShow = status == TimerStatus.running ? elapsedMs : elapsedMs;
     final seconds = timeToShow / 1000;
-    
+
     if (seconds >= 60) {
       final minutes = (seconds / 60).floor();
       final remainingSeconds = seconds % 60;

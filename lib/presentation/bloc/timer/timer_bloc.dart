@@ -1,26 +1,35 @@
 import 'dart:async';
-import '../../../core/constants/timer_thresholds.dart';
+
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:vibration/vibration.dart';
 
+import '../../../core/constants/timer_thresholds.dart';
 import 'timer_event.dart';
 import 'timer_state.dart';
 
 class TimerBloc extends Bloc<TimerEvent, TimerState> {
+  final int redThresholdMs;
+  final int yellowThresholdMs;
+  final int greenThresholdMs;
+  final int inspectionDurationMs;
+  final int inspectionPlusTwoThresholdMs;
+  final int inspectionDnfThresholdMs;
   Timer? _holdTimer;
   Timer? _runTimer;
   Timer? _inspectionTimer;
   DateTime? _holdStartTime;
   DateTime? _runStartTime;
   DateTime? _inspectionStartTime;
-  int _inspectionPenaltyMs = 0; // Penalización por inspección WCA
+  int _inspectionPenaltyMs = 0;
 
-  // Timer thresholds in milliseconds (shared constants)
-  static const int redThreshold = TimerThresholds.red;
-  static const int yellowThreshold = TimerThresholds.yellow;
-  static const int greenThreshold = TimerThresholds.green;
-
-  TimerBloc() : super(TimerState.initial()) {
+  TimerBloc({
+    this.redThresholdMs = TimerThresholds.red,
+    this.yellowThresholdMs = TimerThresholds.yellow,
+    this.greenThresholdMs = TimerThresholds.green,
+    this.inspectionDurationMs = 15000,
+    this.inspectionPlusTwoThresholdMs = 15000,
+    this.inspectionDnfThresholdMs = 17000,
+  }) : super(TimerState.initial()) {
     on<TimerStartHold>(_onStartHold);
     on<TimerStopHold>(_onStopHold);
     on<TimerTick>(_onTick);
@@ -35,9 +44,11 @@ class TimerBloc extends Bloc<TimerEvent, TimerState> {
   }
 
   void _onStartHold(TimerStartHold event, Emitter<TimerState> emit) {
-    if (state.status != TimerStatus.idle && state.status != TimerStatus.stopped) return;
+    if (state.status != TimerStatus.idle &&
+        state.status != TimerStatus.stopped) {
+      return;
+    }
 
-    // Si la inspección está habilitada, iniciar inspección en lugar de hold
     if (state.inspectionEnabled) {
       add(const TimerStartInspection());
       return;
@@ -57,23 +68,21 @@ class TimerBloc extends Bloc<TimerEvent, TimerState> {
     _holdTimer?.cancel();
     _holdTimer = null;
 
-    // Si está en inspección, detenerla y comenzar el timer real
     if (state.status == TimerStatus.inspection) {
       add(const TimerStopInspection());
       return;
     }
 
     if (state.status == TimerStatus.armed) {
-      // Released in armed state - start timer
       add(const TimerStart());
     } else {
-      // Released before armed - reset to idle
       add(const TimerReset());
     }
   }
 
   void _onTick(TimerTick event, Emitter<TimerState> emit) {
-    if (state.status == TimerStatus.holdPending || state.status == TimerStatus.armed) {
+    if (state.status == TimerStatus.holdPending ||
+        state.status == TimerStatus.armed) {
       _updateHoldState(emit);
     } else if (state.status == TimerStatus.inspection) {
       _updateInspectionState(emit);
@@ -83,7 +92,9 @@ class TimerBloc extends Bloc<TimerEvent, TimerState> {
   }
 
   void _onStart(TimerStart event, Emitter<TimerState> emit) {
-    if (state.status != TimerStatus.armed) return;
+    if (state.status != TimerStatus.armed) {
+      return;
+    }
 
     _runStartTime = DateTime.now();
     emit(state.copyWith(
@@ -98,18 +109,18 @@ class TimerBloc extends Bloc<TimerEvent, TimerState> {
   }
 
   void _onStop(TimerStop event, Emitter<TimerState> emit) {
-    if (state.status != TimerStatus.running) return;
+    if (state.status != TimerStatus.running) {
+      return;
+    }
 
     _runTimer?.cancel();
     _runTimer = null;
 
-    final baseTime = DateTime.now().difference(_runStartTime!).inMilliseconds;
-    
-    // Aplicar penalización de inspección si existe
-    final finalTime = _inspectionPenaltyMs == -1 
-        ? -1 // DNF
-        : baseTime + _inspectionPenaltyMs;
-    
+    final stoppedAt = event.stoppedAt ?? DateTime.now();
+    final baseTime = stoppedAt.difference(_runStartTime!).inMilliseconds;
+    final finalTime =
+        _inspectionPenaltyMs == -1 ? -1 : baseTime + _inspectionPenaltyMs;
+
     emit(state.copyWith(
       status: TimerStatus.stopped,
       elapsedMs: finalTime,
@@ -128,31 +139,38 @@ class TimerBloc extends Bloc<TimerEvent, TimerState> {
     _holdStartTime = null;
     _runStartTime = null;
     _inspectionStartTime = null;
-    _inspectionPenaltyMs = 0; // Limpiar penalización
+    _inspectionPenaltyMs = 0;
 
     emit(TimerState.initial());
   }
 
-  void _onToggleInspection(TimerToggleInspection event, Emitter<TimerState> emit) {
+  void _onToggleInspection(
+      TimerToggleInspection event, Emitter<TimerState> emit) {
     emit(state.copyWith(inspectionEnabled: !state.inspectionEnabled));
   }
 
-  void _onToggleHideTimer(TimerToggleHideTimer event, Emitter<TimerState> emit) {
+  void _onToggleHideTimer(
+      TimerToggleHideTimer event, Emitter<TimerState> emit) {
     emit(state.copyWith(hideTimerEnabled: !state.hideTimerEnabled));
   }
 
-  void _onToggleCompeteMode(TimerToggleCompeteMode event, Emitter<TimerState> emit) {
+  void _onToggleCompeteMode(
+      TimerToggleCompeteMode event, Emitter<TimerState> emit) {
     emit(state.copyWith(competeMode: !state.competeMode));
   }
 
-  void _onStartInspection(TimerStartInspection event, Emitter<TimerState> emit) {
-    if (state.status != TimerStatus.idle && state.status != TimerStatus.stopped) return;
+  void _onStartInspection(
+      TimerStartInspection event, Emitter<TimerState> emit) {
+    if (state.status != TimerStatus.idle &&
+        state.status != TimerStatus.stopped) {
+      return;
+    }
 
     _inspectionStartTime = DateTime.now();
     emit(state.copyWith(
       status: TimerStatus.inspection,
       color: TimerColor.white,
-      inspectionRemainingMs: 15000,
+      inspectionRemainingMs: inspectionDurationMs,
     ));
 
     _startInspectionTimer();
@@ -161,24 +179,22 @@ class TimerBloc extends Bloc<TimerEvent, TimerState> {
   void _onStopInspection(TimerStopInspection event, Emitter<TimerState> emit) {
     _inspectionTimer?.cancel();
     _inspectionTimer = null;
-    
-    // Calcular penalización WCA basada en el tiempo de inspección
+
     if (_inspectionStartTime != null) {
-      final inspectionDuration = DateTime.now().difference(_inspectionStartTime!).inMilliseconds;
-      
-      // Reglas WCA: +2 si entre 15-17 segundos, DNF si más de 17 segundos
-      if (inspectionDuration > 17000) {
-        _inspectionPenaltyMs = -1; // DNF
-      } else if (inspectionDuration > 15000) {
-        _inspectionPenaltyMs = 2000; // +2 segundos
+      final inspectionDuration =
+          DateTime.now().difference(_inspectionStartTime!).inMilliseconds;
+
+      if (inspectionDuration > inspectionDnfThresholdMs) {
+        _inspectionPenaltyMs = -1;
+      } else if (inspectionDuration > inspectionPlusTwoThresholdMs) {
+        _inspectionPenaltyMs = 2000;
       } else {
-        _inspectionPenaltyMs = 0; // Sin penalización
+        _inspectionPenaltyMs = 0;
       }
     }
-    
+
     _inspectionStartTime = null;
 
-    // Pasar al estado armed para comenzar el timer real
     emit(state.copyWith(
       status: TimerStatus.armed,
       color: TimerColor.green,
@@ -186,28 +202,22 @@ class TimerBloc extends Bloc<TimerEvent, TimerState> {
   }
 
   void _updateInspectionState(Emitter<TimerState> emit) {
-    if (_inspectionStartTime == null) return;
-
-    final elapsed = DateTime.now().difference(_inspectionStartTime!).inMilliseconds;
-    final remaining = 15000 - elapsed;
-
-    if (remaining <= 0) {
-      // Inspección terminada, pasar a armed automáticamente
-      _inspectionTimer?.cancel();
-      _inspectionTimer = null;
-      emit(state.copyWith(
-        status: TimerStatus.armed,
-        color: TimerColor.green,
-        inspectionRemainingMs: 0,
-      ));
-      _triggerHapticFeedback();
-    } else {
-      emit(state.copyWith(inspectionRemainingMs: remaining));
+    if (_inspectionStartTime == null) {
+      return;
     }
+
+    final elapsed =
+        DateTime.now().difference(_inspectionStartTime!).inMilliseconds;
+    final remaining = inspectionDurationMs - elapsed;
+
+    emit(state.copyWith(
+      inspectionRemainingMs: remaining > 0 ? remaining : 0,
+    ));
   }
 
   void _startInspectionTimer() {
-    _inspectionTimer = Timer.periodic(const Duration(milliseconds: 100), (timer) {
+    _inspectionTimer =
+        Timer.periodic(const Duration(milliseconds: 100), (timer) {
       add(const TimerTick());
     });
   }
@@ -225,27 +235,30 @@ class TimerBloc extends Bloc<TimerEvent, TimerState> {
   }
 
   void _updateHoldState(Emitter<TimerState> emit) {
-    if (_holdStartTime == null) return;
+    if (_holdStartTime == null) {
+      return;
+    }
 
-    final holdDuration = DateTime.now().difference(_holdStartTime!).inMilliseconds;
-    TimerColor newColor = TimerColor.red; // Start with red since redThreshold is 0
-    TimerStatus newStatus = TimerStatus.holdPending;
+    final holdDuration =
+        DateTime.now().difference(_holdStartTime!).inMilliseconds;
+    var newColor = TimerColor.red;
+    var newStatus = TimerStatus.holdPending;
 
-    if (holdDuration >= greenThreshold) {
+    if (holdDuration >= greenThresholdMs) {
       newColor = TimerColor.green;
       newStatus = TimerStatus.armed;
       if (state.status != TimerStatus.armed) {
-        _triggerHapticFeedback(); // Haptic when reaching green
+        _triggerHapticFeedback();
       }
-    } else if (holdDuration >= yellowThreshold) {
+    } else if (holdDuration >= yellowThresholdMs) {
       newColor = TimerColor.yellow;
       if (state.color != TimerColor.yellow) {
-        _triggerHapticFeedback(); // Haptic when reaching yellow
+        _triggerHapticFeedback();
       }
-    } else if (holdDuration >= redThreshold) {
+    } else if (holdDuration >= redThresholdMs) {
       newColor = TimerColor.red;
       if (state.color != TimerColor.red) {
-        _triggerHapticFeedback(); // Haptic when reaching red
+        _triggerHapticFeedback();
       }
     }
 
@@ -257,7 +270,9 @@ class TimerBloc extends Bloc<TimerEvent, TimerState> {
   }
 
   void _updateRunningState(Emitter<TimerState> emit) {
-    if (_runStartTime == null) return;
+    if (_runStartTime == null) {
+      return;
+    }
 
     final elapsed = DateTime.now().difference(_runStartTime!).inMilliseconds;
     emit(state.copyWith(elapsedMs: elapsed));
@@ -268,8 +283,8 @@ class TimerBloc extends Bloc<TimerEvent, TimerState> {
       if (await Vibration.hasVibrator()) {
         Vibration.vibrate(duration: 50);
       }
-    } catch (e) {
-      // Ignore vibration errors
+    } catch (_) {
+      // Ignore vibration errors in unsupported environments.
     }
   }
 

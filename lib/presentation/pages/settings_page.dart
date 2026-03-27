@@ -24,7 +24,8 @@ class SettingsPage extends StatelessWidget {
             children: [
               SwitchListTile(
                 title: const Text('Inspección'),
-                subtitle: const Text('15 segundos de cuenta regresiva antes de iniciar'),
+                subtitle: const Text(
+                    '15 segundos de cuenta regresiva antes de iniciar'),
                 value: state.inspectionEnabled,
                 onChanged: (value) {
                   context.read<TimerBloc>().add(const TimerToggleInspection());
@@ -32,7 +33,8 @@ class SettingsPage extends StatelessWidget {
               ),
               SwitchListTile(
                 title: const Text('Ocultar timer'),
-                subtitle: const Text('Mostrar "RESOLUCIÓN" en lugar del tiempo'),
+                subtitle:
+                    const Text('Mostrar "RESOLUCIÓN" en lugar del tiempo'),
                 value: state.hideTimerEnabled,
                 onChanged: (value) {
                   context.read<TimerBloc>().add(const TimerToggleHideTimer());
@@ -40,7 +42,8 @@ class SettingsPage extends StatelessWidget {
               ),
               SwitchListTile(
                 title: const Text('Modo competir'),
-                subtitle: const Text('Restringir acceso al historial durante resolución'),
+                subtitle: const Text(
+                    'Restringir acceso al historial durante resolución'),
                 value: state.competeMode,
                 onChanged: (value) {
                   context.read<TimerBloc>().add(const TimerToggleCompeteMode());

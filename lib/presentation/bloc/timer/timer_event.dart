@@ -4,7 +4,7 @@ abstract class TimerEvent extends Equatable {
   const TimerEvent();
 
   @override
-  List<Object> get props => [];
+  List<Object?> get props => [];
 }
 
 class TimerStartHold extends TimerEvent {
@@ -24,7 +24,12 @@ class TimerStart extends TimerEvent {
 }
 
 class TimerStop extends TimerEvent {
-  const TimerStop();
+  final DateTime? stoppedAt;
+
+  const TimerStop({this.stoppedAt});
+
+  @override
+  List<Object?> get props => [stoppedAt];
 }
 
 class TimerReset extends TimerEvent {

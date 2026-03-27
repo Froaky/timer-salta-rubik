@@ -6,24 +6,24 @@ class AppTheme {
   static const Color timerRed = Color(0xFFEF4444);
   static const Color timerYellow = Color(0xFFF59E0B);
   static const Color timerGreen = Color(0xFF10B981);
-  
+
   // App colors - Modern dark theme with subtle gradients
-  static const Color primaryColor = Color(0xFF0F172A);  // Slate 900
+  static const Color primaryColor = Color(0xFF0F172A); // Slate 900
   static const Color secondaryColor = Color(0xFF1E293B); // Slate 800
-  static const Color accentColor = Color(0xFF3B82F6);    // Blue 500
+  static const Color accentColor = Color(0xFF3B82F6); // Blue 500
   static const Color backgroundColor = Color(0xFF020617); // Slate 950
-  static const Color surfaceColor = Color(0xFF0F172A);   // Slate 900
-  static const Color cardColor = Color(0xFF1E293B);      // Slate 800
-  static const Color errorColor = Color(0xFFEF4444);     // Red 500
-  static const Color successColor = Color(0xFF10B981);   // Emerald 500
-  static const Color warningColor = Color(0xFFF59E0B);   // Amber 500
-  
+  static const Color surfaceColor = Color(0xFF0F172A); // Slate 900
+  static const Color cardColor = Color(0xFF1E293B); // Slate 800
+  static const Color errorColor = Color(0xFFEF4444); // Red 500
+  static const Color successColor = Color(0xFF10B981); // Emerald 500
+  static const Color warningColor = Color(0xFFF59E0B); // Amber 500
+
   // Text colors - Better contrast
-  static const Color textPrimary = Color(0xFFF8FAFC);    // Slate 50
+  static const Color textPrimary = Color(0xFFF8FAFC); // Slate 50
   static const Color textSecondary = Color(0xFFCBD5E1); // Slate 300
-  static const Color textMuted = Color(0xFF64748B);      // Slate 500
-  static const Color textAccent = Color(0xFF60A5FA);     // Blue 400
-  
+  static const Color textMuted = Color(0xFF64748B); // Slate 500
+  static const Color textAccent = Color(0xFF60A5FA); // Blue 400
+
   static ThemeData get darkTheme {
     return ThemeData(
       useMaterial3: true,
@@ -223,7 +223,8 @@ class AppTheme {
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
         fillColor: cardColor,
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+        contentPadding:
+            const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
           borderSide: BorderSide(
@@ -267,7 +268,7 @@ class AppTheme {
       ),
     );
   }
-  
+
   static ThemeData get lightTheme {
     return ThemeData(
       useMaterial3: true,
@@ -288,7 +289,7 @@ class AppTheme {
       // Similar structure to dark theme but with light colors
     );
   }
-  
+
   /// Get timer color based on timer state
   static Color getTimerColor(String colorName) {
     switch (colorName.toLowerCase()) {

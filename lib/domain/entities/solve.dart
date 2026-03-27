@@ -11,6 +11,7 @@ class Solve extends Equatable {
   final String cubeType;
   final int lane; // 0 for single, 1-2 for compete mode
   final DateTime createdAt;
+  final bool isSynced;
 
   const Solve({
     required this.id,
@@ -21,6 +22,7 @@ class Solve extends Equatable {
     required this.cubeType,
     required this.lane,
     required this.createdAt,
+    this.isSynced = false,
   });
 
   /// Get effective time considering penalty
@@ -41,11 +43,11 @@ class Solve extends Equatable {
   /// Get formatted time string
   String get formattedTime {
     if (isDnf) return 'DNF';
-    
+
     final effectiveTime = effectiveTimeMs;
     final minutes = effectiveTime ~/ 60000;
     final seconds = (effectiveTime % 60000) / 1000;
-    
+
     if (minutes > 0) {
       return '$minutes:${seconds.toStringAsFixed(2).padLeft(5, '0')}';
     } else {
@@ -69,6 +71,7 @@ class Solve extends Equatable {
     String? cubeType,
     int? lane,
     DateTime? createdAt,
+    bool? isSynced,
   }) {
     return Solve(
       id: id ?? this.id,
@@ -79,6 +82,7 @@ class Solve extends Equatable {
       cubeType: cubeType ?? this.cubeType,
       lane: lane ?? this.lane,
       createdAt: createdAt ?? this.createdAt,
+      isSynced: isSynced ?? this.isSynced,
     );
   }
 
@@ -92,5 +96,6 @@ class Solve extends Equatable {
         cubeType,
         lane,
         createdAt,
+        isSynced,
       ];
 }

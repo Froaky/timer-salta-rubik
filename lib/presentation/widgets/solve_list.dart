@@ -55,8 +55,8 @@ class _SolveListState extends State<SolveList> {
             if (solveState.solves.isEmpty) {
               // Load solves for current session
               context.read<SolveBloc>().add(
-                LoadSolves(sessionId: currentSession.id),
-              );
+                    LoadSolves(sessionId: currentSession.id),
+                  );
               return const Center(
                 child: Text('No solves yet'),
               );
@@ -70,7 +70,8 @@ class _SolveListState extends State<SolveList> {
                 // Header
                 Container(
                   margin: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
                   decoration: BoxDecoration(
                     color: AppTheme.cardColor,
                     borderRadius: BorderRadius.circular(16),
@@ -106,16 +107,20 @@ class _SolveListState extends State<SolveList> {
                         children: [
                           Text(
                             'Solves',
-                            style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                              color: AppTheme.textPrimary,
-                              fontWeight: FontWeight.w600,
-                            ),
+                            style: Theme.of(context)
+                                .textTheme
+                                .titleMedium
+                                ?.copyWith(
+                                  color: AppTheme.textPrimary,
+                                  fontWeight: FontWeight.w600,
+                                ),
                           ),
                           Text(
                             '${solveState.solves.length} total',
-                            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                              color: AppTheme.textSecondary,
-                            ),
+                            style:
+                                Theme.of(context).textTheme.bodySmall?.copyWith(
+                                      color: AppTheme.textSecondary,
+                                    ),
                           ),
                         ],
                       ),
@@ -192,8 +197,8 @@ class _SolveListState extends State<SolveList> {
                           icon: const Icon(Icons.refresh_rounded, size: 20),
                           onPressed: () {
                             context.read<SolveBloc>().add(
-                              LoadSolves(sessionId: currentSession.id),
-                            );
+                                  LoadSolves(sessionId: currentSession.id),
+                                );
                           },
                           tooltip: 'Refresh solves',
                           color: AppTheme.textSecondary,
@@ -202,7 +207,7 @@ class _SolveListState extends State<SolveList> {
                     ],
                   ),
                 ),
-                
+
                 // List
                 Expanded(
                   child: ListView.builder(
@@ -210,8 +215,9 @@ class _SolveListState extends State<SolveList> {
                     itemCount: sortedSolves.length,
                     itemBuilder: (context, index) {
                       final solve = sortedSolves[index];
-                      final isLatest = _currentSort == SortOption.dateDesc && index == 0;
-                      
+                      final isLatest =
+                          _currentSort == SortOption.dateDesc && index == 0;
+
                       return _buildSolveItem(
                         context,
                         solve,
@@ -229,15 +235,18 @@ class _SolveListState extends State<SolveList> {
     );
   }
 
-  Widget _buildSolveItem(BuildContext context, Solve solve, int number, bool isLatest) {
+  Widget _buildSolveItem(
+      BuildContext context, Solve solve, int number, bool isLatest) {
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: isLatest ? AppTheme.accentColor.withOpacity(0.05) : AppTheme.cardColor,
+        color: isLatest
+            ? AppTheme.accentColor.withOpacity(0.05)
+            : AppTheme.cardColor,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: isLatest 
+          color: isLatest
               ? AppTheme.accentColor.withOpacity(0.2)
               : AppTheme.textMuted.withOpacity(0.1),
           width: 1,
@@ -275,9 +284,9 @@ class _SolveListState extends State<SolveList> {
               ),
             ),
           ),
-          
+
           const SizedBox(width: 16),
-          
+
           // Content
           Expanded(
             child: Column(
@@ -289,43 +298,43 @@ class _SolveListState extends State<SolveList> {
                     Text(
                       _buildTimeDisplay(solve),
                       style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        fontFamily: 'RobotoMono',
-                        fontWeight: FontWeight.w600,
-                        color: AppTheme.textPrimary,
-                        fontSize: 18,
-                      ),
+                            fontFamily: 'RobotoMono',
+                            fontWeight: FontWeight.w600,
+                            color: AppTheme.textPrimary,
+                            fontSize: 18,
+                          ),
                     ),
                   ],
                 ),
-                
+
                 const SizedBox(height: 8),
-                
+
                 // Scramble
                 Text(
                   solve.scramble,
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    fontFamily: 'RobotoMono',
-                    color: AppTheme.textSecondary,
-                    height: 1.4,
-                  ),
+                        fontFamily: 'RobotoMono',
+                        color: AppTheme.textSecondary,
+                        height: 1.4,
+                      ),
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                 ),
-                
+
                 const SizedBox(height: 6),
-                
+
                 // Time ago
                 Text(
                   _formatDateTime(solve.createdAt),
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: AppTheme.textMuted,
-                    fontSize: 12,
-                  ),
+                        color: AppTheme.textMuted,
+                        fontSize: 12,
+                      ),
                 ),
               ],
             ),
           ),
-          
+
           // Menu button
           Container(
             decoration: BoxDecoration(
@@ -453,7 +462,7 @@ class _SolveListState extends State<SolveList> {
   String _formatDateTime(DateTime dateTime) {
     final now = DateTime.now();
     final difference = now.difference(dateTime);
-    
+
     if (difference.inDays > 0) {
       return '${difference.inDays}d ago';
     } else if (difference.inHours > 0) {
@@ -467,7 +476,7 @@ class _SolveListState extends State<SolveList> {
 
   List<Solve> _sortSolves(List<Solve> solves) {
     final sorted = List<Solve>.from(solves);
-    
+
     switch (_currentSort) {
       case SortOption.timeAsc:
         sorted.sort((a, b) {
@@ -496,7 +505,7 @@ class _SolveListState extends State<SolveList> {
         sorted.sort((a, b) => b.createdAt.compareTo(a.createdAt));
         break;
     }
-    
+
     return sorted;
   }
 

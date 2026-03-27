@@ -10,6 +10,7 @@ class SolveModel extends Solve {
     required super.cubeType,
     required super.lane,
     required super.createdAt,
+    super.isSynced,
   });
 
   factory SolveModel.fromEntity(Solve solve) {
@@ -22,6 +23,7 @@ class SolveModel extends Solve {
       cubeType: solve.cubeType,
       lane: solve.lane,
       createdAt: solve.createdAt,
+      isSynced: solve.isSynced,
     );
   }
 
@@ -35,6 +37,7 @@ class SolveModel extends Solve {
       cubeType: map['cube_type'] as String? ?? '3x3',
       lane: map['lane'] as int? ?? 0,
       createdAt: DateTime.fromMillisecondsSinceEpoch(map['created_at'] as int),
+      isSynced: (map['is_synced'] as int? ?? 0) == 1,
     );
   }
 
@@ -48,6 +51,7 @@ class SolveModel extends Solve {
       'cube_type': cubeType,
       'lane': lane,
       'created_at': createdAt.millisecondsSinceEpoch,
+      'is_synced': isSynced ? 1 : 0,
     };
   }
 

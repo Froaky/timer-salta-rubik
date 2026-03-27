@@ -61,17 +61,26 @@ class Statistics extends Equatable {
     final validSolves = sortedSolves.where((s) => !s.isDnf).toList();
     final pb = validSolves.isEmpty
         ? null
-        : validSolves.map((s) => s.effectiveTimeMs).reduce((a, b) => a < b ? a : b);
+        : validSolves
+            .map((s) => s.effectiveTimeMs)
+            .reduce((a, b) => a < b ? a : b);
 
     // Calculate current averages
     final currentMo3 = _calculateMean(sortedSolves.take(3).toList());
-    final currentAo5 = _calculateAverage(sortedSolves.take(5).toList());
-    final currentAo12 = _calculateAverage(sortedSolves.take(12).toList());
-    final currentAo25 = _calculateAverage(sortedSolves.take(25).toList());
-    final currentAo100 = _calculateAverage(sortedSolves.take(100).toList());
-    final currentAo200 = _calculateAverage(sortedSolves.take(200).toList());
-    final currentAo500 = _calculateAverage(sortedSolves.take(500).toList());
-    final currentAo1000 = _calculateAverage(sortedSolves.take(1000).toList());
+    final currentAo5 =
+        _calculateAverage(sortedSolves.take(5).toList(), requiredLength: 5);
+    final currentAo12 =
+        _calculateAverage(sortedSolves.take(12).toList(), requiredLength: 12);
+    final currentAo25 =
+        _calculateAverage(sortedSolves.take(25).toList(), requiredLength: 25);
+    final currentAo100 =
+        _calculateAverage(sortedSolves.take(100).toList(), requiredLength: 100);
+    final currentAo200 =
+        _calculateAverage(sortedSolves.take(200).toList(), requiredLength: 200);
+    final currentAo500 =
+        _calculateAverage(sortedSolves.take(500).toList(), requiredLength: 500);
+    final currentAo1000 = _calculateAverage(sortedSolves.take(1000).toList(),
+        requiredLength: 1000);
 
     // Calculate best averages from all possible windows
     int? bestMo3;
@@ -87,63 +96,100 @@ class Statistics extends Equatable {
     for (int i = 0; i <= sortedSolves.length - 3; i++) {
       final windowMo3 = _calculateMean(sortedSolves.skip(i).take(3).toList());
       if (windowMo3 != null) {
-        bestMo3 = bestMo3 == null ? windowMo3 : (windowMo3 < bestMo3 ? windowMo3 : bestMo3);
+        bestMo3 = bestMo3 == null
+            ? windowMo3
+            : (windowMo3 < bestMo3 ? windowMo3 : bestMo3);
       }
     }
 
     // Best ao5
     for (int i = 0; i <= sortedSolves.length - 5; i++) {
-      final windowAo5 = _calculateAverage(sortedSolves.skip(i).take(5).toList());
+      final windowAo5 = _calculateAverage(
+        sortedSolves.skip(i).take(5).toList(),
+        requiredLength: 5,
+      );
       if (windowAo5 != null) {
-        bestAo5 = bestAo5 == null ? windowAo5 : (windowAo5 < bestAo5 ? windowAo5 : bestAo5);
+        bestAo5 = bestAo5 == null
+            ? windowAo5
+            : (windowAo5 < bestAo5 ? windowAo5 : bestAo5);
       }
     }
 
     // Best ao12
     for (int i = 0; i <= sortedSolves.length - 12; i++) {
-      final windowAo12 = _calculateAverage(sortedSolves.skip(i).take(12).toList());
+      final windowAo12 = _calculateAverage(
+        sortedSolves.skip(i).take(12).toList(),
+        requiredLength: 12,
+      );
       if (windowAo12 != null) {
-        bestAo12 = bestAo12 == null ? windowAo12 : (windowAo12 < bestAo12 ? windowAo12 : bestAo12);
+        bestAo12 = bestAo12 == null
+            ? windowAo12
+            : (windowAo12 < bestAo12 ? windowAo12 : bestAo12);
       }
     }
 
     // Best ao25
     for (int i = 0; i <= sortedSolves.length - 25; i++) {
-      final windowAo25 = _calculateAverage(sortedSolves.skip(i).take(25).toList());
+      final windowAo25 = _calculateAverage(
+        sortedSolves.skip(i).take(25).toList(),
+        requiredLength: 25,
+      );
       if (windowAo25 != null) {
-        bestAo25 = bestAo25 == null ? windowAo25 : (windowAo25 < bestAo25 ? windowAo25 : bestAo25);
+        bestAo25 = bestAo25 == null
+            ? windowAo25
+            : (windowAo25 < bestAo25 ? windowAo25 : bestAo25);
       }
     }
 
     // Best ao100
     for (int i = 0; i <= sortedSolves.length - 100; i++) {
-      final windowAo100 = _calculateAverage(sortedSolves.skip(i).take(100).toList());
+      final windowAo100 = _calculateAverage(
+        sortedSolves.skip(i).take(100).toList(),
+        requiredLength: 100,
+      );
       if (windowAo100 != null) {
-        bestAo100 = bestAo100 == null ? windowAo100 : (windowAo100 < bestAo100 ? windowAo100 : bestAo100);
+        bestAo100 = bestAo100 == null
+            ? windowAo100
+            : (windowAo100 < bestAo100 ? windowAo100 : bestAo100);
       }
     }
 
     // Best ao200
     for (int i = 0; i <= sortedSolves.length - 200; i++) {
-      final windowAo200 = _calculateAverage(sortedSolves.skip(i).take(200).toList());
+      final windowAo200 = _calculateAverage(
+        sortedSolves.skip(i).take(200).toList(),
+        requiredLength: 200,
+      );
       if (windowAo200 != null) {
-        bestAo200 = bestAo200 == null ? windowAo200 : (windowAo200 < bestAo200 ? windowAo200 : bestAo200);
+        bestAo200 = bestAo200 == null
+            ? windowAo200
+            : (windowAo200 < bestAo200 ? windowAo200 : bestAo200);
       }
     }
 
     // Best ao500
     for (int i = 0; i <= sortedSolves.length - 500; i++) {
-      final windowAo500 = _calculateAverage(sortedSolves.skip(i).take(500).toList());
+      final windowAo500 = _calculateAverage(
+        sortedSolves.skip(i).take(500).toList(),
+        requiredLength: 500,
+      );
       if (windowAo500 != null) {
-        bestAo500 = bestAo500 == null ? windowAo500 : (windowAo500 < bestAo500 ? windowAo500 : bestAo500);
+        bestAo500 = bestAo500 == null
+            ? windowAo500
+            : (windowAo500 < bestAo500 ? windowAo500 : bestAo500);
       }
     }
 
     // Best ao1000
     for (int i = 0; i <= sortedSolves.length - 1000; i++) {
-      final windowAo1000 = _calculateAverage(sortedSolves.skip(i).take(1000).toList());
+      final windowAo1000 = _calculateAverage(
+        sortedSolves.skip(i).take(1000).toList(),
+        requiredLength: 1000,
+      );
       if (windowAo1000 != null) {
-        bestAo1000 = bestAo1000 == null ? windowAo1000 : (windowAo1000 < bestAo1000 ? windowAo1000 : bestAo1000);
+        bestAo1000 = bestAo1000 == null
+            ? windowAo1000
+            : (windowAo1000 < bestAo1000 ? windowAo1000 : bestAo1000);
       }
     }
 
@@ -181,21 +227,20 @@ class Statistics extends Equatable {
 
   /// Calculate average (remove best and worst, then average)
   /// Returns null if more than 1 DNF or insufficient solves
-  static int? _calculateAverage(List<Solve> solves) {
-    if (solves.length < 5) return null;
+  static int? _calculateAverage(List<Solve> solves,
+      {required int requiredLength}) {
+    if (solves.length < requiredLength) return null;
 
     final dnfCount = solves.where((s) => s.isDnf).length;
     if (dnfCount > 1) return null; // More than 1 DNF = DNF average
 
-    final validTimes = solves
-        .where((s) => !s.isDnf)
-        .map((s) => s.effectiveTimeMs)
-        .toList();
+    final validTimes =
+        solves.where((s) => !s.isDnf).map((s) => s.effectiveTimeMs).toList();
 
     if (validTimes.length < solves.length - 1) return null;
 
     validTimes.sort();
-    
+
     // Remove best and worst
     if (dnfCount == 1) {
       // One DNF: remove best time (worst is already DNF)

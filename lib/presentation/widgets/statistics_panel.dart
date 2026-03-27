@@ -37,18 +37,25 @@ class StatisticsPanel extends StatelessWidget {
               );
             }
 
-            if (solveState.statistics == null) {
-              // Load statistics for current session
+            if (solveState.status == SolveStatus.initial ||
+                (solveState.sessionId != null &&
+                    solveState.sessionId != currentSession.id)) {
               context.read<SolveBloc>().add(
-                LoadStatistics(currentSession.id),
-              );
+                    LoadSolves(sessionId: currentSession.id),
+                  );
+              context.read<SolveBloc>().add(
+                    LoadStatistics(currentSession.id),
+                  );
               return const Center(
                 child: CircularProgressIndicator(),
               );
             }
 
-            final stats = solveState.statistics!;
-            final solveCount = solveState.solves.length;
+            final sessionSolves = solveState.solves
+                .where((solve) => solve.sessionId == currentSession.id)
+                .toList();
+            final solveCount = sessionSolves.length;
+            final stats = Statistics.fromSolves(sessionSolves);
 
             return SingleChildScrollView(
               padding: const EdgeInsets.all(16),
@@ -57,19 +64,19 @@ class StatisticsPanel extends StatelessWidget {
                 children: [
                   // Session info
                   _buildSessionInfo(context, currentSession.name, solveCount),
-                  
+
                   const SizedBox(height: 24),
-                  
+
                   // Main statistics
                   _buildMainStats(context, stats),
-                  
+
                   const SizedBox(height: 24),
-                  
+
                   // Current averages
-                  _buildCurrentAverages(context, stats),
-                  
+                  _buildCurrentAverages(context, stats, solveCount),
+
                   const SizedBox(height: 24),
-                  
+
                   // Best times
                   _buildBestTimes(context, stats),
                 ],
@@ -81,7 +88,8 @@ class StatisticsPanel extends StatelessWidget {
     );
   }
 
-  Widget _buildSessionInfo(BuildContext context, String sessionName, int solveCount) {
+  Widget _buildSessionInfo(
+      BuildContext context, String sessionName, int solveCount) {
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16),
@@ -121,9 +129,9 @@ class StatisticsPanel extends StatelessWidget {
                     ? Statistics.formatTime(statistics.personalBest!)
                     : 'N/A',
                 style: Theme.of(context).textTheme.displayMedium?.copyWith(
-                  color: AppTheme.timerGreen,
-                  fontFamily: 'RobotoMono',
-                ),
+                      color: AppTheme.timerGreen,
+                      fontFamily: 'RobotoMono',
+                    ),
               ),
             ),
           ],
@@ -132,7 +140,79 @@ class StatisticsPanel extends StatelessWidget {
     );
   }
 
-  Widget _buildCurrentAverages(BuildContext context, statistics) {
+  Widget _buildCurrentAverages(
+      BuildContext context, statistics, int solveCount) {
+    final averageRows = <Widget>[
+      if (solveCount >= 3)
+        _buildStatRow(
+          context,
+          'Mean of 3 (mo3)',
+          statistics.meanOf3 != null
+              ? Statistics.formatTime(statistics.meanOf3!)
+              : 'N/A',
+        ),
+      if (solveCount >= 5)
+        _buildStatRow(
+          context,
+          'Average of 5 (ao5)',
+          statistics.averageOf5 != null
+              ? Statistics.formatTime(statistics.averageOf5!)
+              : 'N/A',
+        ),
+      if (solveCount >= 12)
+        _buildStatRow(
+          context,
+          'Average of 12 (ao12)',
+          statistics.averageOf12 != null
+              ? Statistics.formatTime(statistics.averageOf12!)
+              : 'N/A',
+        ),
+      if (solveCount >= 25)
+        _buildStatRow(
+          context,
+          'Average of 25 (ao25)',
+          statistics.averageOf25 != null
+              ? Statistics.formatTime(statistics.averageOf25!)
+              : 'N/A',
+        ),
+      if (solveCount >= 100)
+        _buildStatRow(
+          context,
+          'Average of 100 (ao100)',
+          statistics.averageOf100 != null
+              ? Statistics.formatTime(statistics.averageOf100!)
+              : 'N/A',
+        ),
+      if (solveCount >= 200)
+        _buildStatRow(
+          context,
+          'Average of 200 (ao200)',
+          statistics.averageOf200 != null
+              ? Statistics.formatTime(statistics.averageOf200!)
+              : 'N/A',
+        ),
+      if (solveCount >= 500)
+        _buildStatRow(
+          context,
+          'Average of 500 (ao500)',
+          statistics.averageOf500 != null
+              ? Statistics.formatTime(statistics.averageOf500!)
+              : 'N/A',
+        ),
+      if (solveCount >= 1000)
+        _buildStatRow(
+          context,
+          'Average of 1000 (ao1000)',
+          statistics.averageOf1000 != null
+              ? Statistics.formatTime(statistics.averageOf1000!)
+              : 'N/A',
+        ),
+    ];
+
+    if (averageRows.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16),
@@ -144,68 +224,10 @@ class StatisticsPanel extends StatelessWidget {
               style: Theme.of(context).textTheme.titleLarge,
             ),
             const SizedBox(height: 16),
-            _buildStatRow(
-              context,
-              'Mean of 3 (mo3)',
-              statistics.meanOf3 != null
-                  ? Statistics.formatTime(statistics.meanOf3!)
-                  : 'N/A',
-            ),
-            const SizedBox(height: 8),
-            _buildStatRow(
-              context,
-              'Average of 5 (ao5)',
-              statistics.averageOf5 != null
-                  ? Statistics.formatTime(statistics.averageOf5!)
-                  : 'N/A',
-            ),
-            const SizedBox(height: 8),
-            _buildStatRow(
-              context,
-              'Average of 12 (ao12)',
-              statistics.averageOf12 != null
-                  ? Statistics.formatTime(statistics.averageOf12!)
-                  : 'N/A',
-            ),
-            _buildStatRow(
-              context,
-              'Average of 25 (ao25)',
-              statistics.averageOf25 != null
-                  ? Statistics.formatTime(statistics.averageOf25!)
-                  : 'N/A',
-            ),
-            const SizedBox(height: 8),
-            _buildStatRow(
-              context,
-              'Average of 100 (ao100)',
-              statistics.averageOf100 != null
-                  ? Statistics.formatTime(statistics.averageOf100!)
-                  : 'N/A',
-            ),
-            const SizedBox(height: 8),
-            _buildStatRow(
-              context,
-              'Average of 200 (ao200)',
-              statistics.averageOf200 != null
-                  ? Statistics.formatTime(statistics.averageOf200!)
-                  : 'N/A',
-            ),
-            const SizedBox(height: 8),
-            _buildStatRow(
-              context,
-              'Average of 500 (ao500)',
-              statistics.averageOf500 != null
-                  ? Statistics.formatTime(statistics.averageOf500!)
-                  : 'N/A',
-            ),
-            const SizedBox(height: 8),
-            _buildStatRow(
-              context,
-              'Average of 1000 (ao1000)',
-              statistics.averageOf1000 != null
-                  ? Statistics.formatTime(statistics.averageOf1000!)
-                  : 'N/A',
-            ),
+            for (var i = 0; i < averageRows.length; i++) ...[
+              if (i > 0) const SizedBox(height: 8),
+              averageRows[i],
+            ],
           ],
         ),
       ),
@@ -303,9 +325,9 @@ class StatisticsPanel extends StatelessWidget {
         Text(
           value,
           style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-            fontFamily: 'RobotoMono',
-            fontWeight: FontWeight.w600,
-          ),
+                fontFamily: 'RobotoMono',
+                fontWeight: FontWeight.w600,
+              ),
         ),
       ],
     );

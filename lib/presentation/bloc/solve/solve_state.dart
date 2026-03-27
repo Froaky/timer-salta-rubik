@@ -12,7 +12,10 @@ enum SolveStatus {
 }
 
 class SolveState extends Equatable {
+  static const _unset = Object();
+
   final SolveStatus status;
+  final String? sessionId;
   final List<Solve> solves;
   final Statistics? statistics;
   final Scramble? currentScramble;
@@ -21,6 +24,7 @@ class SolveState extends Equatable {
 
   const SolveState({
     required this.status,
+    this.sessionId,
     required this.solves,
     this.statistics,
     this.currentScramble,
@@ -37,18 +41,27 @@ class SolveState extends Equatable {
 
   SolveState copyWith({
     SolveStatus? status,
+    Object? sessionId = _unset,
     List<Solve>? solves,
-    Statistics? statistics,
-    Scramble? currentScramble,
-    String? errorMessage,
+    Object? statistics = _unset,
+    Object? currentScramble = _unset,
+    Object? errorMessage = _unset,
     bool? isGeneratingScramble,
   }) {
     return SolveState(
       status: status ?? this.status,
+      sessionId:
+          identical(sessionId, _unset) ? this.sessionId : sessionId as String?,
       solves: solves ?? this.solves,
-      statistics: statistics ?? this.statistics,
-      currentScramble: currentScramble ?? this.currentScramble,
-      errorMessage: errorMessage ?? this.errorMessage,
+      statistics: identical(statistics, _unset)
+          ? this.statistics
+          : statistics as Statistics?,
+      currentScramble: identical(currentScramble, _unset)
+          ? this.currentScramble
+          : currentScramble as Scramble?,
+      errorMessage: identical(errorMessage, _unset)
+          ? this.errorMessage
+          : errorMessage as String?,
       isGeneratingScramble: isGeneratingScramble ?? this.isGeneratingScramble,
     );
   }
@@ -56,6 +69,7 @@ class SolveState extends Equatable {
   @override
   List<Object?> get props => [
         status,
+        sessionId,
         solves,
         statistics,
         currentScramble,

@@ -1,11 +1,11 @@
 import 'dart:async';
+
 import '../../core/constants/timer_thresholds.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:vibration/vibration.dart';
 
 import '../../domain/entities/solve.dart';
-import '../../domain/entities/session.dart';
 import '../../domain/entities/scramble.dart';
 
 import '../bloc/compete/compete_bloc.dart';
@@ -14,7 +14,7 @@ import '../bloc/compete/compete_state.dart';
 import '../bloc/session/session_bloc.dart';
 import '../bloc/session/session_state.dart';
 import '../theme/app_theme.dart';
-import '../widgets/scramble_display.dart';
+import '../widgets/category_icon.dart';
 
 // Timer states and colors (same as main timer)
 enum CompeteTimerStatus {
@@ -32,6 +32,14 @@ enum CompeteTimerColor {
   green,
 }
 
+bool shouldIgnoreCompeteLaneInteraction({
+  required CompeteTimerStatus laneStatus,
+  required CompeteTimerStatus otherLaneStatus,
+}) {
+  return laneStatus == CompeteTimerStatus.stopped &&
+      otherLaneStatus == CompeteTimerStatus.running;
+}
+
 class CompetePage extends StatefulWidget {
   const CompetePage({super.key});
 
@@ -42,19 +50,21 @@ class CompetePage extends StatefulWidget {
 class _CompetePageState extends State<CompetePage> {
   String? _selectedCubeType;
   bool _useSameScramble = true;
-  
+  bool _lane1ReleasedForSyncStart = false;
+  bool _lane2ReleasedForSyncStart = false;
+
   // Timer states for each lane (exactly like main timer)
   CompeteTimerStatus _lane1Status = CompeteTimerStatus.idle;
   CompeteTimerStatus _lane2Status = CompeteTimerStatus.idle;
   CompeteTimerColor _lane1Color = CompeteTimerColor.white;
   CompeteTimerColor _lane2Color = CompeteTimerColor.white;
-  
+
   // Timer data
   int _lane1ElapsedMs = 0;
   int _lane2ElapsedMs = 0;
   int _lane1HoldDurationMs = 0;
   int _lane2HoldDurationMs = 0;
-  
+
   // Timer management
   Timer? _lane1HoldTimer;
   Timer? _lane2HoldTimer;
@@ -64,20 +74,20 @@ class _CompetePageState extends State<CompetePage> {
   Stopwatch? _lane1HoldStopwatch;
   Stopwatch? _lane2HoldStopwatch;
   // Use monotonic clocks via Stopwatch for competition timers
-  Stopwatch? _lane1Stopwatch;
-  Stopwatch? _lane2Stopwatch;
-  
+  Stopwatch? _competitionRunStopwatch;
+
   // Timer thresholds (same as main timer)
   static const int redThreshold = TimerThresholds.red;
   static const int yellowThreshold = TimerThresholds.yellow;
   static const int greenThreshold = TimerThresholds.green;
-  
+
   @override
   void dispose() {
     _lane1HoldTimer?.cancel();
     _lane2HoldTimer?.cancel();
     _lane1RunTimer?.cancel();
     _lane2RunTimer?.cancel();
+    _competitionRunStopwatch?.stop();
     super.dispose();
   }
 
@@ -104,7 +114,7 @@ class _CompetePageState extends State<CompetePage> {
               if (competeState.status == CompeteStatus.initial) {
                 return _buildSetupScreen(sessionState);
               }
-              
+
               return _buildCompeteScreen(competeState);
             },
           );
@@ -112,7 +122,7 @@ class _CompetePageState extends State<CompetePage> {
       ),
     );
   }
-  
+
   Widget _buildSetupScreen(SessionState sessionState) {
     return Padding(
       padding: const EdgeInsets.all(24.0),
@@ -131,7 +141,7 @@ class _CompetePageState extends State<CompetePage> {
             textAlign: TextAlign.center,
           ),
           const SizedBox(height: 32),
-          
+
           // Cube type selector
           Card(
             child: Padding(
@@ -146,18 +156,46 @@ class _CompetePageState extends State<CompetePage> {
                   const SizedBox(height: 12),
                   DropdownButtonFormField<String>(
                     value: _selectedCubeType,
+                    isExpanded: true,
                     decoration: const InputDecoration(
                       hintText: 'Selecciona el tipo de cubo',
                     ),
                     items: const [
-                      DropdownMenuItem(value: '3x3', child: Text('3x3x3')),
-                      DropdownMenuItem(value: '2x2', child: Text('2x2x2')),
-                      DropdownMenuItem(value: '4x4', child: Text('4x4x4')),
-                      DropdownMenuItem(value: '5x5', child: Text('5x5x5')),
-                      DropdownMenuItem(value: 'pyraminx', child: Text('Pyraminx')),
-                      DropdownMenuItem(value: 'megaminx', child: Text('Megaminx')),
-                      DropdownMenuItem(value: 'skewb', child: Text('Skewb')),
-                    ],
+                      '3x3',
+                      '2x2',
+                      '4x4',
+                      '5x5',
+                      '6x6',
+                      '7x7',
+                      'pyraminx',
+                      'megaminx',
+                      'skewb',
+                      'clock',
+                      'sq1'
+                    ].map((type) {
+                      return DropdownMenuItem(
+                        value: type,
+                        child: Row(
+                          children: [
+                            CategoryIcon(
+                              cubeType: type,
+                              size: 18,
+                              backgroundColor:
+                                  Colors.white.withValues(alpha: 0.92),
+                              backgroundPadding: const EdgeInsets.all(4),
+                              backgroundRadius: 6,
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                type.toUpperCase(),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    }).toList(),
                     onChanged: (value) {
                       setState(() {
                         _selectedCubeType = value;
@@ -168,9 +206,9 @@ class _CompetePageState extends State<CompetePage> {
               ),
             ),
           ),
-          
+
           const SizedBox(height: 16),
-          
+
           // Same scramble option
           Card(
             child: Padding(
@@ -195,9 +233,9 @@ class _CompetePageState extends State<CompetePage> {
               ),
             ),
           ),
-          
+
           const SizedBox(height: 32),
-          
+
           // Start button
           SizedBox(
             width: double.infinity,
@@ -206,22 +244,22 @@ class _CompetePageState extends State<CompetePage> {
                   ? () {
                       // Reset all timers first
                       _resetAllTimers();
-                      
+
                       // Start compete round
                       context.read<CompeteBloc>().add(
-                        StartCompeteRound(
-                          cubeType: _selectedCubeType!,
-                          useSameScramble: _useSameScramble,
-                        ),
-                      );
-                      
+                            StartCompeteRound(
+                              cubeType: _selectedCubeType!,
+                              useSameScramble: _useSameScramble,
+                            ),
+                          );
+
                       // Generate initial scrambles
                       context.read<CompeteBloc>().add(
-                        GenerateCompeteScrambles(
-                          cubeType: _selectedCubeType ?? '3x3',
-                          useSameScramble: _useSameScramble,
-                        ),
-                      );
+                            GenerateCompeteScrambles(
+                              cubeType: _selectedCubeType ?? '3x3',
+                              useSameScramble: _useSameScramble,
+                            ),
+                          );
                     }
                   : null,
               child: const Padding(
@@ -237,7 +275,7 @@ class _CompetePageState extends State<CompetePage> {
       ),
     );
   }
-  
+
   Widget _buildCompeteScreen(CompeteState competeState) {
     return Stack(
       children: [
@@ -254,7 +292,7 @@ class _CompetePageState extends State<CompetePage> {
                 competeState: competeState,
               ),
             ),
-            
+
             // Lane 1 (bottom - normal)
             Expanded(
               child: _buildLane(
@@ -267,7 +305,7 @@ class _CompetePageState extends State<CompetePage> {
             ),
           ],
         ),
-        
+
         // Centered score display - clickeable
         Center(
           child: GestureDetector(
@@ -327,9 +365,17 @@ class _CompetePageState extends State<CompetePage> {
       ],
     );
   }
-  
 
-  
+  bool _isLaneInteractionLocked(int laneNumber) {
+    final laneStatus = laneNumber == 1 ? _lane1Status : _lane2Status;
+    final otherLaneStatus = laneNumber == 1 ? _lane2Status : _lane1Status;
+
+    return shouldIgnoreCompeteLaneInteraction(
+      laneStatus: laneStatus,
+      otherLaneStatus: otherLaneStatus,
+    );
+  }
+
   Widget _buildLane({
     required int laneNumber,
     required LaneData laneData,
@@ -341,13 +387,18 @@ class _CompetePageState extends State<CompetePage> {
     final status = laneNumber == 1 ? _lane1Status : _lane2Status;
     final color = laneNumber == 1 ? _lane1Color : _lane2Color;
     final elapsedMs = laneNumber == 1 ? _lane1ElapsedMs : _lane2ElapsedMs;
-    
+
     // Get display time and color
     final displayTime = _getFormattedTime(elapsedMs, status);
     final timerColor = _getTimerColor(color);
-    
-    Widget content = GestureDetector(
-      onTapDown: (_) {
+    final scrambleTextColor = _getScrambleTextColor(color);
+
+    Widget content = Listener(
+      key: ValueKey('compete-lane-$laneNumber'),
+      behavior: HitTestBehavior.opaque,
+      onPointerDown: (_) {
+        if (_isLaneInteractionLocked(laneNumber)) return;
+
         if (laneNumber == 1) {
           if (status == CompeteTimerStatus.running) {
             _stopLane1Timer();
@@ -362,14 +413,18 @@ class _CompetePageState extends State<CompetePage> {
           }
         }
       },
-      onTapUp: (_) {
+      onPointerUp: (_) {
+        if (_isLaneInteractionLocked(laneNumber)) return;
+
         if (laneNumber == 1) {
           _onLane1TapUp();
         } else {
           _onLane2TapUp();
         }
       },
-      onTapCancel: () {
+      onPointerCancel: (_) {
+        if (_isLaneInteractionLocked(laneNumber)) return;
+
         if (laneNumber == 1) {
           _onLane1TapCancel();
         } else {
@@ -392,40 +447,51 @@ class _CompetePageState extends State<CompetePage> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            // Scramble display
             if (scramble != null)
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: _buildScrambleDisplay(scramble),
+                padding: const EdgeInsets.symmetric(horizontal: 14),
+                child: _buildScrambleDisplay(
+                  scramble,
+                  laneNumber: laneNumber,
+                  textColor: scrambleTextColor,
+                ),
               ),
-            
-            const SizedBox(height: 20),
-            
+
+            if (scramble != null) const SizedBox(height: 12),
+
             // Timer display
-            Text(
-              displayTime,
-              style: Theme.of(context).textTheme.displayLarge?.copyWith(
-                color: color == CompeteTimerColor.white ? Colors.black : Colors.white,
-                fontSize: 64,
-                fontWeight: FontWeight.bold,
+            FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Text(
+                displayTime,
+                key: ValueKey('compete-lane-$laneNumber-timer'),
+                style: Theme.of(context).textTheme.displayLarge?.copyWith(
+                      color: color == CompeteTimerColor.white
+                          ? Colors.black
+                          : Colors.white,
+                      fontSize: 64,
+                      fontWeight: FontWeight.bold,
+                    ),
               ),
             ),
-            
-            const SizedBox(height: 12),
-            
+
+            const SizedBox(height: 8),
+
             // Player label
             Text(
               'Jugador $laneNumber',
               style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                color: color == CompeteTimerColor.white ? Colors.black54 : Colors.white70,
-                fontWeight: FontWeight.w500,
-              ),
+                    color: color == CompeteTimerColor.white
+                        ? Colors.black54
+                        : Colors.white70,
+                    fontWeight: FontWeight.w500,
+                  ),
             ),
           ],
         ),
       ),
     );
-    
+
     // Invert content if needed
     if (isInverted) {
       content = Transform.rotate(
@@ -433,13 +499,13 @@ class _CompetePageState extends State<CompetePage> {
         child: content,
       );
     }
-    
+
     return Container(
       color: AppTheme.backgroundColor,
       child: content,
     );
   }
-  
+
   String _formatTime(int milliseconds) {
     final seconds = milliseconds / 1000;
     if (seconds < 60) {
@@ -451,33 +517,36 @@ class _CompetePageState extends State<CompetePage> {
     }
   }
 
-  Widget _buildScrambleDisplay(Scramble? scramble) {
+  Widget _buildScrambleDisplay(
+    Scramble? scramble, {
+    required int laneNumber,
+    required Color textColor,
+  }) {
     if (scramble == null) {
-      return const Center(
-        child: CircularProgressIndicator(),
-      );
+      return const SizedBox.shrink();
     }
 
-    return Container(
-      padding: const EdgeInsets.all(12.0),
-      decoration: BoxDecoration(
-        color: AppTheme.cardColor,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(
-          color: AppTheme.textMuted.withValues(alpha: 0.1),
-        ),
-      ),
-      child: Text(
-        scramble.notation,
-        style: const TextStyle(
-          fontFamily: 'RobotoMono',
-          fontSize: 12,
-          color: AppTheme.textPrimary,
-        ),
-        textAlign: TextAlign.center,
-        maxLines: 2,
-        overflow: TextOverflow.ellipsis,
-      ),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final width = constraints.maxWidth.isFinite
+            ? constraints.maxWidth
+            : MediaQuery.of(context).size.width;
+        final fontSize = width < 320 ? 10.0 : 11.0;
+
+        return Text(
+          scramble.notation,
+          key: ValueKey('compete-lane-$laneNumber-scramble'),
+          style: TextStyle(
+            fontFamily: 'RobotoMono',
+            fontSize: fontSize,
+            fontWeight: FontWeight.w600,
+            height: 1.15,
+            color: textColor,
+          ),
+          textAlign: TextAlign.center,
+          softWrap: true,
+        );
+      },
     );
   }
 
@@ -500,18 +569,19 @@ class _CompetePageState extends State<CompetePage> {
                     children: [
                       Text(
                         'Jugador 1',
-                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.bold,
-                        ),
+                        style:
+                            Theme.of(context).textTheme.titleMedium?.copyWith(
+                                  fontWeight: FontWeight.bold,
+                                ),
                       ),
                       const SizedBox(height: 8),
                       if (competeState.lane1.solves.isEmpty)
                         const Text('Sin tiempos registrados')
                       else
                         ...competeState.lane1.solves.map((solve) => Padding(
-                          padding: const EdgeInsets.symmetric(vertical: 2),
-                          child: Text(_formatTime(solve.timeMs)),
-                        )),
+                              padding: const EdgeInsets.symmetric(vertical: 2),
+                              child: Text(_formatTime(solve.timeMs)),
+                            )),
                     ],
                   ),
                 ),
@@ -526,18 +596,19 @@ class _CompetePageState extends State<CompetePage> {
                     children: [
                       Text(
                         'Jugador 2',
-                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.bold,
-                        ),
+                        style:
+                            Theme.of(context).textTheme.titleMedium?.copyWith(
+                                  fontWeight: FontWeight.bold,
+                                ),
                       ),
                       const SizedBox(height: 8),
                       if (competeState.lane2.solves.isEmpty)
                         const Text('Sin tiempos registrados')
                       else
                         ...competeState.lane2.solves.map((solve) => Padding(
-                          padding: const EdgeInsets.symmetric(vertical: 2),
-                          child: Text(_formatTime(solve.timeMs)),
-                        )),
+                              padding: const EdgeInsets.symmetric(vertical: 2),
+                              child: Text(_formatTime(solve.timeMs)),
+                            )),
                     ],
                   ),
                 ),
@@ -554,7 +625,7 @@ class _CompetePageState extends State<CompetePage> {
       ),
     );
   }
-  
+
   // Timer management methods (exactly like main timer)
   void _resetAllTimers() {
     setState(() {
@@ -567,7 +638,7 @@ class _CompetePageState extends State<CompetePage> {
       _lane1HoldDurationMs = 0;
       _lane2HoldDurationMs = 0;
     });
-    
+
     _lane1HoldTimer?.cancel();
     _lane2HoldTimer?.cancel();
     _lane1RunTimer?.cancel();
@@ -578,166 +649,214 @@ class _CompetePageState extends State<CompetePage> {
     _lane2RunTimer = null;
     _lane1HoldStopwatch?.stop();
     _lane2HoldStopwatch?.stop();
-    _lane1Stopwatch?.stop();
-    _lane2Stopwatch?.stop();
     _lane1HoldStopwatch = null;
     _lane2HoldStopwatch = null;
-    _lane1Stopwatch = null;
-    _lane2Stopwatch = null;
+    _competitionRunStopwatch?.stop();
+    _competitionRunStopwatch = null;
+    _lane1ReleasedForSyncStart = false;
+    _lane2ReleasedForSyncStart = false;
   }
 
   // Lane 1 timer methods
   void _onLane1TapDown() {
-    if (_lane1Status != CompeteTimerStatus.idle && _lane1Status != CompeteTimerStatus.stopped) return;
-    
+    if (_lane1Status != CompeteTimerStatus.idle &&
+        _lane1Status != CompeteTimerStatus.stopped) return;
+
     _lane1HoldStopwatch = Stopwatch()..start();
     setState(() {
       _lane1Status = CompeteTimerStatus.holdPending;
       _lane1Color = CompeteTimerColor.red;
       _lane1HoldDurationMs = 0;
     });
-    
+
     _startLane1HoldTimer();
   }
 
   void _onLane1TapUp() {
+    final holdDuration =
+        _lane1HoldStopwatch?.elapsedMilliseconds ?? _lane1HoldDurationMs;
+
     _lane1HoldTimer?.cancel();
     _lane1HoldTimer = null;
     _lane1HoldStopwatch?.stop();
-    
-    if (_lane1Status == CompeteTimerStatus.armed) {
-      _startLane1Timer();
+    _lane1HoldStopwatch = null;
+
+    if (_lane1Status == CompeteTimerStatus.armed ||
+        holdDuration >= greenThreshold) {
+      if (_lane1Status != CompeteTimerStatus.armed) {
+        setState(() {
+          _lane1Status = CompeteTimerStatus.armed;
+          _lane1Color = CompeteTimerColor.green;
+          _lane1HoldDurationMs = holdDuration;
+        });
+      }
+
+      _handleArmedLaneRelease(lane: 1);
     } else if (_lane1Status == CompeteTimerStatus.holdPending) {
-      _resetLane1Timer();
+      _resetAllTimers();
     }
-    // If stopped, do nothing - keep the time visible
   }
 
   void _onLane1TapCancel() {
     _lane1HoldTimer?.cancel();
     _lane1HoldTimer = null;
     _lane1HoldStopwatch?.stop();
-    _resetLane1Timer();
+    _lane1HoldStopwatch = null;
+    _resetAllTimers();
   }
 
-  void _startLane1Timer() {
-    _lane1Stopwatch = Stopwatch()..start();
+  void _handleArmedLaneRelease({required int lane}) {
+    final otherLaneHoldDuration = lane == 1
+        ? _lane2HoldStopwatch?.elapsedMilliseconds ?? _lane2HoldDurationMs
+        : _lane1HoldStopwatch?.elapsedMilliseconds ?? _lane1HoldDurationMs;
+    final otherLaneReady = otherLaneHoldDuration >= greenThreshold ||
+        (lane == 1 ? _lane2ReleasedForSyncStart : _lane1ReleasedForSyncStart);
+
+    if (!otherLaneReady) {
+      _resetAllTimers();
+      return;
+    }
+
+    setState(() {
+      if (lane == 1) {
+        _lane1ReleasedForSyncStart = true;
+      } else {
+        _lane2ReleasedForSyncStart = true;
+      }
+    });
+
+    _tryStartCompetitionTimers();
+  }
+
+  void _tryStartCompetitionTimers() {
+    if (_competitionRunStopwatch != null) {
+      return;
+    }
+
+    if (_lane1Status != CompeteTimerStatus.armed ||
+        _lane2Status != CompeteTimerStatus.armed ||
+        !_lane1ReleasedForSyncStart ||
+        !_lane2ReleasedForSyncStart) {
+      return;
+    }
+
+    _startCompetitionTimers();
+  }
+
+  void _startCompetitionTimers() {
+    _lane1RunTimer?.cancel();
+    _lane2RunTimer?.cancel();
+    _lane1RunTimer = null;
+    _lane2RunTimer = null;
+    _competitionRunStopwatch?.stop();
+    _competitionRunStopwatch = Stopwatch()..start();
+
     setState(() {
       _lane1Status = CompeteTimerStatus.running;
+      _lane2Status = CompeteTimerStatus.running;
       _lane1Color = CompeteTimerColor.white;
+      _lane2Color = CompeteTimerColor.white;
       _lane1ElapsedMs = 0;
+      _lane2ElapsedMs = 0;
+      _lane1HoldDurationMs = 0;
+      _lane2HoldDurationMs = 0;
+      _lane1ReleasedForSyncStart = false;
+      _lane2ReleasedForSyncStart = false;
     });
-    
+
     _startLane1RunTimer();
+    _startLane2RunTimer();
     _triggerHapticFeedback();
-    // Notify bloc start (for round control logic)
     context.read<CompeteBloc>().add(const StartLane(lane: 1));
+    context.read<CompeteBloc>().add(const StartLane(lane: 2));
   }
 
   void _stopLane1Timer() {
     if (_lane1Status != CompeteTimerStatus.running) return;
-    
+
     _lane1RunTimer?.cancel();
     _lane1RunTimer = null;
-    final finalTime = _lane1Stopwatch?.elapsedMilliseconds ?? _lane1ElapsedMs;
-    _lane1Stopwatch?.stop();
-    _lane1Stopwatch = null;
-    
+    final finalTime =
+        _competitionRunStopwatch?.elapsedMilliseconds ?? _lane1ElapsedMs;
+
     setState(() {
       _lane1Status = CompeteTimerStatus.stopped;
       _lane1ElapsedMs = finalTime;
     });
-    
+
     _triggerHapticFeedback();
     // Notify bloc stop with monotonic ms
     context.read<CompeteBloc>().add(StopLane(lane: 1, finishedAtMs: finalTime));
+    _stopCompetitionRunStopwatchIfFinished();
     _saveLane1Solve();
-  }
-
-  void _resetLane1Timer() {
-    setState(() {
-      _lane1Status = CompeteTimerStatus.idle;
-      _lane1Color = CompeteTimerColor.white;
-      _lane1ElapsedMs = 0;
-      _lane1HoldDurationMs = 0;
-    });
   }
 
   // Lane 2 timer methods
   void _onLane2TapDown() {
-    if (_lane2Status != CompeteTimerStatus.idle && _lane2Status != CompeteTimerStatus.stopped) return;
-    
+    if (_lane2Status != CompeteTimerStatus.idle &&
+        _lane2Status != CompeteTimerStatus.stopped) return;
+
     _lane2HoldStopwatch = Stopwatch()..start();
     setState(() {
       _lane2Status = CompeteTimerStatus.holdPending;
       _lane2Color = CompeteTimerColor.red;
       _lane2HoldDurationMs = 0;
     });
-    
+
     _startLane2HoldTimer();
   }
 
   void _onLane2TapUp() {
+    final holdDuration =
+        _lane2HoldStopwatch?.elapsedMilliseconds ?? _lane2HoldDurationMs;
+
     _lane2HoldTimer?.cancel();
     _lane2HoldTimer = null;
     _lane2HoldStopwatch?.stop();
-    
-    if (_lane2Status == CompeteTimerStatus.armed) {
-      _startLane2Timer();
+    _lane2HoldStopwatch = null;
+
+    if (_lane2Status == CompeteTimerStatus.armed ||
+        holdDuration >= greenThreshold) {
+      if (_lane2Status != CompeteTimerStatus.armed) {
+        setState(() {
+          _lane2Status = CompeteTimerStatus.armed;
+          _lane2Color = CompeteTimerColor.green;
+          _lane2HoldDurationMs = holdDuration;
+        });
+      }
+
+      _handleArmedLaneRelease(lane: 2);
     } else if (_lane2Status == CompeteTimerStatus.holdPending) {
-      _resetLane2Timer();
+      _resetAllTimers();
     }
-    // If stopped, do nothing - keep the time visible
   }
 
   void _onLane2TapCancel() {
     _lane2HoldTimer?.cancel();
     _lane2HoldTimer = null;
     _lane2HoldStopwatch?.stop();
-    _resetLane2Timer();
-  }
-
-  void _startLane2Timer() {
-    _lane2Stopwatch = Stopwatch()..start();
-    setState(() {
-      _lane2Status = CompeteTimerStatus.running;
-      _lane2Color = CompeteTimerColor.white;
-      _lane2ElapsedMs = 0;
-    });
-    
-    _startLane2RunTimer();
-    _triggerHapticFeedback();
-    // Notify bloc start (for round control logic)
-    context.read<CompeteBloc>().add(const StartLane(lane: 2));
+    _lane2HoldStopwatch = null;
+    _resetAllTimers();
   }
 
   void _stopLane2Timer() {
     if (_lane2Status != CompeteTimerStatus.running) return;
-    
+
     _lane2RunTimer?.cancel();
     _lane2RunTimer = null;
-    final finalTime = _lane2Stopwatch?.elapsedMilliseconds ?? _lane2ElapsedMs;
-    _lane2Stopwatch?.stop();
-    _lane2Stopwatch = null;
-    
+    final finalTime =
+        _competitionRunStopwatch?.elapsedMilliseconds ?? _lane2ElapsedMs;
+
     setState(() {
       _lane2Status = CompeteTimerStatus.stopped;
       _lane2ElapsedMs = finalTime;
     });
-    
+
     _triggerHapticFeedback();
     // Notify bloc stop with monotonic ms
     context.read<CompeteBloc>().add(StopLane(lane: 2, finishedAtMs: finalTime));
+    _stopCompetitionRunStopwatchIfFinished();
     _saveLane2Solve();
-  }
-
-  void _resetLane2Timer() {
-    setState(() {
-      _lane2Status = CompeteTimerStatus.idle;
-      _lane2Color = CompeteTimerColor.white;
-      _lane2ElapsedMs = 0;
-      _lane2HoldDurationMs = 0;
-    });
   }
 
   // Timer update methods
@@ -767,14 +886,14 @@ class _CompetePageState extends State<CompetePage> {
 
   void _updateLane1HoldState() {
     if (_lane1HoldStopwatch == null) return;
-    
+
     final holdDuration = _lane1HoldStopwatch!.elapsedMilliseconds;
     CompeteTimerColor newColor = CompeteTimerColor.red;
     CompeteTimerStatus newStatus = CompeteTimerStatus.holdPending;
-    
+
     // Check if we were in stopped state and need to reset
     final wasInStoppedState = _lane1Status == CompeteTimerStatus.stopped;
-    
+
     if (holdDuration >= greenThreshold) {
       newColor = CompeteTimerColor.green;
       if (wasInStoppedState) {
@@ -809,7 +928,7 @@ class _CompetePageState extends State<CompetePage> {
         _triggerHapticFeedback();
       }
     }
-    
+
     setState(() {
       _lane1Status = newStatus;
       _lane1Color = newColor;
@@ -819,14 +938,14 @@ class _CompetePageState extends State<CompetePage> {
 
   void _updateLane2HoldState() {
     if (_lane2HoldStopwatch == null) return;
-    
+
     final holdDuration = _lane2HoldStopwatch!.elapsedMilliseconds;
     CompeteTimerColor newColor = CompeteTimerColor.red;
     CompeteTimerStatus newStatus = CompeteTimerStatus.holdPending;
-    
+
     // Check if we were in stopped state and need to reset
     final wasInStoppedState = _lane2Status == CompeteTimerStatus.stopped;
-    
+
     if (holdDuration >= greenThreshold) {
       newColor = CompeteTimerColor.green;
       if (wasInStoppedState) {
@@ -861,7 +980,7 @@ class _CompetePageState extends State<CompetePage> {
         _triggerHapticFeedback();
       }
     }
-    
+
     setState(() {
       _lane2Status = newStatus;
       _lane2Color = newColor;
@@ -870,17 +989,25 @@ class _CompetePageState extends State<CompetePage> {
   }
 
   void _updateLane1RunningState() {
-    final elapsed = _lane1Stopwatch?.elapsedMilliseconds ?? 0;
+    final elapsed = _competitionRunStopwatch?.elapsedMilliseconds ?? 0;
     setState(() {
       _lane1ElapsedMs = elapsed;
     });
   }
 
   void _updateLane2RunningState() {
-    final elapsed = _lane2Stopwatch?.elapsedMilliseconds ?? 0;
+    final elapsed = _competitionRunStopwatch?.elapsedMilliseconds ?? 0;
     setState(() {
       _lane2ElapsedMs = elapsed;
     });
+  }
+
+  void _stopCompetitionRunStopwatchIfFinished() {
+    if (_lane1Status != CompeteTimerStatus.running &&
+        _lane2Status != CompeteTimerStatus.running) {
+      _competitionRunStopwatch?.stop();
+      _competitionRunStopwatch = null;
+    }
   }
 
   // Utility methods
@@ -907,13 +1034,24 @@ class _CompetePageState extends State<CompetePage> {
     }
   }
 
+  Color _getScrambleTextColor(CompeteTimerColor color) {
+    switch (color) {
+      case CompeteTimerColor.red:
+        return Colors.white;
+      case CompeteTimerColor.yellow:
+      case CompeteTimerColor.green:
+      case CompeteTimerColor.white:
+        return Colors.black87;
+    }
+  }
+
   String _getFormattedTime(int elapsedMs, CompeteTimerStatus status) {
     if (status == CompeteTimerStatus.idle) {
       return '0.00';
     }
-    
+
     final seconds = elapsedMs / 1000;
-    
+
     if (seconds >= 60) {
       final minutes = (seconds / 60).floor();
       final remainingSeconds = seconds % 60;
@@ -925,9 +1063,9 @@ class _CompetePageState extends State<CompetePage> {
 
   void _saveLane1Solve() {
     final competeState = context.read<CompeteBloc>().state;
-    
+
     if (competeState.scrambleLane1 == null) return;
-    
+
     final solve = Solve(
       id: DateTime.now().millisecondsSinceEpoch.toString(),
       sessionId: 'compete_session',
@@ -938,7 +1076,7 @@ class _CompetePageState extends State<CompetePage> {
       lane: 1,
       createdAt: DateTime.now(),
     );
-    
+
     context.read<CompeteBloc>().add(AddCompeteSolve(solve: solve, lane: 1));
     // No generamos nuevos scrambles aquí para no cambiar la ronda en curso.
     // Los scrambles para la siguiente ronda se generan cuando se inicia una nueva ronda.
@@ -946,9 +1084,9 @@ class _CompetePageState extends State<CompetePage> {
 
   void _saveLane2Solve() {
     final competeState = context.read<CompeteBloc>().state;
-    
+
     if (competeState.scrambleLane2 == null) return;
-    
+
     final solve = Solve(
       id: DateTime.now().millisecondsSinceEpoch.toString(),
       sessionId: 'compete_session',
@@ -959,19 +1097,10 @@ class _CompetePageState extends State<CompetePage> {
       lane: 2,
       createdAt: DateTime.now(),
     );
-    
+
     context.read<CompeteBloc>().add(AddCompeteSolve(solve: solve, lane: 2));
     // No generamos nuevos scrambles aquí para no cambiar la ronda en curso.
     // Los scrambles para la siguiente ronda se generan cuando se inicia una nueva ronda.
-  }
-
-  void _generateNewScrambles() {
-    context.read<CompeteBloc>().add(
-      GenerateCompeteScrambles(
-        cubeType: _selectedCubeType ?? '3x3',
-        useSameScramble: _useSameScramble,
-      ),
-    );
   }
 
   // La asignación de puntos ahora se realiza de forma centralizada en CompeteBloc

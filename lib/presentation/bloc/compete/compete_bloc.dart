@@ -20,11 +20,13 @@ class CompeteBloc extends Bloc<CompeteEvent, CompeteState> {
     on<StopLane>(_onStopLane);
   }
 
-  Future<void> _onStartCompeteRound(StartCompeteRound event, Emitter<CompeteState> emit) async {
+  Future<void> _onStartCompeteRound(
+      StartCompeteRound event, Emitter<CompeteState> emit) async {
     try {
       final scramble1 = generateScramble(event.cubeType);
-      final scramble2 = event.useSameScramble ? scramble1 : generateScramble(event.cubeType);
-      
+      final scramble2 =
+          event.useSameScramble ? scramble1 : generateScramble(event.cubeType);
+
       emit(state.copyWith(
         status: CompeteStatus.ready,
         scrambleLane1: scramble1,
@@ -40,7 +42,8 @@ class CompeteBloc extends Bloc<CompeteEvent, CompeteState> {
     }
   }
 
-  Future<void> _onAddCompeteSolve(AddCompeteSolve event, Emitter<CompeteState> emit) async {
+  Future<void> _onAddCompeteSolve(
+      AddCompeteSolve event, Emitter<CompeteState> emit) async {
     // Solo guardar el solve; la puntuación por ronda se maneja en Start/Stop
     if (event.lane == 1) {
       final updatedLane1 = state.lane1.copyWith(
@@ -100,7 +103,8 @@ class CompeteBloc extends Bloc<CompeteEvent, CompeteState> {
 
     // Check scoring condition: both not running, both have finished time, and not yet scored this round
     final bothStopped = !updated.lane1Running && !updated.lane2Running;
-    final bothHaveTimes = updated.lane1FinishedAtMs != null && updated.lane2FinishedAtMs != null;
+    final bothHaveTimes =
+        updated.lane1FinishedAtMs != null && updated.lane2FinishedAtMs != null;
     if (bothStopped && bothHaveTimes && !updated.roundScored) {
       final t1 = updated.lane1FinishedAtMs!;
       final t2 = updated.lane2FinishedAtMs!;
@@ -129,11 +133,13 @@ class CompeteBloc extends Bloc<CompeteEvent, CompeteState> {
 
       // Generar nuevos scrambles automáticamente después de completar la ronda
       try {
-        final cubeType = updated.cubeType ?? '3x3'; // Usar el tipo de cubo actual o 3x3 por defecto
+        final cubeType = updated.cubeType ??
+            '3x3'; // Usar el tipo de cubo actual o 3x3 por defecto
         final newScramble1 = generateScramble(cubeType);
         final newUseSameScramble = updated.useSameScramble;
-        final newScramble2 = newUseSameScramble ? newScramble1 : generateScramble(cubeType);
-        
+        final newScramble2 =
+            newUseSameScramble ? newScramble1 : generateScramble(cubeType);
+
         updated = updated.copyWith(
           scrambleLane1: newScramble1,
           scrambleLane2: newScramble2,
@@ -146,11 +152,13 @@ class CompeteBloc extends Bloc<CompeteEvent, CompeteState> {
     emit(updated);
   }
 
-  Future<void> _onResetCompete(ResetCompete event, Emitter<CompeteState> emit) async {
+  Future<void> _onResetCompete(
+      ResetCompete event, Emitter<CompeteState> emit) async {
     emit(CompeteState.initial());
   }
 
-  Future<void> _onUpdateLaneTimer(UpdateLaneTimer event, Emitter<CompeteState> emit) async {
+  Future<void> _onUpdateLaneTimer(
+      UpdateLaneTimer event, Emitter<CompeteState> emit) async {
     if (event.lane == 1) {
       final updatedLane1 = state.lane1.copyWith(
         currentTimeMs: event.elapsedMs,
@@ -163,13 +171,15 @@ class CompeteBloc extends Bloc<CompeteEvent, CompeteState> {
       emit(state.copyWith(lane2: updatedLane2));
     }
   }
-  
-  Future<void> _onGenerateCompeteScrambles(GenerateCompeteScrambles event, Emitter<CompeteState> emit) async {
+
+  Future<void> _onGenerateCompeteScrambles(
+      GenerateCompeteScrambles event, Emitter<CompeteState> emit) async {
     try {
       final scramble1 = generateScramble(event.cubeType);
       final useSameScramble = event.useSameScramble ?? state.useSameScramble;
-      final scramble2 = useSameScramble ? scramble1 : generateScramble(event.cubeType);
-      
+      final scramble2 =
+          useSameScramble ? scramble1 : generateScramble(event.cubeType);
+
       emit(state.copyWith(
         scrambleLane1: scramble1,
         scrambleLane2: scramble2,
@@ -179,8 +189,9 @@ class CompeteBloc extends Bloc<CompeteEvent, CompeteState> {
       // Handle error
     }
   }
-  
-  Future<void> _onAwardPoint(AwardPoint event, Emitter<CompeteState> emit) async {
+
+  Future<void> _onAwardPoint(
+      AwardPoint event, Emitter<CompeteState> emit) async {
     if (event.lane == 1) {
       emit(state.copyWith(
         lane1Score: state.lane1Score + 1,

@@ -131,12 +131,12 @@ class CompeteState extends Equatable {
   /// Get the winner based on current times
   String? get currentWinner {
     if (!bothLanesFinished) return null;
-    
+
     final time1 = lane1.currentTimeMs;
     final time2 = lane2.currentTimeMs;
-    
+
     if (time1 == null || time2 == null) return null;
-    
+
     if (time1 < time2) return 'lane1';
     if (time2 < time1) return 'lane2';
     return 'tie';

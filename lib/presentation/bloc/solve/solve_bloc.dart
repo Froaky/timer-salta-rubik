@@ -34,7 +34,14 @@ class SolveBloc extends Bloc<SolveEvent, SolveState> {
   }
 
   Future<void> _onLoadSolves(LoadSolves event, Emitter<SolveState> emit) async {
-    emit(state.copyWith(status: SolveStatus.loading));
+    final isSwitchingSession = state.sessionId != event.sessionId;
+    emit(state.copyWith(
+      status: SolveStatus.loading,
+      sessionId: event.sessionId,
+      solves: isSwitchingSession ? const [] : null,
+      statistics: isSwitchingSession ? null : state.statistics,
+      errorMessage: null,
+    ));
 
     try {
       final params = GetSolvesParams(
@@ -42,14 +49,22 @@ class SolveBloc extends Bloc<SolveEvent, SolveState> {
         limit: event.limit,
         offset: event.offset,
       );
-      
+
       final solves = await getSolves(params);
-      
+
+      if (state.sessionId != event.sessionId) {
+        return;
+      }
+
       emit(state.copyWith(
         status: SolveStatus.loaded,
+        sessionId: event.sessionId,
         solves: solves,
       ));
     } catch (e) {
+      if (state.sessionId != event.sessionId) {
+        return;
+      }
       emit(state.copyWith(
         status: SolveStatus.error,
         errorMessage: e.toString(),
@@ -57,21 +72,18 @@ class SolveBloc extends Bloc<SolveEvent, SolveState> {
     }
   }
 
-  Future<void> _onAddSolve(AddSolveEvent event, Emitter<SolveState> emit) async {
-    print('DEBUG: _onAddSolve called with solve: ${event.solve.id}');
+  Future<void> _onAddSolve(
+      AddSolveEvent event, Emitter<SolveState> emit) async {
     try {
-      print('DEBUG: Calling addSolve usecase');
       await addSolve(event.solve);
-      print('DEBUG: addSolve completed successfully');
-      
+
       // Reload solves and statistics
       add(LoadSolves(sessionId: event.solve.sessionId));
       add(LoadStatistics(event.solve.sessionId));
-      
+
       // Generate new scramble
       add(GenerateNewScramble(event.solve.cubeType));
     } catch (e) {
-      print('DEBUG: Error in _onAddSolve: $e');
       emit(state.copyWith(
         status: SolveStatus.error,
         errorMessage: e.toString(),
@@ -79,7 +91,8 @@ class SolveBloc extends Bloc<SolveEvent, SolveState> {
     }
   }
 
-  Future<void> _onUpdateSolve(UpdateSolveEvent event, Emitter<SolveState> emit) async {
+  Future<void> _onUpdateSolve(
+      UpdateSolveEvent event, Emitter<SolveState> emit) async {
     try {
       await updateSolve(event.solve);
       // Reload solves and statistics after update
@@ -93,11 +106,13 @@ class SolveBloc extends Bloc<SolveEvent, SolveState> {
     }
   }
 
-  Future<void> _onDeleteSolve(DeleteSolveEvent event, Emitter<SolveState> emit) async {
+  Future<void> _onDeleteSolve(
+      DeleteSolveEvent event, Emitter<SolveState> emit) async {
     try {
       await deleteSolve(event.solveId);
       // Determine session to reload
-      final currentSessionId = state.solves.isNotEmpty ? state.solves.first.sessionId : 'default';
+      final currentSessionId = state.sessionId ??
+          (state.solves.isNotEmpty ? state.solves.first.sessionId : 'default');
       add(LoadSolves(sessionId: currentSessionId));
       add(LoadStatistics(currentSessionId));
     } catch (e) {
@@ -108,12 +123,13 @@ class SolveBloc extends Bloc<SolveEvent, SolveState> {
     }
   }
 
-  Future<void> _onGenerateNewScramble(GenerateNewScramble event, Emitter<SolveState> emit) async {
+  Future<void> _onGenerateNewScramble(
+      GenerateNewScramble event, Emitter<SolveState> emit) async {
     emit(state.copyWith(isGeneratingScramble: true));
 
     try {
       final scramble = generateScramble(event.cubeType);
-      
+
       emit(state.copyWith(
         currentScramble: scramble,
         isGeneratingScramble: false,
@@ -127,12 +143,31 @@ class SolveBloc extends Bloc<SolveEvent, SolveState> {
     }
   }
 
-  Future<void> _onLoadStatistics(LoadStatistics event, Emitter<SolveState> emit) async {
+  Future<void> _onLoadStatistics(
+      LoadStatistics event, Emitter<SolveState> emit) async {
+    if (state.sessionId != null && state.sessionId != event.sessionId) {
+      emit(state.copyWith(
+        sessionId: event.sessionId,
+        statistics: null,
+        errorMessage: null,
+      ));
+    }
+
     try {
       final statistics = await getStatistics(event.sessionId);
-      
-      emit(state.copyWith(statistics: statistics));
+
+      if (state.sessionId != null && state.sessionId != event.sessionId) {
+        return;
+      }
+
+      emit(state.copyWith(
+        sessionId: event.sessionId,
+        statistics: statistics,
+      ));
     } catch (e) {
+      if (state.sessionId != null && state.sessionId != event.sessionId) {
+        return;
+      }
       emit(state.copyWith(
         status: SolveStatus.error,
         errorMessage: e.toString(),

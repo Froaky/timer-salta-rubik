@@ -9,6 +9,8 @@ import '../bloc/session/session_event.dart';
 import '../bloc/solve/solve_bloc.dart';
 import '../bloc/solve/solve_event.dart';
 import '../theme/app_theme.dart';
+import 'category_icon.dart';
+
 class SessionSelector extends StatelessWidget {
   const SessionSelector({super.key});
 
@@ -43,7 +45,8 @@ class SessionSelector extends StatelessWidget {
               // Current session dropdown
               Expanded(
                 child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   decoration: BoxDecoration(
                     color: AppTheme.backgroundColor.withValues(alpha: 0.5),
                     borderRadius: BorderRadius.circular(10),
@@ -74,17 +77,13 @@ class SessionSelector extends StatelessWidget {
                           value: session,
                           child: Row(
                             children: [
-                              Container(
-                                padding: const EdgeInsets.all(2),
-                                decoration: BoxDecoration(
-                                  color: AppTheme.accentColor.withValues(alpha: 0.1),
-                                  borderRadius: BorderRadius.circular(4),
-                                ),
-                                child: Icon(
-                                  _getCubeIcon(session.cubeType),
-                                  size: 12,
-                                  color: AppTheme.accentColor,
-                                ),
+                              CategoryIcon(
+                                cubeType: session.cubeType,
+                                size: 18,
+                                backgroundColor:
+                                    Colors.white.withValues(alpha: 0.92),
+                                backgroundPadding: const EdgeInsets.all(3),
+                                backgroundRadius: 6,
                               ),
                               const SizedBox(width: 6),
                               Expanded(
@@ -94,19 +93,25 @@ class SessionSelector extends StatelessWidget {
                                   children: [
                                     Text(
                                       session.name,
-                                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                        color: AppTheme.textPrimary,
-                                        fontWeight: FontWeight.w500,
-                                        fontSize: 12,
-                                      ),
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .bodyMedium
+                                          ?.copyWith(
+                                            color: AppTheme.textPrimary,
+                                            fontWeight: FontWeight.w500,
+                                            fontSize: 12,
+                                          ),
                                       overflow: TextOverflow.ellipsis,
                                     ),
                                     Text(
                                       session.cubeType.toUpperCase(),
-                                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                        color: AppTheme.textSecondary,
-                                        fontSize: 9,
-                                      ),
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .bodySmall
+                                          ?.copyWith(
+                                            color: AppTheme.textSecondary,
+                                            fontSize: 9,
+                                          ),
                                     ),
                                   ],
                                 ),
@@ -117,21 +122,29 @@ class SessionSelector extends StatelessWidget {
                       }).toList(),
                       onChanged: (session) {
                         if (session != null) {
-                          context.read<SessionBloc>().add(SelectSession(session.id));
+                          context
+                              .read<SessionBloc>()
+                              .add(SelectSession(session.id));
                           // Load solves and statistics for the new session
-                          context.read<SolveBloc>().add(LoadSolves(sessionId: session.id));
-                          context.read<SolveBloc>().add(LoadStatistics(session.id));
+                          context
+                              .read<SolveBloc>()
+                              .add(LoadSolves(sessionId: session.id));
+                          context
+                              .read<SolveBloc>()
+                              .add(LoadStatistics(session.id));
                           // Generate scramble for the selected session's category
-                          context.read<SolveBloc>().add(GenerateNewScramble(session.cubeType));
+                          context
+                              .read<SolveBloc>()
+                              .add(GenerateNewScramble(session.cubeType));
                         }
                       },
                     ),
                   ),
                 ),
               ),
-              
+
               const SizedBox(width: 4),
-              
+
               // Add session button
               Container(
                 decoration: BoxDecoration(
@@ -144,10 +157,11 @@ class SessionSelector extends StatelessWidget {
                   tooltip: 'Create new session',
                   color: AppTheme.accentColor,
                   padding: const EdgeInsets.all(4),
-                  constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
+                  constraints:
+                      const BoxConstraints(minWidth: 28, minHeight: 28),
                 ),
               ),
-              
+
               // Session menu
               if (state.currentSession != null) ...[
                 const SizedBox(width: 4),
@@ -163,7 +177,8 @@ class SessionSelector extends StatelessWidget {
                       size: 14,
                     ),
                     padding: const EdgeInsets.all(4),
-                    constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
+                    constraints:
+                        const BoxConstraints(minWidth: 28, minHeight: 28),
                     color: AppTheme.cardColor,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12),
@@ -171,84 +186,65 @@ class SessionSelector extends StatelessWidget {
                     onSelected: (value) {
                       switch (value) {
                         case 'edit':
-                          _showEditSessionDialog(context, state.currentSession!);
+                          _showEditSessionDialog(
+                              context, state.currentSession!);
                           break;
                         case 'delete':
-                          _showDeleteSessionDialog(context, state.currentSession!);
+                          _showDeleteSessionDialog(
+                              context, state.currentSession!);
                           break;
                       }
                     },
                     itemBuilder: (context) => [
-                       PopupMenuItem(
-                         value: 'edit',
-                         child: Row(
-                           children: [
-                             Icon(
-                               Icons.edit_rounded,
-                               color: AppTheme.textSecondary,
-                               size: 18,
-                             ),
-                             const SizedBox(width: 12),
-                             Text(
-                               'Edit Session',
-                               style: TextStyle(
-                                 color: AppTheme.textPrimary,
-                                 fontWeight: FontWeight.w500,
-                               ),
-                             ),
-                           ],
-                         ),
-                       ),
-                       PopupMenuItem(
-                         value: 'delete',
-                         child: Row(
-                           children: [
-                             Icon(
-                               Icons.delete_rounded,
-                               color: AppTheme.errorColor,
-                               size: 18,
-                             ),
-                             const SizedBox(width: 12),
-                             Text(
-                               'Delete Session',
-                               style: TextStyle(
-                                 color: AppTheme.errorColor,
-                                 fontWeight: FontWeight.w500,
-                               ),
-                             ),
-                           ],
-                         ),
-                       ),
-                     ],
-                   ),
-                 ),
-               ],
+                      PopupMenuItem(
+                        value: 'edit',
+                        child: Row(
+                          children: [
+                            Icon(
+                              Icons.edit_rounded,
+                              color: AppTheme.textSecondary,
+                              size: 18,
+                            ),
+                            const SizedBox(width: 12),
+                            Text(
+                              'Edit Session',
+                              style: TextStyle(
+                                color: AppTheme.textPrimary,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      PopupMenuItem(
+                        value: 'delete',
+                        child: Row(
+                          children: [
+                            Icon(
+                              Icons.delete_rounded,
+                              color: AppTheme.errorColor,
+                              size: 18,
+                            ),
+                            const SizedBox(width: 12),
+                            Text(
+                              'Delete Session',
+                              style: TextStyle(
+                                color: AppTheme.errorColor,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
             ],
           ),
         );
       },
     );
-  }
-
-  IconData _getCubeIcon(String cubeType) {
-    switch (cubeType) {
-      case '2x2':
-        return Icons.crop_square;
-      case '3x3':
-        return Icons.view_module;
-      case '4x4':
-        return Icons.grid_4x4;
-      case '5x5':
-        return Icons.grid_view;
-      case 'pyraminx':
-        return Icons.change_history;
-      case 'megaminx':
-        return Icons.hexagon;
-      case 'skewb':
-        return Icons.diamond;
-      default:
-        return Icons.view_module;
-    }
   }
 
   void _showCreateSessionDialog(BuildContext context) {
@@ -331,11 +327,20 @@ class _CreateSessionDialogState extends State<_CreateSessionDialog> {
   final List<String> _cubeTypes = [
     '2x2',
     '3x3',
+    '3x3oh',
+    '3x3bf',
+    '3x3fm',
     '4x4',
+    '4x4bf',
     '5x5',
+    '5x5bf',
+    '6x6',
+    '7x7',
     'pyraminx',
     'megaminx',
     'skewb',
+    'clock',
+    'sq1',
   ];
 
   @override
@@ -422,7 +427,9 @@ class _CreateSessionDialogState extends State<_CreateSessionDialog> {
               context.read<SessionBloc>().add(CreateSessionEvent(session));
               // Scramble will be refreshed by TimerPage listener when the new session becomes current.
               // In case the UI does not switch automatically, also refresh scramble to the chosen category.
-              context.read<SolveBloc>().add(GenerateNewScramble(session.cubeType));
+              context
+                  .read<SolveBloc>()
+                  .add(GenerateNewScramble(session.cubeType));
               Navigator.of(context).pop();
             }
           },
@@ -457,11 +464,20 @@ class _EditSessionDialogState extends State<_EditSessionDialog> {
   final List<String> _cubeTypes = [
     '2x2',
     '3x3',
+    '3x3oh',
+    '3x3bf',
+    '3x3fm',
     '4x4',
+    '4x4bf',
     '5x5',
+    '5x5bf',
+    '6x6',
+    '7x7',
     'pyraminx',
     'megaminx',
     'skewb',
+    'clock',
+    'sq1',
   ];
 
   @override
@@ -548,14 +564,20 @@ class _EditSessionDialogState extends State<_EditSessionDialog> {
                 name: name,
                 cubeType: _selectedCubeType,
               );
-              context.read<SessionBloc>().add(UpdateSessionEvent(updatedSession));
+              context
+                  .read<SessionBloc>()
+                  .add(UpdateSessionEvent(updatedSession));
               // If we are editing the currently selected session and its category changed,
               // update the scramble to reflect the new category.
               final current = context.read<SessionBloc>().state.currentSession;
               if (current != null && current.id == updatedSession.id) {
-                context.read<SolveBloc>().add(GenerateNewScramble(updatedSession.cubeType));
+                context
+                    .read<SolveBloc>()
+                    .add(GenerateNewScramble(updatedSession.cubeType));
                 // Optionally refresh statistics for the session after editing
-                context.read<SolveBloc>().add(LoadStatistics(updatedSession.id));
+                context
+                    .read<SolveBloc>()
+                    .add(LoadStatistics(updatedSession.id));
               }
               Navigator.of(context).pop();
             }

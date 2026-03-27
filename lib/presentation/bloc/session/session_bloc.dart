@@ -28,7 +28,8 @@ class SessionBloc extends Bloc<SessionEvent, SessionState> {
     on<DeleteSessionEvent>(_onDeleteSession);
   }
 
-  Future<void> _onLoadSessions(LoadSessions event, Emitter<SessionState> emit) async {
+  Future<void> _onLoadSessions(
+      LoadSessions event, Emitter<SessionState> emit) async {
     emit(state.copyWith(status: SessionStatus.loading));
 
     try {
@@ -44,7 +45,7 @@ class SessionBloc extends Bloc<SessionEvent, SessionState> {
         ));
         sessions = await getSessions(NoParams());
       }
-      
+
       // Ensure the currentSession exists in the freshly loaded list.
       // If the previously selected session was deleted or doesn't exist, fallback to default or first.
       Session? currentSession;
@@ -58,7 +59,7 @@ class SessionBloc extends Bloc<SessionEvent, SessionState> {
       currentSession ??= sessions.where((s) => s.id == 'default').isNotEmpty
           ? sessions.firstWhere((s) => s.id == 'default')
           : (sessions.isNotEmpty ? sessions.first : null);
-      
+
       emit(state.copyWith(
         status: SessionStatus.loaded,
         sessions: sessions,
@@ -72,7 +73,8 @@ class SessionBloc extends Bloc<SessionEvent, SessionState> {
     }
   }
 
-  Future<void> _onCreateSession(CreateSessionEvent event, Emitter<SessionState> emit) async {
+  Future<void> _onCreateSession(
+      CreateSessionEvent event, Emitter<SessionState> emit) async {
     try {
       await createSession(event.session);
       // After creating, load sessions and set the newly created one as current
@@ -93,16 +95,18 @@ class SessionBloc extends Bloc<SessionEvent, SessionState> {
     }
   }
 
-  Future<void> _onSelectSession(SelectSession event, Emitter<SessionState> emit) async {
+  Future<void> _onSelectSession(
+      SelectSession event, Emitter<SessionState> emit) async {
     final session = state.sessions.firstWhere(
       (s) => s.id == event.sessionId,
       orElse: () => throw Exception('Session not found'),
     );
-    
+
     emit(state.copyWith(currentSession: session));
   }
 
-  Future<void> _onUpdateSession(UpdateSessionEvent event, Emitter<SessionState> emit) async {
+  Future<void> _onUpdateSession(
+      UpdateSessionEvent event, Emitter<SessionState> emit) async {
     try {
       await updateSession(event.session);
       add(const LoadSessions());
@@ -114,7 +118,8 @@ class SessionBloc extends Bloc<SessionEvent, SessionState> {
     }
   }
 
-  Future<void> _onDeleteSession(DeleteSessionEvent event, Emitter<SessionState> emit) async {
+  Future<void> _onDeleteSession(
+      DeleteSessionEvent event, Emitter<SessionState> emit) async {
     try {
       await deleteSession(event.sessionId);
       add(const LoadSessions());

@@ -16,9 +16,17 @@ class LocalDatabase {
 
     return await openDatabase(
       path,
-      version: 1,
+      version: 2,
       onCreate: _onCreate,
+      onUpgrade: _onUpgrade,
     );
+  }
+
+  Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
+    if (oldVersion < 2) {
+      await db
+          .execute('ALTER TABLE solves ADD COLUMN is_synced INTEGER DEFAULT 0');
+    }
   }
 
   Future<void> _onCreate(Database db, int version) async {
@@ -51,6 +59,7 @@ class LocalDatabase {
         cube_type TEXT NOT NULL,
         lane INTEGER,
         created_at INTEGER NOT NULL,
+        is_synced INTEGER DEFAULT 0,
         FOREIGN KEY (session_id) REFERENCES sessions (id) ON DELETE CASCADE
       )
     ''');
@@ -58,14 +67,10 @@ class LocalDatabase {
 
   // Solve operations
   Future<void> insertSolve(Map<String, dynamic> solve) async {
-    print('DEBUG: LocalDatabase.insertSolve called');
-    print('DEBUG: Inserting solve data: $solve');
     final db = await database;
     try {
-      final result = await db.insert('solves', solve);
-      print('DEBUG: Insert successful, row ID: $result');
+      await db.insert('solves', solve);
     } catch (e) {
-      print('DEBUG: Insert failed with error: $e');
       rethrow;
     }
   }
@@ -129,6 +134,24 @@ class LocalDatabase {
       'solves',
       where: 'id = ?',
       whereArgs: [id],
+    );
+  }
+
+  Future<List<Map<String, dynamic>>> getUnsyncedSolves() async {
+    final db = await database;
+    return await db.query(
+      'solves',
+      where: 'is_synced = ?',
+      whereArgs: [0],
+    );
+  }
+
+  Future<void> markSolvesAsSynced(List<String> ids) async {
+    final db = await database;
+    await db.update(
+      'solves',
+      {'is_synced': 1},
+      where: 'id IN (${ids.map((id) => "'$id'").join(',')})',
     );
   }
 
