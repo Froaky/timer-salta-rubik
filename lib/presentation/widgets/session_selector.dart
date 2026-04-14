@@ -313,6 +313,28 @@ class SessionSelector extends StatelessWidget {
   }
 }
 
+Widget _buildCubeTypeMenuItem(BuildContext context, String cubeType) {
+  return Row(
+    children: [
+      CategoryIcon(
+        cubeType: cubeType,
+        size: 18,
+        backgroundColor: Colors.white.withValues(alpha: 0.92),
+        backgroundPadding: const EdgeInsets.all(4),
+        backgroundRadius: 6,
+      ),
+      const SizedBox(width: 8),
+      Expanded(
+        child: Text(
+          cubeType.toUpperCase(),
+          overflow: TextOverflow.ellipsis,
+          style: TextStyle(color: AppTheme.textPrimary),
+        ),
+      ),
+    ],
+  );
+}
+
 class _CreateSessionDialog extends StatefulWidget {
   const _CreateSessionDialog();
 
@@ -380,6 +402,7 @@ class _CreateSessionDialogState extends State<_CreateSessionDialog> {
           const SizedBox(height: 20),
           DropdownButtonFormField<String>(
             value: _selectedCubeType,
+            isExpanded: true,
             decoration: InputDecoration(
               labelText: 'Cube Type',
               labelStyle: TextStyle(color: AppTheme.textSecondary),
@@ -389,12 +412,14 @@ class _CreateSessionDialogState extends State<_CreateSessionDialog> {
             items: _cubeTypes.map((type) {
               return DropdownMenuItem(
                 value: type,
-                child: Text(
-                  type.toUpperCase(),
-                  style: TextStyle(color: AppTheme.textPrimary),
-                ),
+                child: _buildCubeTypeMenuItem(context, type),
               );
             }).toList(),
+            selectedItemBuilder: (context) {
+              return _cubeTypes
+                  .map((type) => _buildCubeTypeMenuItem(context, type))
+                  .toList();
+            },
             onChanged: (value) {
               if (value != null) {
                 setState(() {
@@ -522,6 +547,7 @@ class _EditSessionDialogState extends State<_EditSessionDialog> {
           const SizedBox(height: 20),
           DropdownButtonFormField<String>(
             value: _selectedCubeType,
+            isExpanded: true,
             decoration: InputDecoration(
               labelText: 'Cube Type',
               labelStyle: TextStyle(color: AppTheme.textSecondary),
@@ -531,12 +557,14 @@ class _EditSessionDialogState extends State<_EditSessionDialog> {
             items: _cubeTypes.map((type) {
               return DropdownMenuItem(
                 value: type,
-                child: Text(
-                  type.toUpperCase(),
-                  style: TextStyle(color: AppTheme.textPrimary),
-                ),
+                child: _buildCubeTypeMenuItem(context, type),
               );
             }).toList(),
+            selectedItemBuilder: (context) {
+              return _cubeTypes
+                  .map((type) => _buildCubeTypeMenuItem(context, type))
+                  .toList();
+            },
             onChanged: (value) {
               if (value != null) {
                 setState(() {

@@ -49,6 +49,41 @@ void main() {
       expect(scramble.moves.length, 77);
     });
 
+    test('generates clock scrambles using the fixed WCA-style pattern', () {
+      final scramble = usecase('clock');
+      const turnPattern = r'(UR|DR|DL|UL|U|R|D|L|ALL)[0-6][+-]';
+      final fullPattern = RegExp(
+        '^$turnPattern $turnPattern $turnPattern $turnPattern '
+        '$turnPattern $turnPattern $turnPattern $turnPattern $turnPattern '
+        'y2 '
+        '$turnPattern $turnPattern $turnPattern $turnPattern $turnPattern\$',
+      );
+
+      expect(scramble.cubeType, 'clock');
+      expect(scramble.moves.length, 15);
+      expect(scramble.moves[9], 'y2');
+      expect(fullPattern.hasMatch(scramble.notation), isTrue);
+    });
+
+    test('generates clock scrambles with fixed pin order around y2', () {
+      final scramble = usecase('clock');
+
+      expect(
+        scramble.moves
+            .take(9)
+            .map((move) => move.replaceFirst(RegExp(r'[0-6][+-]$'), ''))
+            .toList(),
+        ['UR', 'DR', 'DL', 'UL', 'U', 'R', 'D', 'L', 'ALL'],
+      );
+      expect(
+        scramble.moves
+            .skip(10)
+            .map((move) => move.replaceFirst(RegExp(r'[0-6][+-]$'), ''))
+            .toList(),
+        ['U', 'R', 'D', 'L', 'ALL'],
+      );
+    });
+
     test('generates square-1 scrambles with ten slash-separated moves', () {
       final scramble = usecase('sq1');
 

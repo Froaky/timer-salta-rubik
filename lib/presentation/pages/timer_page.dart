@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'settings_page.dart';
 import 'auth_page.dart';
 
+import '../../domain/entities/scramble.dart';
 import '../../domain/entities/solve.dart';
 
 import '../bloc/timer/timer_bloc.dart';
@@ -16,6 +17,7 @@ import '../bloc/session/session_event.dart';
 import '../bloc/session/session_bloc.dart';
 import '../theme/app_theme.dart';
 import '../widgets/scramble_display.dart';
+import '../widgets/scramble_preview.dart';
 import '../widgets/statistics_panel.dart';
 import '../widgets/solve_list.dart';
 import '../widgets/session_selector.dart';
@@ -232,6 +234,10 @@ class _TimerPageState extends State<TimerPage> {
                       // Timer Visualization
                       TimerDisplay(
                         timerState: displayTimerState,
+                        previewOverlay: _buildTimerScramblePreview(
+                          context,
+                          solveState.currentScramble,
+                        ),
                         onTapDown: () {
                           if (timerState.status == TimerStatus.idle ||
                               timerState.status == TimerStatus.stopped) {
@@ -288,6 +294,124 @@ class _TimerPageState extends State<TimerPage> {
               },
             );
           },
+        );
+      },
+    );
+  }
+
+  Widget? _buildTimerScramblePreview(BuildContext context, Scramble? scramble) {
+    if (scramble == null || !ScramblePreview.supports(scramble.cubeType)) {
+      return null;
+    }
+
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: () => _showExpandedScramblePreview(context, scramble),
+      child: Container(
+        key: const ValueKey('timer-scramble-preview-trigger'),
+        padding: const EdgeInsets.all(6),
+        decoration: BoxDecoration(
+          color: const Color(0xFF5C5C5C).withValues(alpha: 0.92),
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(
+            color: Colors.white.withValues(alpha: 0.18),
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.2),
+              blurRadius: 12,
+              offset: const Offset(0, 6),
+            ),
+          ],
+        ),
+        child: Stack(
+          children: [
+            ScramblePreview(
+              scramble: scramble,
+              width: 132,
+              height: 102,
+              showLabel: false,
+              padding: EdgeInsets.zero,
+              backgroundColor: Colors.transparent,
+              containerKey: const ValueKey('timer-scramble-preview'),
+              svgKey: const ValueKey('timer-scramble-preview-svg'),
+            ),
+            Positioned(
+              right: 4,
+              bottom: 4,
+              child: Container(
+                padding: const EdgeInsets.all(2),
+                decoration: BoxDecoration(
+                  color: Colors.black.withValues(alpha: 0.25),
+                  borderRadius: BorderRadius.circular(999),
+                ),
+                child: Icon(
+                  Icons.zoom_in_rounded,
+                  size: 14,
+                  color: Colors.white.withValues(alpha: 0.92),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showExpandedScramblePreview(BuildContext context, Scramble scramble) {
+    showDialog<void>(
+      context: context,
+      barrierColor: Colors.black.withValues(alpha: 0.8),
+      builder: (dialogContext) {
+        return Dialog(
+          backgroundColor: Colors.transparent,
+          insetPadding: const EdgeInsets.all(16),
+          child: Center(
+            child: Container(
+              constraints: const BoxConstraints(
+                maxWidth: 460,
+                maxHeight: 420,
+              ),
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: const Color(0xFF5C5C5C),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: Colors.white.withValues(alpha: 0.18),
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.28),
+                    blurRadius: 28,
+                    offset: const Offset(0, 12),
+                  ),
+                ],
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Flexible(
+                    child: InteractiveViewer(
+                      minScale: 1,
+                      maxScale: 4,
+                      child: ScramblePreview(
+                        scramble: scramble,
+                        width: 400,
+                        height: 300,
+                        showLabel: false,
+                        padding: EdgeInsets.zero,
+                        backgroundColor: Colors.transparent,
+                        containerKey:
+                            const ValueKey('expanded-scramble-preview'),
+                        svgKey:
+                            const ValueKey('expanded-scramble-preview-svg'),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
         );
       },
     );

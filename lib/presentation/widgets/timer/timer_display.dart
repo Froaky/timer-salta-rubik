@@ -7,6 +7,7 @@ class TimerDisplay extends StatelessWidget {
   final VoidCallback onTapDown;
   final VoidCallback onTapUp;
   final VoidCallback onTapCancel;
+  final Widget? previewOverlay;
 
   const TimerDisplay({
     super.key,
@@ -14,39 +15,56 @@ class TimerDisplay extends StatelessWidget {
     required this.onTapDown,
     required this.onTapUp,
     required this.onTapCancel,
+    this.previewOverlay,
   });
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTapDown: (_) => onTapDown(),
-      onTapUp: (_) => onTapUp(),
-      onTapCancel: () => onTapCancel(),
-      child: Container(
-        width: double.infinity,
-        height: double.infinity,
-        decoration: BoxDecoration(
-          color: _getBackgroundColor(),
-          borderRadius: BorderRadius.circular(24),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.1),
-              blurRadius: 20,
-              offset: const Offset(0, 8),
-              spreadRadius: 0,
-            ),
-          ],
-        ),
-        child: Center(
-          child: Text(
-            timerState.formattedTime,
-            style: Theme.of(context).textTheme.displayLarge?.copyWith(
-                  color: _getTextColor(),
-                  fontSize: _getTimerFontSize(timerState.formattedTime),
-                  fontWeight: FontWeight.w300,
-                ),
+    return Container(
+      width: double.infinity,
+      height: double.infinity,
+      decoration: BoxDecoration(
+        color: _getBackgroundColor(),
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.1),
+            blurRadius: 20,
+            offset: const Offset(0, 8),
+            spreadRadius: 0,
           ),
-        ),
+        ],
+      ),
+      child: Stack(
+        children: [
+          Positioned.fill(
+            child: GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onTapDown: (_) => onTapDown(),
+              onTapUp: (_) => onTapUp(),
+              onTapCancel: () => onTapCancel(),
+              child: const SizedBox.expand(),
+            ),
+          ),
+          IgnorePointer(
+            child: Center(
+              child: Text(
+                timerState.formattedTime,
+                style: Theme.of(context).textTheme.displayLarge?.copyWith(
+                      color: _getTextColor(),
+                      fontSize: _getTimerFontSize(timerState.formattedTime),
+                      fontWeight: FontWeight.w300,
+                    ),
+              ),
+            ),
+          ),
+          if (previewOverlay != null)
+            Positioned(
+              right: 18,
+              bottom: 18,
+              child: previewOverlay!,
+            ),
+        ],
       ),
     );
   }

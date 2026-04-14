@@ -694,23 +694,14 @@ class GenerateScramble implements UseCaseSync<Scramble, String> {
   /// Genera scramble para Clock (simplificado)
   Scramble _generateClockScramble() {
     final random = Random();
-    final moves = <String>[];
-    final pins = ['UR', 'DR', 'DL', 'UL', 'U', 'R', 'D', 'L', 'ALL'];
-
-    for (var pin in pins) {
-      int val = random.nextInt(12) - 5; // -5 a +6
-      if (val >= 0) {
-        moves.add('$pin${val}+');
-      } else {
-        moves.add('$pin${val.abs()}-');
-      }
-    }
-
-    final notation = moves.join(' ') +
-        (random.nextBool() ? ' UR' : '') +
-        (random.nextBool() ? ' DR' : '') +
-        (random.nextBool() ? ' DL' : '') +
-        (random.nextBool() ? ' UL' : '');
+    const firstPhasePins = ['UR', 'DR', 'DL', 'UL', 'U', 'R', 'D', 'L', 'ALL'];
+    const secondPhasePins = ['U', 'R', 'D', 'L', 'ALL'];
+    final moves = <String>[
+      ...firstPhasePins.map((pin) => _generateClockTurn(pin, random)),
+      'y2',
+      ...secondPhasePins.map((pin) => _generateClockTurn(pin, random)),
+    ];
+    final notation = moves.join(' ');
 
     return Scramble(
       notation: notation,
@@ -718,6 +709,12 @@ class GenerateScramble implements UseCaseSync<Scramble, String> {
       moves: moves,
       generatedAt: DateTime.now(),
     );
+  }
+
+  String _generateClockTurn(String pin, Random random) {
+    final value = random.nextInt(7);
+    final sign = random.nextBool() ? '+' : '-';
+    return '$pin$value$sign';
   }
 
   /// Genera scramble para Square-1 (simplificado)

@@ -166,4 +166,64 @@ void main() {
     expect(find.textContaining('modo competir'), findsOneWidget);
     expect(find.text('Current Averages'), findsNothing);
   });
+
+  testWidgets('renders the small scramble preview inside the timer area',
+      (tester) async {
+    await tester.pumpWidget(
+      buildPage(
+        sessionState: SessionState.initial().copyWith(
+          status: SessionStatus.loaded,
+          sessions: [session],
+          currentSession: session,
+        ),
+        solveState: SolveState.initial().copyWith(
+          status: SolveStatus.loaded,
+          solves: solves,
+          currentScramble: scramble,
+          statistics: statistics,
+        ),
+        timerState: TimerState.initial(),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(
+      find.byKey(const ValueKey('timer-scramble-preview-trigger')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const ValueKey('timer-scramble-preview-svg')),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('tapping the timer scramble preview opens the zoomed dialog',
+      (tester) async {
+    await tester.pumpWidget(
+      buildPage(
+        sessionState: SessionState.initial().copyWith(
+          status: SessionStatus.loaded,
+          sessions: [session],
+          currentSession: session,
+        ),
+        solveState: SolveState.initial().copyWith(
+          status: SolveStatus.loaded,
+          solves: solves,
+          currentScramble: scramble,
+          statistics: statistics,
+        ),
+        timerState: TimerState.initial(),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const ValueKey('timer-scramble-preview-trigger')));
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const ValueKey('expanded-scramble-preview')), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('expanded-scramble-preview-svg')),
+      findsOneWidget,
+    );
+  });
 }
