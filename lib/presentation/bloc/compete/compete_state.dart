@@ -38,6 +38,8 @@ class LaneData extends Equatable {
 }
 
 class CompeteState extends Equatable {
+  static const _unset = Object();
+
   final CompeteStatus status;
   final Scramble? scrambleLane1;
   final Scramble? scrambleLane2;
@@ -95,7 +97,7 @@ class CompeteState extends Equatable {
     Scramble? scrambleLane2,
     LaneData? lane1,
     LaneData? lane2,
-    String? winner,
+    Object? winner = _unset,
     bool? useSameScramble,
     int? lane1Score,
     int? lane2Score,
@@ -112,7 +114,7 @@ class CompeteState extends Equatable {
       scrambleLane2: scrambleLane2 ?? this.scrambleLane2,
       lane1: lane1 ?? this.lane1,
       lane2: lane2 ?? this.lane2,
-      winner: winner ?? this.winner,
+      winner: identical(winner, _unset) ? this.winner : winner as String?,
       useSameScramble: useSameScramble ?? this.useSameScramble,
       lane1Score: lane1Score ?? this.lane1Score,
       lane2Score: lane2Score ?? this.lane2Score,

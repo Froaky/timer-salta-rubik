@@ -1,10 +1,48 @@
--|  Deberia venir por default una sesion.✅
--|  Deberia poder cambiarse el nombre de la sesion.✅
--|  Los +2, DNF NO se estan guardando.✅
--|  Deberia poder filtrar los tiempos por mas alto a mas bajo y viceversa, lo mismo con fecha
--|  Agregar opcion de inspeccion✅
--|  Agregar la opcion de insertar manualmente los tiempos
--|  Al cambiar de sesion deberia actualizar el scram a ese evento✅
--|  Deberia cambiarte a la sesion creada automaticamente✅
--|  Reducir el tiempo de presion para iniciar el tiempo a 200ms✅
--|  Al competir, no deberia dejar entrar al historial
+-| Deberia venir por default una sesion. ✅
+-| Deberia poder cambiarse el nombre de la sesion. ✅
+-| Los +2, DNF NO se estan guardando. ✅
+-| Deberia poder filtrar los tiempos por mas alto a mas bajo y viceversa, lo mismo con fecha
+-| Agregar opcion de inspeccion ✅
+-| Agregar la opcion de insertar manualmente los tiempos
+-| Al cambiar de sesion deberia actualizar el scram a ese evento ✅
+-| Deberia cambiarte a la sesion creada automaticamente ✅
+-| Reducir el tiempo de presion para iniciar el tiempo a 200ms ✅
+-| Al competir, no deberia dejar entrar al historial
+
+Feedback testers -> User Stories para fix
+
+-| US-001 ✅ | Como competidor en modo competencia, quiero que el scramble desaparezca mientras los dos carriles estan ejecutando el solve, para no confundirme si uno termina antes que el otro y evitar releer un scramble viejo durante una ronda activa. [done]
+-| US-002 ✅ | Como competidor en modo competencia, quiero que al terminar ambos carriles aparezca recien el siguiente scramble, para que el cambio visual quede sincronizado con el cierre real de la ronda. [done]
+-| US-003 ✅ | Como usuario que revisa una sesion, quiero un boton para eliminar todos los tiempos de la sesion actual de una sola vez, para no tener que borrar solve por solve manualmente. [done]
+-| US-004 ✅ | Como usuario, quiero poder tocar el nombre o header principal de Salta Rubik para volver al inicio, para tener una forma obvia y consistente de navegar a la pantalla principal. [done]
+DISCLAIMER DEL DESARROLLADOR: Agregar algun tipo de navegacion como getx o alguno que aplique una navegacion intuitiva para el usuario.
+-| US-005 ✅ | Como usuario que abre la vista previa visual del scramble, quiero poder cerrarla tocando fuera del panel o en cualquier sector permitido de la pantalla, para no depender unicamente del boton atras del celular. [done]
+-| US-006 ✅ | Como competidor en modo versus, quiero que un empate no sume punto para ningun carril, para que el marcador refleje correctamente que no hubo ganador. [done]
+DISCLAIMER DEL DESARROLLADOR: Implementar logica para manejar empates en modo versus. Actualmente solo necesitamos que se tomen los valores de horas, minutos, segundos y de centesimas o milesimas solo debe tomar los primeros dos digitos que se muestran en pantalla. Si por ejemplo tengo un 7.000 y un 7.001, por mas que en back exista una milesima mas adelante, tecnicamente es empate con esa logica.
+-| US-007 ✅ | Como usuario durante la resolucion del timer, quiero que toda la pantalla funcione como superficie segura para detener el tiempo o que el panel activo cubra toda la pantalla, para evitar toques accidentales en otros controles al finalizar un solve. [done]
+DISCLAIMER DEL DESARROLLADOR: Hagamos una pequena animacion de zoom al empezar el timer asi todo el panel del timer cubre la pantalla y luego un zoom out cuando termine, asi se ve smooth.
+-| US-008 ✅ | Como usuario que abre el selector o dropdown de sesion, quiero que tocar "mi sesion" no regenere el scramble, para que el scramble solo cambie cuando corresponda y no por interactuar con controles de navegacion. [done]
+-| US-009 ✅ | Como usuario de 3x3, quiero que la imagen previa del scramble represente correctamente el estado del cubo, para poder confiar en la referencia visual antes de empezar el solve. [done]
+DISCLAIMER DEL DESARROLLADOR: La imagen de la mezcla en cubos NxN deberia ser representada como si el cubo arrancara con la cara blanca arriba y verde en frente, para hacer la mezcla y en funcion a eso deberia estar hecha la imagen.
+-| US-010 ✅ | Como usuario que esta viendo la imagen del scramble, quiero que el boton atras cierre primero esa vista o pida confirmacion antes de salir de la app, para no cerrar la aplicacion por error cuando solo quiero salir del modal o preview actual. [done]
+
+Feedback adicional -> Fixes nuevos
+
+-| FIX-011 ✅ | Como usuario del timer principal, quiero que el scramble vuelva a mostrarse arriba del timer como antes, para mantener la jerarquia visual correcta de la pantalla inicial. [done]
+-| FIX-012 ✅ | Como usuario que hace zoom sobre la mezcla visual de las 6 caras, quiero que la preview se vea completa y adaptada al alto y ancho disponibles, para que ninguna cara quede cortada en pantalla. [done]
+-| FIX-013 ✅ | Como competidor, quiero que al detener un timer en modo competencia el tiempo quede congelado de forma inmediata y aislada de cualquier otra actualizacion, para que la generacion o refresco del scramble no agregue milisegundos al tiempo final registrado. [done]
+-| FIX-014 ✅ | Como usuario del timer principal, quiero que al mantener presionado el tiempo requerido y soltar la pantalla el timer empiece inmediatamente en el primer intento, para no tener que tocar una segunda vez despues de la animacion o expansion visual. [done]
+-| FIX-015 ✅ | Como speedcuber, quiero que al tocar para detener el timer el tiempo se congele exactamente en ese instante sin sumar ni media centesima por animaciones, rebuilds, scrambles o cualquier otro proceso, para que el tiempo final registrado sea fiel al toque real de stop. [done]
+
+Play Store launch checklist
+
+-| PS-001 | Definir `applicationId` final, nombre publico de la app y estrategia de versionado (`versionName` / `versionCode`) antes del primer release.
+-| PS-002 | Crear y resguardar keystore/upload key de release y dejar documentado donde se guarda fuera del repo.
+-| PS-003 | Generar Android App Bundle de release (`.aab`) firmado y validar que instale/actualice correctamente.
+-| PS-004 | Revisar manifest, permisos, textos y comportamiento de release para que no queden flags/debug logs/credenciales de desarrollo.
+-| PS-005 | Preparar Privacy Policy publica y enlazarla tanto en la app como en Play Console.
+-| PS-006 | Completar Data safety en Play Console segun lo que realmente usa la app hoy (local DB, Firebase/Auth, etc.).
+-| PS-007 | Definir icono final, screenshots de phone, descripcion corta/larga, categoria, email de soporte y assets de store listing.
+-| PS-008 | Hacer smoke test de release en dispositivos reales: timer, sesiones, historial, scrambles, clock, compete mode y auth.
+-| PS-009 | Crear track de testing interno/cerrado y probar instalacion, actualizacion y rollback basico desde Play.
+-| PS-010 | Revisar politicas activas de Google Play antes de subir: contenido, privacidad, cuenta de developer, declaraciones de app y formularios obligatorios.

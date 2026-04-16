@@ -137,6 +137,15 @@ class LocalDatabase {
     );
   }
 
+  Future<void> deleteSolvesBySession(String sessionId) async {
+    final db = await database;
+    await db.delete(
+      'solves',
+      where: 'session_id = ?',
+      whereArgs: [sessionId],
+    );
+  }
+
   Future<List<Map<String, dynamic>>> getUnsyncedSolves() async {
     final db = await database;
     return await db.query(

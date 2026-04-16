@@ -122,20 +122,18 @@ class SessionSelector extends StatelessWidget {
                       }).toList(),
                       onChanged: (session) {
                         if (session != null) {
+                          final currentSession = state.currentSession;
+                          final isSameSession = currentSession != null &&
+                              currentSession.id == session.id &&
+                              currentSession.cubeType == session.cubeType;
+
+                          if (isSameSession) {
+                            return;
+                          }
+
                           context
                               .read<SessionBloc>()
                               .add(SelectSession(session.id));
-                          // Load solves and statistics for the new session
-                          context
-                              .read<SolveBloc>()
-                              .add(LoadSolves(sessionId: session.id));
-                          context
-                              .read<SolveBloc>()
-                              .add(LoadStatistics(session.id));
-                          // Generate scramble for the selected session's category
-                          context
-                              .read<SolveBloc>()
-                              .add(GenerateNewScramble(session.cubeType));
                         }
                       },
                     ),

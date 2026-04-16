@@ -12,4 +12,5 @@ abstract class SolveRepository {
   Future<Statistics> getStatistics(String sessionId);
   Future<void> updateSolve(Solve solve);
   Future<void> deleteSolve(String id);
+  Future<void> deleteSolvesBySession(String sessionId);
 }

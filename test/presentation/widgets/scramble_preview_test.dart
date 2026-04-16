@@ -26,8 +26,18 @@ void main() {
     expect(find.byKey(const ValueKey('scramble-preview-svg')), findsOneWidget);
   });
 
-  testWidgets('renders preview for clock scrambles',
+  testWidgets('rotates the back face in cube previews for correct orientation',
       (tester) async {
+    await tester.pumpWidget(buildPreview('3x3', 'R U2 F B'));
+    await tester.pump();
+
+    expect(
+      find.byKey(const ValueKey('scramble-preview-back-face')),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('renders preview for clock scrambles', (tester) async {
     await tester.pumpWidget(buildPreview('clock', 'UR4+ DR3- y2 U1+'));
     await tester.pump();
 
@@ -35,8 +45,7 @@ void main() {
     expect(find.byKey(const ValueKey('scramble-preview-svg')), findsOneWidget);
   });
 
-  testWidgets('renders preview for pyraminx scrambles',
-      (tester) async {
+  testWidgets('renders preview for pyraminx scrambles', (tester) async {
     await tester.pumpWidget(buildPreview('pyraminx', "R' U L' r b u'"));
     await tester.pump();
 

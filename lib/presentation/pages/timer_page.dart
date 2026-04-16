@@ -38,6 +38,7 @@ class _TimerPageState extends State<TimerPage> {
   String? _lastSessionId;
   String? _lastCubeType;
   int? _latchedStopElapsedMs;
+  int? _lastDisplayedElapsedMs;
 
   @override
   void initState() {
@@ -80,7 +81,15 @@ class _TimerPageState extends State<TimerPage> {
         },
         child: Scaffold(
           appBar: AppBar(
-            title: const Text('Salta Rubik'),
+            title: InkWell(
+              key: const ValueKey('home-title-button'),
+              borderRadius: BorderRadius.circular(8),
+              onTap: _goToHomeView,
+              child: const Padding(
+                padding: EdgeInsets.symmetric(vertical: 6),
+                child: Text('Salta Rubik'),
+              ),
+            ),
             backgroundColor: AppTheme.primaryColor,
             actions: [
               IconButton(
@@ -158,25 +167,28 @@ class _TimerPageState extends State<TimerPage> {
               ),
             ],
           ),
-          body: Column(
-            children: [
-              // Session selector
-              const SessionSelector(),
+          body: BlocBuilder<TimerBloc, TimerState>(
+            builder: (context, timerState) {
+              final isTimerImmersive = _isTimerImmersive(timerState);
 
-              // Main content
-              Expanded(
-                child: _showStatistics
-                    ? const StatisticsPanel()
-                    : _showSolveList
-                        ? const SolveList()
-                        : _buildTimerView(),
-              ),
-            ],
+              return Column(
+                children: [
+                  if (!isTimerImmersive) const SessionSelector(),
+                  Expanded(
+                    child: _showStatistics
+                        ? const StatisticsPanel()
+                        : _showSolveList
+                            ? const SolveList()
+                            : _buildTimerView(isImmersive: isTimerImmersive),
+                  ),
+                ],
+              );
+            },
           ),
         ));
   }
 
-  Widget _buildTimerView() {
+  Widget _buildTimerView({required bool isImmersive}) {
     return BlocListener<TimerBloc, TimerState>(
       listener: (context, timerState) {
         if (timerState.status != TimerStatus.running &&
@@ -184,6 +196,10 @@ class _TimerPageState extends State<TimerPage> {
           setState(() {
             _latchedStopElapsedMs = null;
           });
+        }
+
+        if (timerState.status != TimerStatus.running) {
+          _lastDisplayedElapsedMs = null;
         }
 
         // When timer stops, save the solve and generate new scramble
@@ -199,95 +215,65 @@ class _TimerPageState extends State<TimerPage> {
       },
       child: Column(
         children: [
-          // Scramble display
-          const Expanded(
-            flex: 2,
-            child: ScrambleDisplay(),
-          ),
-
-          // Timer display with overlaid controls
+          if (!isImmersive) const ScrambleDisplay(),
           Expanded(
-            flex: 5,
-            child: _buildTimerWithControls(),
+            flex: 1,
+            child: AnimatedScale(
+              duration: const Duration(milliseconds: 220),
+              curve: Curves.easeOutCubic,
+              scale: isImmersive ? 1.02 : 1,
+              child: _buildTimerWithControls(isImmersive: isImmersive),
+            ),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildTimerWithControls() {
+  Widget _buildTimerWithControls({required bool isImmersive}) {
     return BlocBuilder<TimerBloc, TimerState>(
       builder: (context, timerState) {
         return BlocBuilder<SessionBloc, SessionState>(
           builder: (context, sessionState) {
             return BlocBuilder<SolveBloc, SolveState>(
               builder: (context, solveState) {
-                final displayTimerState = _latchedStopElapsedMs != null &&
-                        timerState.status == TimerStatus.running
-                    ? timerState.copyWith(elapsedMs: _latchedStopElapsedMs)
-                    : timerState;
-
-                return Container(
-                  margin: const EdgeInsets.all(16),
+                return AnimatedContainer(
+                  duration: const Duration(milliseconds: 220),
+                  curve: Curves.easeOutCubic,
+                  margin: EdgeInsets.all(isImmersive ? 0 : 16),
                   child: Stack(
                     children: [
-                      // Timer Visualization
                       TimerDisplay(
-                        timerState: displayTimerState,
-                        previewOverlay: _buildTimerScramblePreview(
-                          context,
-                          solveState.currentScramble,
-                        ),
-                        onTapDown: () {
-                          if (timerState.status == TimerStatus.idle ||
-                              timerState.status == TimerStatus.stopped) {
-                            context.read<TimerBloc>().add(TimerStartHold());
-                          } else if (timerState.status == TimerStatus.running) {
-                            final stoppedAt = DateTime.now();
-                            final startTime = timerState.startTime;
-                            if (startTime != null) {
-                              setState(() {
-                                _latchedStopElapsedMs = stoppedAt
-                                    .difference(startTime)
-                                    .inMilliseconds;
-                              });
+                        timerState: timerState,
+                        onDisplayedElapsedChanged: (elapsedMs) {
+                          _lastDisplayedElapsedMs = elapsedMs;
+                        },
+                        frozenElapsedMs: _latchedStopElapsedMs,
+                        immersiveMode: isImmersive,
+                        previewOverlay: isImmersive
+                            ? null
+                            : _buildTimerScramblePreview(
+                                context,
+                                solveState.currentScramble,
+                              ),
+                        onTapDown: _handleTimerTapDown,
+                        onTapUp: _handleTimerTapUp,
+                        onTapCancel: _handleTimerTapCancel,
+                      ),
+                      if (!isImmersive)
+                        TimerActions(
+                          status: timerState.status,
+                          isGeneratingScramble: solveState.isGeneratingScramble,
+                          onReset: () =>
+                              context.read<TimerBloc>().add(TimerReset()),
+                          onScramble: () {
+                            final currentSession = sessionState.currentSession;
+                            if (currentSession != null) {
+                              context.read<SolveBloc>().add(
+                                  GenerateNewScramble(currentSession.cubeType));
                             }
-                            context.read<TimerBloc>().add(
-                                  TimerStop(stoppedAt: stoppedAt),
-                                );
-                          } else if (timerState.status ==
-                              TimerStatus.inspection) {
-                            context.read<TimerBloc>().add(TimerStopHold());
-                          }
-                        },
-                        onTapUp: () {
-                          if (timerState.status == TimerStatus.holdPending ||
-                              timerState.status == TimerStatus.armed) {
-                            context.read<TimerBloc>().add(TimerStopHold());
-                          }
-                        },
-                        onTapCancel: () {
-                          if (timerState.status == TimerStatus.holdPending ||
-                              timerState.status == TimerStatus.armed) {
-                            context.read<TimerBloc>().add(TimerStopHold());
-                          }
-                        },
-                      ),
-
-                      // Floating action buttons
-                      TimerActions(
-                        status: timerState.status,
-                        isGeneratingScramble: solveState.isGeneratingScramble,
-                        onReset: () =>
-                            context.read<TimerBloc>().add(TimerReset()),
-                        onScramble: () {
-                          final currentSession = sessionState.currentSession;
-                          if (currentSession != null) {
-                            context.read<SolveBloc>().add(
-                                GenerateNewScramble(currentSession.cubeType));
-                          }
-                        },
-                      ),
+                          },
+                        ),
                     ],
                   ),
                 );
@@ -297,6 +283,70 @@ class _TimerPageState extends State<TimerPage> {
         );
       },
     );
+  }
+
+  bool _isTimerImmersive(TimerState timerState) {
+    if (_showStatistics || _showSolveList) {
+      return false;
+    }
+
+    switch (timerState.status) {
+      case TimerStatus.inspection:
+      case TimerStatus.running:
+        return true;
+      case TimerStatus.holdPending:
+      case TimerStatus.armed:
+      case TimerStatus.idle:
+      case TimerStatus.stopped:
+        return false;
+    }
+  }
+
+  void _handleTimerTapDown() {
+    final timerBloc = context.read<TimerBloc>();
+    final timerState = timerBloc.state;
+
+    if (timerState.status == TimerStatus.idle ||
+        timerState.status == TimerStatus.stopped) {
+      timerBloc.add(TimerStartHold());
+      return;
+    }
+
+    if (timerState.status == TimerStatus.running) {
+      final stoppedAt = DateTime.now();
+      final displayedElapsedMs =
+          _lastDisplayedElapsedMs ?? timerState.elapsedMs;
+      setState(() {
+        _latchedStopElapsedMs = displayedElapsedMs;
+      });
+      timerBloc.add(
+        TimerStop(
+          stoppedAt: stoppedAt,
+          elapsedMsOverride: displayedElapsedMs,
+        ),
+      );
+      return;
+    }
+
+    if (timerState.status == TimerStatus.inspection) {
+      timerBloc.add(TimerStopHold());
+    }
+  }
+
+  void _handleTimerTapUp() {
+    final timerState = context.read<TimerBloc>().state;
+    if (timerState.status == TimerStatus.holdPending ||
+        timerState.status == TimerStatus.armed) {
+      context.read<TimerBloc>().add(TimerStopHold());
+    }
+  }
+
+  void _handleTimerTapCancel() {
+    final timerState = context.read<TimerBloc>().state;
+    if (timerState.status == TimerStatus.holdPending ||
+        timerState.status == TimerStatus.armed) {
+      context.read<TimerBloc>().add(TimerStopHold());
+    }
   }
 
   Widget? _buildTimerScramblePreview(BuildContext context, Scramble? scramble) {
@@ -359,62 +409,117 @@ class _TimerPageState extends State<TimerPage> {
   }
 
   void _showExpandedScramblePreview(BuildContext context, Scramble scramble) {
+    final screenSize = MediaQuery.of(context).size;
+
     showDialog<void>(
       context: context,
+      barrierDismissible: true,
       barrierColor: Colors.black.withValues(alpha: 0.8),
       builder: (dialogContext) {
-        return Dialog(
-          backgroundColor: Colors.transparent,
-          insetPadding: const EdgeInsets.all(16),
-          child: Center(
-            child: Container(
-              constraints: const BoxConstraints(
-                maxWidth: 460,
-                maxHeight: 420,
-              ),
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: const Color(0xFF5C5C5C),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(
-                  color: Colors.white.withValues(alpha: 0.18),
-                ),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.28),
-                    blurRadius: 28,
-                    offset: const Offset(0, 12),
-                  ),
-                ],
-              ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Flexible(
-                    child: InteractiveViewer(
-                      minScale: 1,
-                      maxScale: 4,
-                      child: ScramblePreview(
-                        scramble: scramble,
-                        width: 400,
-                        height: 300,
-                        showLabel: false,
-                        padding: EdgeInsets.zero,
-                        backgroundColor: Colors.transparent,
-                        containerKey:
-                            const ValueKey('expanded-scramble-preview'),
-                        svgKey:
-                            const ValueKey('expanded-scramble-preview-svg'),
+        return PopScope(
+          canPop: true,
+          child: GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTap: () => Navigator.of(dialogContext).pop(),
+            child: Material(
+              color: Colors.transparent,
+              child: Center(
+                child: GestureDetector(
+                  onTap: () {},
+                  child: Container(
+                    constraints: BoxConstraints(
+                      maxWidth: (screenSize.width - 32).clamp(0, 520),
+                      maxHeight: screenSize.height * 0.82,
+                    ),
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF5C5C5C),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: Colors.white.withValues(alpha: 0.18),
                       ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.28),
+                          blurRadius: 28,
+                          offset: const Offset(0, 12),
+                        ),
+                      ],
+                    ),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Align(
+                          alignment: Alignment.topRight,
+                          child: IconButton(
+                            key: const ValueKey(
+                                'expanded-scramble-preview-close'),
+                            visualDensity: VisualDensity.compact,
+                            icon: const Icon(Icons.close_rounded),
+                            color: Colors.white.withValues(alpha: 0.92),
+                            tooltip: 'Close scramble preview',
+                            onPressed: () => Navigator.of(dialogContext).pop(),
+                          ),
+                        ),
+                        Flexible(
+                          child: LayoutBuilder(
+                            builder: (context, constraints) {
+                              final previewWidth = constraints.maxWidth.isFinite
+                                  ? constraints.maxWidth
+                                  : screenSize.width - 32;
+                              final previewHeight =
+                                  constraints.maxHeight.isFinite
+                                      ? constraints.maxHeight
+                                      : screenSize.height * 0.6;
+
+                              return InteractiveViewer(
+                                minScale: 1,
+                                maxScale: 4,
+                                child: SizedBox(
+                                  width: previewWidth,
+                                  height: previewHeight,
+                                  child: FittedBox(
+                                    fit: BoxFit.contain,
+                                    child: ScramblePreview(
+                                      scramble: scramble,
+                                      width: 400,
+                                      height: 300,
+                                      showLabel: false,
+                                      padding: EdgeInsets.zero,
+                                      backgroundColor: Colors.transparent,
+                                      containerKey: const ValueKey(
+                                          'expanded-scramble-preview'),
+                                      svgKey: const ValueKey(
+                                          'expanded-scramble-preview-svg'),
+                                    ),
+                                  ),
+                                ),
+                              );
+                            },
+                          ),
+                        ),
+                      ],
                     ),
                   ),
-                ],
+                ),
               ),
             ),
           ),
         );
       },
     );
+  }
+
+  void _goToHomeView() {
+    final navigator = Navigator.of(context);
+    if (navigator.canPop()) {
+      navigator.popUntil((route) => route.isFirst);
+    }
+
+    setState(() {
+      _showStatistics = false;
+      _showSolveList = false;
+    });
   }
 
   void _saveSolve(int timeMs) {

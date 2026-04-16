@@ -13,6 +13,7 @@ import 'domain/usecases/get_solves.dart';
 import 'domain/usecases/get_statistics.dart';
 import 'domain/usecases/update_solve.dart';
 import 'domain/usecases/delete_solve.dart';
+import 'domain/usecases/delete_solves_by_session.dart';
 import 'domain/usecases/create_session.dart';
 import 'domain/usecases/get_sessions.dart';
 import 'domain/usecases/update_session.dart';
@@ -56,6 +57,7 @@ Future<void> configureDependencies() async {
   sl.registerLazySingleton(() => GetStatistics(sl()));
   sl.registerLazySingleton(() => UpdateSolve(sl()));
   sl.registerLazySingleton(() => DeleteSolve(sl()));
+  sl.registerLazySingleton(() => DeleteSolvesBySession(sl()));
   sl.registerLazySingleton(() => CreateSession(sl()));
   sl.registerLazySingleton(() => GetSessions(sl()));
   sl.registerLazySingleton(() => UpdateSession(sl()));
@@ -71,6 +73,7 @@ Future<void> configureDependencies() async {
         generateScramble: sl(),
         updateSolve: sl(),
         deleteSolve: sl(),
+        deleteSolvesBySession: sl(),
       ));
   sl.registerFactory(() => SessionBloc(
         createSession: sl(),

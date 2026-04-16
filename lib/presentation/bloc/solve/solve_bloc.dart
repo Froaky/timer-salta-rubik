@@ -6,6 +6,7 @@ import '../../../domain/usecases/get_statistics.dart';
 import '../../../domain/usecases/generate_scramble.dart';
 import '../../../domain/usecases/update_solve.dart';
 import '../../../domain/usecases/delete_solve.dart';
+import '../../../domain/usecases/delete_solves_by_session.dart';
 import 'solve_event.dart';
 import 'solve_state.dart';
 
@@ -16,6 +17,7 @@ class SolveBloc extends Bloc<SolveEvent, SolveState> {
   final GenerateScramble generateScramble;
   final UpdateSolve updateSolve;
   final DeleteSolve deleteSolve;
+  final DeleteSolvesBySession deleteSolvesBySession;
 
   SolveBloc({
     required this.addSolve,
@@ -24,11 +26,13 @@ class SolveBloc extends Bloc<SolveEvent, SolveState> {
     required this.generateScramble,
     required this.updateSolve,
     required this.deleteSolve,
+    required this.deleteSolvesBySession,
   }) : super(SolveState.initial()) {
     on<LoadSolves>(_onLoadSolves);
     on<AddSolveEvent>(_onAddSolve);
     on<UpdateSolveEvent>(_onUpdateSolve);
     on<DeleteSolveEvent>(_onDeleteSolve);
+    on<DeleteSessionSolvesEvent>(_onDeleteSessionSolves);
     on<GenerateNewScramble>(_onGenerateNewScramble);
     on<LoadStatistics>(_onLoadStatistics);
   }
@@ -115,6 +119,20 @@ class SolveBloc extends Bloc<SolveEvent, SolveState> {
           (state.solves.isNotEmpty ? state.solves.first.sessionId : 'default');
       add(LoadSolves(sessionId: currentSessionId));
       add(LoadStatistics(currentSessionId));
+    } catch (e) {
+      emit(state.copyWith(
+        status: SolveStatus.error,
+        errorMessage: e.toString(),
+      ));
+    }
+  }
+
+  Future<void> _onDeleteSessionSolves(
+      DeleteSessionSolvesEvent event, Emitter<SolveState> emit) async {
+    try {
+      await deleteSolvesBySession(event.sessionId);
+      add(LoadSolves(sessionId: event.sessionId));
+      add(LoadStatistics(event.sessionId));
     } catch (e) {
       emit(state.copyWith(
         status: SolveStatus.error,

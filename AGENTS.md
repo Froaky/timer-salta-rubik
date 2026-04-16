@@ -14,6 +14,7 @@
 ## Working rules
 
 - Understand the target feature area before editing code.
+- Treat `CONTEXT.md` as the shared working memory for the repo. Read it at the start of non-trivial tasks and update it at the end whenever you learn something durable, close work, discover risks, add conventions, or identify the next critical starting point.
 - Preserve the current layer boundaries unless the task explicitly asks for architectural change.
 - Keep domain entities and use cases free of Flutter and UI dependencies.
 - Put persistence details in `data/`, app rules in `domain/`, and UI orchestration in `presentation/`.
@@ -40,6 +41,22 @@
 - Run `flutter test`.
 - Run `flutter pub get` when dependencies or assets change.
 - If a completed task maps to an item in `lib/TODO.TXT`, update that backlog note.
+- If the task changed project understanding in a way that would help the next agent start faster, update `CONTEXT.md` in the relevant section and append a short dated entry to the context journal.
+
+## Context maintenance
+
+- `CONTEXT.md` is not optional documentation; it is the handoff file for future agents.
+- Update `CONTEXT.md` after any substantial task, even if code was not changed, when you learned something durable about architecture, flows, bugs, constraints, validation, or next steps.
+- Keep additions high-signal and durable. Do not dump noisy command logs or temporary thoughts.
+- Prefer updating the most relevant existing section over creating scattered notes.
+- Always append a concise entry to the context journal with:
+  - date,
+  - what changed or was learned,
+  - affected files,
+  - validation result,
+  - next recommended step if work remains.
+- When you discover a critical invariant or "do not break this" behavior, add it to the guardrails section in `CONTEXT.md`.
+- When you close or add backlog items, reflect the important meaning of that work in `CONTEXT.md`, not just in `lib/TODO.TXT`.
 
 ## Suggested skills
 

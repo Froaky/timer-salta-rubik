@@ -186,4 +186,24 @@ void main() {
     expect(scrambleText.overflow, isNull);
     expect(scrambleText.style?.color, Colors.black87);
   });
+
+  testWidgets('hides scrambles while a competition round is in progress',
+      (tester) async {
+    await tester.pumpWidget(
+      buildPage(
+        sessionState: buildSessionState(),
+        competeState: buildReadyState(
+          cubeType: '3x3',
+          lane1Notation: shortScramble.notation,
+          lane2Notation: shortScramble.notation,
+        ).copyWith(
+          status: CompeteStatus.inProgress,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const ValueKey('compete-lane-1-scramble')), findsNothing);
+    expect(find.byKey(const ValueKey('compete-lane-2-scramble')), findsNothing);
+  });
 }

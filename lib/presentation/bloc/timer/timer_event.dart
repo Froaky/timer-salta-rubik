@@ -25,11 +25,12 @@ class TimerStart extends TimerEvent {
 
 class TimerStop extends TimerEvent {
   final DateTime? stoppedAt;
+  final int? elapsedMsOverride;
 
-  const TimerStop({this.stoppedAt});
+  const TimerStop({this.stoppedAt, this.elapsedMsOverride});
 
   @override
-  List<Object?> get props => [stoppedAt];
+  List<Object?> get props => [stoppedAt, elapsedMsOverride];
 }
 
 class TimerReset extends TimerEvent {

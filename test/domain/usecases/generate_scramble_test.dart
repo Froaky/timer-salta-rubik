@@ -84,6 +84,25 @@ void main() {
       );
     });
 
+    test('generates clock scrambles with 6 always positive', () {
+      var sawPositiveSix = false;
+
+      for (var i = 0; i < 50; i++) {
+        final scramble = usecase('clock');
+
+        expect(
+          scramble.moves.where((move) => move != 'y2'),
+          isNot(contains(endsWith('6-'))),
+        );
+
+        if (scramble.moves.any((move) => move.endsWith('6+'))) {
+          sawPositiveSix = true;
+        }
+      }
+
+      expect(sawPositiveSix, isTrue);
+    });
+
     test('generates square-1 scrambles with ten slash-separated moves', () {
       final scramble = usecase('sq1');
 

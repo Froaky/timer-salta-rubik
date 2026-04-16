@@ -14,6 +14,7 @@ abstract class SolveLocalDataSource {
   Future<Statistics> getStatistics(String sessionId);
   Future<void> updateSolve(SolveModel solve);
   Future<void> deleteSolve(String id);
+  Future<void> deleteSolvesBySession(String sessionId);
 }
 
 class SolveLocalDataSourceImpl implements SolveLocalDataSource {
@@ -62,5 +63,10 @@ class SolveLocalDataSourceImpl implements SolveLocalDataSource {
   @override
   Future<void> deleteSolve(String id) async {
     await localDatabase.deleteSolve(id);
+  }
+
+  @override
+  Future<void> deleteSolvesBySession(String sessionId) async {
+    await localDatabase.deleteSolvesBySession(sessionId);
   }
 }

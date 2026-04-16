@@ -10,8 +10,10 @@ import 'package:salta_rubik/presentation/bloc/solve/solve_bloc.dart';
 import 'package:salta_rubik/presentation/bloc/solve/solve_event.dart';
 import 'package:salta_rubik/presentation/bloc/solve/solve_state.dart';
 import 'package:salta_rubik/presentation/bloc/timer/timer_bloc.dart';
+import 'package:salta_rubik/presentation/bloc/timer/timer_event.dart';
 import 'package:salta_rubik/presentation/bloc/timer/timer_state.dart';
 import 'package:salta_rubik/presentation/pages/timer_page.dart';
+import 'package:salta_rubik/presentation/widgets/timer/timer_display.dart';
 
 import '../../support/test_helpers.dart';
 
@@ -197,6 +199,35 @@ void main() {
     );
   });
 
+  testWidgets('renders a compact scramble card above the timer',
+      (tester) async {
+    await tester.pumpWidget(
+      buildPage(
+        sessionState: SessionState.initial().copyWith(
+          status: SessionStatus.loaded,
+          sessions: [session],
+          currentSession: session,
+        ),
+        solveState: SolveState.initial().copyWith(
+          status: SolveStatus.loaded,
+          solves: solves,
+          currentScramble: buildScramble(
+            notation: "R U R' U'",
+            cubeType: '2x2',
+          ),
+          statistics: statistics,
+        ),
+        timerState: TimerState.initial(),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final scrambleCardHeight =
+        tester.getSize(find.byKey(const ValueKey('main-scramble-card'))).height;
+
+    expect(scrambleCardHeight, lessThan(140));
+  });
+
   testWidgets('tapping the timer scramble preview opens the zoomed dialog',
       (tester) async {
     await tester.pumpWidget(
@@ -217,13 +248,181 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    await tester.tap(find.byKey(const ValueKey('timer-scramble-preview-trigger')));
+    await tester
+        .tap(find.byKey(const ValueKey('timer-scramble-preview-trigger')));
     await tester.pumpAndSettle();
 
-    expect(find.byKey(const ValueKey('expanded-scramble-preview')), findsOneWidget);
+    expect(find.byKey(const ValueKey('expanded-scramble-preview')),
+        findsOneWidget);
     expect(
       find.byKey(const ValueKey('expanded-scramble-preview-svg')),
       findsOneWidget,
     );
+  });
+
+  testWidgets('tapping the app title returns from solves to timer home view',
+      (tester) async {
+    await tester.pumpWidget(
+      buildPage(
+        sessionState: SessionState.initial().copyWith(
+          status: SessionStatus.loaded,
+          sessions: [session],
+          currentSession: session,
+        ),
+        solveState: SolveState.initial().copyWith(
+          status: SolveStatus.loaded,
+          solves: solves,
+          currentScramble: scramble,
+          statistics: statistics,
+        ),
+        timerState: TimerState.initial(),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byIcon(Icons.list));
+    await tester.pumpAndSettle();
+    expect(find.text('Solves'), findsOneWidget);
+
+    await tester.tap(find.byKey(const ValueKey('home-title-button')));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Solves'), findsNothing);
+    expect(find.byType(TimerDisplay), findsOneWidget);
+  });
+
+  testWidgets('tapping outside the expanded scramble preview closes it',
+      (tester) async {
+    await tester.pumpWidget(
+      buildPage(
+        sessionState: SessionState.initial().copyWith(
+          status: SessionStatus.loaded,
+          sessions: [session],
+          currentSession: session,
+        ),
+        solveState: SolveState.initial().copyWith(
+          status: SolveStatus.loaded,
+          solves: solves,
+          currentScramble: scramble,
+          statistics: statistics,
+        ),
+        timerState: TimerState.initial(),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester
+        .tap(find.byKey(const ValueKey('timer-scramble-preview-trigger')));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey('expanded-scramble-preview')),
+        findsOneWidget);
+
+    await tester.tapAt(const Offset(8, 8));
+    await tester.pumpAndSettle();
+
+    expect(
+        find.byKey(const ValueKey('expanded-scramble-preview')), findsNothing);
+  });
+
+  testWidgets('system back closes the expanded scramble preview first',
+      (tester) async {
+    await tester.pumpWidget(
+      buildPage(
+        sessionState: SessionState.initial().copyWith(
+          status: SessionStatus.loaded,
+          sessions: [session],
+          currentSession: session,
+        ),
+        solveState: SolveState.initial().copyWith(
+          status: SolveStatus.loaded,
+          solves: solves,
+          currentScramble: scramble,
+          statistics: statistics,
+        ),
+        timerState: TimerState.initial(),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester
+        .tap(find.byKey(const ValueKey('timer-scramble-preview-trigger')));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey('expanded-scramble-preview')),
+        findsOneWidget);
+
+    await tester.binding.handlePopRoute();
+    await tester.pumpAndSettle();
+
+    expect(
+        find.byKey(const ValueKey('expanded-scramble-preview')), findsNothing);
+    expect(find.byType(TimerPage), findsOneWidget);
+  });
+
+  testWidgets(
+      'releasing after the bloc becomes armed dispatches stop hold without waiting for rebuild',
+      (tester) async {
+    final idleState = TimerState.initial();
+    final armedState = idleState.copyWith(
+      status: TimerStatus.armed,
+      color: TimerColor.green,
+    );
+
+    await tester.pumpWidget(
+      buildPage(
+        sessionState: SessionState.initial().copyWith(
+          status: SessionStatus.loaded,
+          sessions: [session],
+          currentSession: session,
+        ),
+        solveState: SolveState.initial().copyWith(
+          status: SolveStatus.loaded,
+          solves: solves,
+          currentScramble: scramble,
+          statistics: statistics,
+        ),
+        timerState: idleState,
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final gesture =
+        await tester.startGesture(tester.getCenter(find.byType(TimerDisplay)));
+
+    verify(() => timerBloc.add(any(that: isA<TimerStartHold>()))).called(1);
+
+    when(() => timerBloc.state).thenReturn(armedState);
+
+    await gesture.up();
+    await tester.pump();
+
+    verify(() => timerBloc.add(any(that: isA<TimerStopHold>()))).called(1);
+  });
+
+  testWidgets('hold pending keeps the non-immersive layout stable',
+      (tester) async {
+    await tester.pumpWidget(
+      buildPage(
+        sessionState: SessionState.initial().copyWith(
+          status: SessionStatus.loaded,
+          sessions: [session],
+          currentSession: session,
+        ),
+        solveState: SolveState.initial().copyWith(
+          status: SolveStatus.loaded,
+          solves: solves,
+          currentScramble: scramble,
+          statistics: statistics,
+        ),
+        timerState: TimerState.initial().copyWith(
+          status: TimerStatus.holdPending,
+          color: TimerColor.red,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.byType(TimerDisplay), findsOneWidget);
+    expect(find.byKey(const ValueKey('timer-scramble-preview-trigger')),
+        findsOneWidget);
   });
 }

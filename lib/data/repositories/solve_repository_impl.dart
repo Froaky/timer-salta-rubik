@@ -50,4 +50,9 @@ class SolveRepositoryImpl implements SolveRepository {
   Future<void> deleteSolve(String id) async {
     await localDataSource.deleteSolve(id);
   }
+
+  @override
+  Future<void> deleteSolvesBySession(String sessionId) async {
+    await localDataSource.deleteSolvesBySession(sessionId);
+  }
 }

@@ -15,6 +15,7 @@ void main() {
   late MockGenerateScramble generateScramble;
   late MockUpdateSolve updateSolve;
   late MockDeleteSolve deleteSolve;
+  late MockDeleteSolvesBySession deleteSolvesBySession;
 
   setUpAll(registerTestFallbacks);
 
@@ -25,10 +26,12 @@ void main() {
     generateScramble = MockGenerateScramble();
     updateSolve = MockUpdateSolve();
     deleteSolve = MockDeleteSolve();
+    deleteSolvesBySession = MockDeleteSolvesBySession();
 
     when(() => addSolve(any())).thenAnswer((_) async {});
     when(() => updateSolve(any())).thenAnswer((_) async {});
     when(() => deleteSolve(any())).thenAnswer((_) async {});
+    when(() => deleteSolvesBySession(any())).thenAnswer((_) async {});
   });
 
   SolveBloc buildBloc() {
@@ -39,11 +42,19 @@ void main() {
       generateScramble: generateScramble,
       updateSolve: updateSolve,
       deleteSolve: deleteSolve,
+      deleteSolvesBySession: deleteSolvesBySession,
     );
   }
 
   final sampleSolve = buildSolve();
   final sampleStats = buildStatistics(recentSolves: [sampleSolve]);
+  final emptyStats = buildStatistics(
+    personalBest: null,
+    meanOf3: null,
+    averageOf5: null,
+    totalSolves: 0,
+    recentSolves: const [],
+  );
   final sampleScramble = buildScramble();
 
   blocTest<SolveBloc, SolveState>(
@@ -205,6 +216,37 @@ void main() {
       ),
     ).called(2);
     verify(() => getStatistics('session-1')).called(1);
+
+    await bloc.close();
+  });
+
+  test('delete session solves clears the current session history', () async {
+    var getSolvesCallCount = 0;
+    when(() => getSolves(any())).thenAnswer((_) async {
+      getSolvesCallCount++;
+      return getSolvesCallCount == 1 ? [sampleSolve] : [];
+    });
+    when(() => getStatistics(any())).thenAnswer((_) async => emptyStats);
+
+    final bloc = buildBloc();
+    bloc.add(const LoadSolves(sessionId: 'session-1'));
+    await untilCalled(() => getSolves(any()));
+    await Future<void>.delayed(const Duration(milliseconds: 10));
+    bloc.add(const DeleteSessionSolvesEvent('session-1'));
+
+    await untilCalled(() => getStatistics(any()));
+    await Future<void>.delayed(const Duration(milliseconds: 10));
+
+    verify(() => deleteSolvesBySession('session-1')).called(1);
+    verify(
+      () => getSolves(
+        const GetSolvesParams(
+            sessionId: 'session-1', limit: null, offset: null),
+      ),
+    ).called(2);
+    verify(() => getStatistics('session-1')).called(1);
+    expect(bloc.state.solves, isEmpty);
+    expect(bloc.state.statistics, emptyStats);
 
     await bloc.close();
   });

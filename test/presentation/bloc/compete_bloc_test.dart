@@ -164,6 +164,43 @@ void main() {
     await bloc.close();
   });
 
+  test('treats visually equal times as a tie', () async {
+    when(() => generateScramble(any())).thenReturn(scrambleA);
+
+    final bloc = buildBloc();
+    bloc.add(const StartCompeteRound(cubeType: '3x3'));
+    await Future<void>.delayed(Duration.zero);
+    bloc.add(const StartLane(lane: 1));
+    bloc.add(const StartLane(lane: 2));
+    await Future<void>.delayed(Duration.zero);
+
+    bloc.add(const StopLane(lane: 1, finishedAtMs: 74));
+    bloc.add(const StopLane(lane: 2, finishedAtMs: 73));
+    await Future<void>.delayed(const Duration(milliseconds: 10));
+
+    expect(bloc.state.winner, 'tie');
+    expect(bloc.state.lane1Score, 0);
+    expect(bloc.state.lane2Score, 0);
+
+    await bloc.close();
+  });
+
+  test('keeps next scramble hidden while round is still in progress', () async {
+    when(() => generateScramble(any())).thenReturn(scrambleA);
+
+    final bloc = buildBloc();
+    bloc.add(const StartCompeteRound(cubeType: '3x3'));
+    await Future<void>.delayed(Duration.zero);
+    bloc.add(const StartLane(lane: 1));
+    await Future<void>.delayed(Duration.zero);
+
+    expect(bloc.state.status, CompeteStatus.inProgress);
+    expect(bloc.state.scrambleLane1, scrambleA);
+    expect(bloc.state.scrambleLane2, scrambleA);
+
+    await bloc.close();
+  });
+
   blocTest<CompeteBloc, CompeteState>(
     'generates new competition scrambles on demand',
     build: () {

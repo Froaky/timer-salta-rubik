@@ -51,6 +51,15 @@ class DeleteSolveEvent extends SolveEvent {
   List<Object> get props => [solveId];
 }
 
+class DeleteSessionSolvesEvent extends SolveEvent {
+  final String sessionId;
+
+  const DeleteSessionSolvesEvent(this.sessionId);
+
+  @override
+  List<Object> get props => [sessionId];
+}
+
 class GenerateNewScramble extends SolveEvent {
   final String cubeType;
 

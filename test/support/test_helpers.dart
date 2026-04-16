@@ -9,6 +9,7 @@ import 'package:salta_rubik/domain/usecases/add_solve.dart';
 import 'package:salta_rubik/domain/usecases/create_session.dart';
 import 'package:salta_rubik/domain/usecases/delete_session.dart';
 import 'package:salta_rubik/domain/usecases/delete_solve.dart';
+import 'package:salta_rubik/domain/usecases/delete_solves_by_session.dart';
 import 'package:salta_rubik/domain/usecases/generate_scramble.dart';
 import 'package:salta_rubik/domain/usecases/get_sessions.dart';
 import 'package:salta_rubik/domain/usecases/get_solves.dart';
@@ -39,6 +40,8 @@ class MockGenerateScramble extends Mock implements GenerateScramble {}
 class MockUpdateSolve extends Mock implements UpdateSolve {}
 
 class MockDeleteSolve extends Mock implements DeleteSolve {}
+
+class MockDeleteSolvesBySession extends Mock implements DeleteSolvesBySession {}
 
 class MockCreateSession extends Mock implements CreateSession {}
 

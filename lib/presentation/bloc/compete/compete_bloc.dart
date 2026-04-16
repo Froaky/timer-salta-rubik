@@ -78,6 +78,7 @@ class CompeteBloc extends Bloc<CompeteEvent, CompeteState> {
         lane1FinishedAtMs: null,
         lane2FinishedAtMs: null,
         roundScored: false,
+        winner: null,
       );
     }
 
@@ -108,18 +109,20 @@ class CompeteBloc extends Bloc<CompeteEvent, CompeteState> {
     if (bothStopped && bothHaveTimes && !updated.roundScored) {
       final t1 = updated.lane1FinishedAtMs!;
       final t2 = updated.lane2FinishedAtMs!;
+      final displayedT1 = _toDisplayedCentiseconds(t1);
+      final displayedT2 = _toDisplayedCentiseconds(t2);
       int lane1Score = updated.lane1Score;
       int lane2Score = updated.lane2Score;
       String? winner;
 
-      if (t1 < t2) {
+      if (displayedT1 < displayedT2) {
         lane1Score += 1;
         winner = 'lane1';
-      } else if (t2 < t1) {
+      } else if (displayedT2 < displayedT1) {
         lane2Score += 1;
         winner = 'lane2';
       } else {
-        // exact tie -> nobody scores
+        // If the displayed hundredths are equal, nobody scores.
         winner = 'tie';
       }
 
@@ -201,5 +204,9 @@ class CompeteBloc extends Bloc<CompeteEvent, CompeteState> {
         lane2Score: state.lane2Score + 1,
       ));
     }
+  }
+
+  int _toDisplayedCentiseconds(int milliseconds) {
+    return (milliseconds / 10).round();
   }
 }

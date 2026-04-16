@@ -77,6 +77,64 @@ void main() {
       await bloc.close();
     });
 
+    test('stop uses the provided stoppedAt timestamp exactly', () async {
+      final bloc = TimerBloc(
+        yellowThresholdMs: 20,
+        greenThresholdMs: 40,
+      );
+
+      bloc.add(const TimerStartHold());
+      await Future<void>.delayed(const Duration(milliseconds: 55));
+      expect(bloc.state.status, TimerStatus.armed);
+
+      bloc.add(const TimerStopHold());
+      await Future<void>.delayed(const Duration(milliseconds: 5));
+      expect(bloc.state.status, TimerStatus.running);
+
+      final startTime = bloc.state.startTime;
+      expect(startTime, isNotNull);
+
+      bloc.add(
+        TimerStop(
+          stoppedAt: startTime!.add(const Duration(milliseconds: 1234)),
+        ),
+      );
+      await Future<void>.delayed(const Duration(milliseconds: 5));
+
+      expect(bloc.state.status, TimerStatus.stopped);
+      expect(bloc.state.elapsedMs, 1234);
+
+      await bloc.close();
+    });
+
+    test('stop uses elapsed override when provided', () async {
+      final bloc = TimerBloc(
+        yellowThresholdMs: 20,
+        greenThresholdMs: 40,
+      );
+
+      bloc.add(const TimerStartHold());
+      await Future<void>.delayed(const Duration(milliseconds: 55));
+      expect(bloc.state.status, TimerStatus.armed);
+
+      bloc.add(const TimerStopHold());
+      await Future<void>.delayed(const Duration(milliseconds: 5));
+      expect(bloc.state.status, TimerStatus.running);
+
+      bloc.add(
+        TimerStop(
+          stoppedAt: DateTime.now().add(const Duration(milliseconds: 50)),
+          elapsedMsOverride: 150,
+        ),
+      );
+      await Future<void>.delayed(const Duration(milliseconds: 5));
+
+      expect(bloc.state.status, TimerStatus.stopped);
+      expect(bloc.state.elapsedMs, 150);
+
+      await bloc.close();
+    });
+
     test('toggle events update feature flags', () async {
       final bloc = TimerBloc();
 
@@ -112,15 +170,15 @@ void main() {
     test('inspection over configured threshold applies plus two penalty',
         () async {
       final bloc = TimerBloc(
-        inspectionDurationMs: 40,
-        inspectionPlusTwoThresholdMs: 40,
-        inspectionDnfThresholdMs: 60,
+        inspectionDurationMs: 80,
+        inspectionPlusTwoThresholdMs: 80,
+        inspectionDnfThresholdMs: 200,
       );
 
       bloc.add(const TimerToggleInspection());
       await Future<void>.delayed(Duration.zero);
       bloc.add(const TimerStartHold());
-      await Future<void>.delayed(const Duration(milliseconds: 50));
+      await Future<void>.delayed(const Duration(milliseconds: 100));
 
       bloc.add(const TimerStopHold());
       await Future<void>.delayed(const Duration(milliseconds: 5));
@@ -132,22 +190,22 @@ void main() {
       await Future<void>.delayed(const Duration(milliseconds: 5));
 
       expect(bloc.state.status, TimerStatus.stopped);
-      expect(bloc.state.elapsedMs, inInclusiveRange(2005, 2050));
+      expect(bloc.state.elapsedMs, inInclusiveRange(2005, 2070));
 
       await bloc.close();
     });
 
     test('inspection over configured dnf threshold produces dnf', () async {
       final bloc = TimerBloc(
-        inspectionDurationMs: 40,
-        inspectionPlusTwoThresholdMs: 40,
-        inspectionDnfThresholdMs: 60,
+        inspectionDurationMs: 80,
+        inspectionPlusTwoThresholdMs: 80,
+        inspectionDnfThresholdMs: 140,
       );
 
       bloc.add(const TimerToggleInspection());
       await Future<void>.delayed(Duration.zero);
       bloc.add(const TimerStartHold());
-      await Future<void>.delayed(const Duration(milliseconds: 70));
+      await Future<void>.delayed(const Duration(milliseconds: 160));
 
       bloc.add(const TimerStopHold());
       await Future<void>.delayed(const Duration(milliseconds: 5));

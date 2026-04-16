@@ -117,7 +117,8 @@ class TimerBloc extends Bloc<TimerEvent, TimerState> {
     _runTimer = null;
 
     final stoppedAt = event.stoppedAt ?? DateTime.now();
-    final baseTime = stoppedAt.difference(_runStartTime!).inMilliseconds;
+    final baseTime = event.elapsedMsOverride ??
+        stoppedAt.difference(_runStartTime!).inMilliseconds;
     final finalTime =
         _inspectionPenaltyMs == -1 ? -1 : baseTime + _inspectionPenaltyMs;
 

@@ -190,6 +190,26 @@ class _SolveListState extends State<SolveList> {
                       const SizedBox(width: 8),
                       Container(
                         decoration: BoxDecoration(
+                          color: AppTheme.errorColor.withOpacity(0.12),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: IconButton(
+                          icon:
+                              const Icon(Icons.delete_sweep_rounded, size: 20),
+                          onPressed: () {
+                            _showDeleteAllDialog(
+                              context,
+                              currentSession.id,
+                              solveState.solves.length,
+                            );
+                          },
+                          tooltip: 'Delete all solves in session',
+                          color: AppTheme.errorColor,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Container(
+                        decoration: BoxDecoration(
                           color: AppTheme.textMuted.withOpacity(0.1),
                           borderRadius: BorderRadius.circular(12),
                         ),
@@ -567,6 +587,66 @@ class _SolveListState extends State<SolveList> {
               },
               child: Text(
                 'Delete',
+                style: TextStyle(
+                  color: AppTheme.errorColor,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showDeleteAllDialog(
+      BuildContext context, String sessionId, int solveCount) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: AppTheme.cardColor,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+        ),
+        title: Text(
+          'Delete Session Solves',
+          style: TextStyle(
+            color: AppTheme.textPrimary,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        content: Text(
+          'Delete all $solveCount solves from this session? This cannot be undone.',
+          style: TextStyle(
+            color: AppTheme.textSecondary,
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: Text(
+              'Cancel',
+              style: TextStyle(
+                color: AppTheme.textSecondary,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            decoration: BoxDecoration(
+              color: AppTheme.errorColor.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: TextButton(
+              onPressed: () {
+                context.read<SolveBloc>().add(
+                      DeleteSessionSolvesEvent(sessionId),
+                    );
+                Navigator.of(context).pop();
+              },
+              child: Text(
+                'Delete all',
                 style: TextStyle(
                   color: AppTheme.errorColor,
                   fontWeight: FontWeight.w600,

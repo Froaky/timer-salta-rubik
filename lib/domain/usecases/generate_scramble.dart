@@ -713,7 +713,7 @@ class GenerateScramble implements UseCaseSync<Scramble, String> {
 
   String _generateClockTurn(String pin, Random random) {
     final value = random.nextInt(7);
-    final sign = random.nextBool() ? '+' : '-';
+    final sign = value == 6 ? '+' : (random.nextBool() ? '+' : '-');
     return '$pin$value$sign';
   }
 

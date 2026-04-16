@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 
 import '../../domain/entities/scramble.dart';
 import '../theme/app_theme.dart';
+import 'cube_preview_engine.dart';
 
 class ScramblePreview extends StatelessWidget {
   const ScramblePreview({
@@ -93,7 +94,7 @@ class ScramblePreview extends StatelessWidget {
   Widget? _buildPreviewContent(BuildContext context) {
     final size = _cubeSizeByType[scramble.cubeType];
     if (size != null) {
-      final net = _CubePreviewEngine(size: size).apply(scramble.notation);
+      final net = CubePreviewEngine(size: size).apply(scramble.notation);
       return _CubeNet(
         net: net,
         width: width,
@@ -123,230 +124,6 @@ class ScramblePreview extends StatelessWidget {
   }
 }
 
-class _CubePreviewEngine {
-  _CubePreviewEngine({required this.size})
-      : faces = {
-          _Face.up: _filledFace(size, _StickerColor.white),
-          _Face.down: _filledFace(size, _StickerColor.yellow),
-          _Face.front: _filledFace(size, _StickerColor.green),
-          _Face.back: _filledFace(size, _StickerColor.blue),
-          _Face.right: _filledFace(size, _StickerColor.red),
-          _Face.left: _filledFace(size, _StickerColor.orange),
-        };
-
-  final int size;
-  final Map<_Face, List<List<_StickerColor>>> faces;
-
-  static List<List<_StickerColor>> _filledFace(int size, _StickerColor color) {
-    return List.generate(
-      size,
-      (_) => List.generate(size, (_) => color),
-    );
-  }
-
-  _CubeNetData apply(String notation) {
-    for (final token in notation.split(RegExp(r'\s+'))) {
-      if (token.isEmpty) continue;
-      final move = _MoveToken.parse(token);
-      if (move == null) continue;
-      _applyMove(move);
-    }
-
-    return _CubeNetData(
-      up: _flatten(faces[_Face.up]!),
-      right: _flatten(faces[_Face.right]!),
-      front: _flatten(faces[_Face.front]!),
-      down: _flatten(faces[_Face.down]!),
-      left: _flatten(faces[_Face.left]!),
-      back: _flatten(faces[_Face.back]!),
-      size: size,
-    );
-  }
-
-  List<_StickerColor> _flatten(List<List<_StickerColor>> face) {
-    return face.expand((row) => row).toList(growable: false);
-  }
-
-  void _applyMove(_MoveToken move) {
-    var turns = move.turns;
-    if (move.face == 'L' || move.face == 'D' || move.face == 'B') {
-      turns = (4 - turns) % 4;
-      if (turns == 0) {
-        turns = 4;
-      }
-    }
-
-    for (var i = 0; i < turns; i++) {
-      _applyQuarterTurn(move.face, move.layers);
-    }
-  }
-
-  void _applyQuarterTurn(String face, int layers) {
-    switch (face) {
-      case 'U':
-        for (var layer = 0; layer < layers; layer++) {
-          _turnY(size - 1 - layer);
-        }
-        _rotateFaceClockwise(_Face.up);
-        break;
-      case 'D':
-        for (var layer = 0; layer < layers; layer++) {
-          _turnY(layer);
-        }
-        _rotateFaceCounterClockwise(_Face.down);
-        break;
-      case 'R':
-        for (var layer = 0; layer < layers; layer++) {
-          _turnX(size - 1 - layer);
-        }
-        _rotateFaceClockwise(_Face.right);
-        break;
-      case 'L':
-        for (var layer = 0; layer < layers; layer++) {
-          _turnX(layer);
-        }
-        _rotateFaceCounterClockwise(_Face.left);
-        break;
-      case 'F':
-        for (var layer = 0; layer < layers; layer++) {
-          _turnZ(size - 1 - layer);
-        }
-        _rotateFaceClockwise(_Face.front);
-        break;
-      case 'B':
-        for (var layer = 0; layer < layers; layer++) {
-          _turnZ(layer);
-        }
-        _rotateFaceCounterClockwise(_Face.back);
-        break;
-    }
-  }
-
-  void _turnY(int layer) {
-    final front = _row(_Face.front, layerFromTop: size - 1 - layer);
-    final right = _row(_Face.right, layerFromTop: size - 1 - layer);
-    final back = _row(_Face.back, layerFromTop: size - 1 - layer);
-    final left = _row(_Face.left, layerFromTop: size - 1 - layer);
-
-    _setRow(_Face.right, size - 1 - layer, front);
-    _setRow(_Face.back, size - 1 - layer, right);
-    _setRow(_Face.left, size - 1 - layer, back);
-    _setRow(_Face.front, size - 1 - layer, left);
-  }
-
-  void _turnX(int layer) {
-    final up = _column(_Face.up, layer);
-    final front = _column(_Face.front, layer);
-    final down = _column(_Face.down, layer);
-    final back = _column(_Face.back, size - 1 - layer, reversed: true);
-
-    _setColumn(_Face.front, layer, up);
-    _setColumn(_Face.down, layer, front);
-    _setColumn(_Face.back, size - 1 - layer, down.reversed.toList());
-    _setColumn(_Face.up, layer, back);
-  }
-
-  void _turnZ(int layer) {
-    final up = _row(_Face.up, layerFromTop: size - 1 - layer);
-    final right = _column(_Face.right, layer, reversed: true);
-    final down = _row(_Face.down, layerFromTop: layer, reversed: true);
-    final left = _column(_Face.left, size - 1 - layer);
-
-    _setColumn(_Face.right, layer, up.reversed.toList());
-    _setRow(_Face.down, layer, right);
-    _setColumn(_Face.left, size - 1 - layer, down);
-    _setRow(_Face.up, size - 1 - layer, left.reversed.toList());
-  }
-
-  List<_StickerColor> _row(_Face face,
-      {required int layerFromTop, bool reversed = false}) {
-    final row = List<_StickerColor>.from(faces[face]![layerFromTop]);
-    return reversed ? row.reversed.toList() : row;
-  }
-
-  void _setRow(_Face face, int layerFromTop, List<_StickerColor> values) {
-    faces[face]![layerFromTop] = List<_StickerColor>.from(values);
-  }
-
-  List<_StickerColor> _column(_Face face, int index, {bool reversed = false}) {
-    final column = List<_StickerColor>.generate(
-      size,
-      (row) => faces[face]![row][index],
-    );
-    return reversed ? column.reversed.toList() : column;
-  }
-
-  void _setColumn(_Face face, int index, List<_StickerColor> values) {
-    for (var row = 0; row < size; row++) {
-      faces[face]![row][index] = values[row];
-    }
-  }
-
-  void _rotateFaceClockwise(_Face face) {
-    final current = faces[face]!;
-    final rotated = List.generate(
-      size,
-      (row) => List.generate(
-        size,
-        (col) => current[size - 1 - col][row],
-      ),
-    );
-    faces[face] = rotated;
-  }
-
-  void _rotateFaceCounterClockwise(_Face face) {
-    final current = faces[face]!;
-    final rotated = List.generate(
-      size,
-      (row) => List.generate(
-        size,
-        (col) => current[col][size - 1 - row],
-      ),
-    );
-    faces[face] = rotated;
-  }
-}
-
-class _MoveToken {
-  const _MoveToken({
-    required this.face,
-    required this.layers,
-    required this.turns,
-  });
-
-  final String face;
-  final int layers;
-  final int turns;
-
-  static _MoveToken? parse(String token) {
-    final match =
-        RegExp(r"^(\d+)?([URFDLB])(w)?(2|'|)?$").firstMatch(token.trim());
-    if (match == null) return null;
-
-    final widthPrefix = match.group(1);
-    final face = match.group(2)!;
-    final isWide = match.group(3) != null;
-    final suffix = match.group(4) ?? '';
-
-    final layers = widthPrefix != null
-        ? int.parse(widthPrefix)
-        : isWide
-            ? 2
-            : 1;
-    final turns = suffix == '2'
-        ? 2
-        : suffix == "'"
-            ? 3
-            : 1;
-
-    return _MoveToken(
-      face: face,
-      layers: layers,
-      turns: turns,
-    );
-  }
-}
-
 class _CubeNet extends StatelessWidget {
   const _CubeNet({
     required this.net,
@@ -354,7 +131,7 @@ class _CubeNet extends StatelessWidget {
     required this.height,
   });
 
-  final _CubeNetData net;
+  final CubeNetData net;
   final double width;
   final double height;
 
@@ -370,30 +147,67 @@ class _CubeNet extends StatelessWidget {
 
     return Stack(
       children: [
-        _positionFace(net.up, offsetX + faceSize + faceGap, offsetY, faceSize),
         _positionFace(
-            net.left, offsetX, offsetY + faceSize + faceGap, faceSize),
-        _positionFace(net.front, offsetX + faceSize + faceGap,
-            offsetY + faceSize + faceGap, faceSize),
-        _positionFace(net.right, offsetX + (faceSize + faceGap) * 2,
-            offsetY + faceSize + faceGap, faceSize),
-        _positionFace(net.back, offsetX + (faceSize + faceGap) * 3,
-            offsetY + faceSize + faceGap, faceSize),
-        _positionFace(net.down, offsetX + faceSize + faceGap,
-            offsetY + (faceSize + faceGap) * 2, faceSize),
+          net.up,
+          offsetX + faceSize + faceGap,
+          offsetY,
+          faceSize,
+        ),
+        _positionFace(
+          net.left,
+          offsetX,
+          offsetY + faceSize + faceGap,
+          faceSize,
+        ),
+        _positionFace(
+          net.front,
+          offsetX + faceSize + faceGap,
+          offsetY + faceSize + faceGap,
+          faceSize,
+        ),
+        _positionFace(
+          net.right,
+          offsetX + (faceSize + faceGap) * 2,
+          offsetY + faceSize + faceGap,
+          faceSize,
+        ),
+        _positionFace(
+          net.back,
+          offsetX + (faceSize + faceGap) * 3,
+          offsetY + faceSize + faceGap,
+          faceSize,
+          rotationAngle: math.pi,
+          key: const ValueKey('scramble-preview-back-face'),
+        ),
+        _positionFace(
+          net.down,
+          offsetX + faceSize + faceGap,
+          offsetY + (faceSize + faceGap) * 2,
+          faceSize,
+        ),
       ],
     );
   }
 
   Widget _positionFace(
-      List<_StickerColor> face, double left, double top, double size) {
+    List<CubePreviewColor> face,
+    double left,
+    double top,
+    double size, {
+    double rotationAngle = 0,
+    Key? key,
+  }) {
     return Positioned(
       left: left,
       top: top,
-      child: _CubeFace(
-        colors: face,
-        size: size,
-        dimension: net.size,
+      child: Transform.rotate(
+        key: key,
+        angle: rotationAngle,
+        child: _CubeFace(
+          colors: face,
+          size: size,
+          dimension: net.size,
+        ),
       ),
     );
   }
@@ -406,7 +220,7 @@ class _CubeFace extends StatelessWidget {
     required this.dimension,
   });
 
-  final List<_StickerColor> colors;
+  final List<CubePreviewColor> colors;
   final double size;
   final int dimension;
 
@@ -439,41 +253,6 @@ class _CubeFace extends StatelessWidget {
       ),
     );
   }
-}
-
-enum _Face { up, right, front, down, left, back }
-
-enum _StickerColor {
-  white(Colors.white),
-  yellow(Color(0xFFFFEB3B)),
-  green(Color(0xFF22C55E)),
-  blue(Color(0xFF1D4ED8)),
-  red(Color(0xFFF44336)),
-  orange(Color(0xFFFF9800));
-
-  const _StickerColor(this.color);
-
-  final Color color;
-}
-
-class _CubeNetData {
-  const _CubeNetData({
-    required this.up,
-    required this.right,
-    required this.front,
-    required this.down,
-    required this.left,
-    required this.back,
-    required this.size,
-  });
-
-  final List<_StickerColor> up;
-  final List<_StickerColor> right;
-  final List<_StickerColor> front;
-  final List<_StickerColor> down;
-  final List<_StickerColor> left;
-  final List<_StickerColor> back;
-  final int size;
 }
 
 class _ClockPreviewEngine {
@@ -759,10 +538,10 @@ class _ClockState {
 class _PyraminxPreviewEngine {
   static _PyraminxState apply(String notation) {
     final faces = {
-      'U': List<_StickerColor>.filled(9, _StickerColor.blue),
-      'L': List<_StickerColor>.filled(9, _StickerColor.red),
-      'R': List<_StickerColor>.filled(9, _StickerColor.green),
-      'B': List<_StickerColor>.filled(9, _StickerColor.yellow),
+      'U': List<CubePreviewColor>.filled(9, CubePreviewColor.blue),
+      'L': List<CubePreviewColor>.filled(9, CubePreviewColor.red),
+      'R': List<CubePreviewColor>.filled(9, CubePreviewColor.green),
+      'B': List<CubePreviewColor>.filled(9, CubePreviewColor.yellow),
     };
 
     for (final token in notation.split(RegExp(r'\s+'))) {
@@ -784,12 +563,15 @@ class _PyraminxPreviewEngine {
     );
   }
 
-  static void _turnFace(Map<String, List<_StickerColor>> faces, String face) {
+  static void _turnFace(
+    Map<String, List<CubePreviewColor>> faces,
+    String face,
+  ) {
     final current = faces[face]!;
     faces[face] = _rotateTriangle(current);
   }
 
-  static List<_StickerColor> _rotateTriangle(List<_StickerColor> face) {
+  static List<CubePreviewColor> _rotateTriangle(List<CubePreviewColor> face) {
     return [
       face[2],
       face[5],
@@ -832,10 +614,10 @@ class _PyraminxState {
     required this.bottom,
   });
 
-  final List<_StickerColor> up;
-  final List<_StickerColor> left;
-  final List<_StickerColor> right;
-  final List<_StickerColor> bottom;
+  final List<CubePreviewColor> up;
+  final List<CubePreviewColor> left;
+  final List<CubePreviewColor> right;
+  final List<CubePreviewColor> bottom;
 }
 
 class _PyraminxPreview extends StatelessWidget {
@@ -908,7 +690,7 @@ class _PyraminxFace extends StatelessWidget {
     this.upsideDown = false,
   });
 
-  final List<_StickerColor> stickers;
+  final List<CubePreviewColor> stickers;
   final double width;
   final double height;
   final bool upsideDown;
@@ -931,7 +713,7 @@ class _PyraminxFacePainter extends CustomPainter {
     required this.upsideDown,
   });
 
-  final List<_StickerColor> stickers;
+  final List<CubePreviewColor> stickers;
   final bool upsideDown;
 
   @override
