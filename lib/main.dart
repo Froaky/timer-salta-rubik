@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:flutter/foundation.dart';
 
 // Presentation layer
 import 'presentation/bloc/timer/timer_bloc.dart';
 import 'presentation/bloc/solve/solve_bloc.dart';
 import 'presentation/bloc/session/session_bloc.dart';
 import 'presentation/bloc/compete/compete_bloc.dart';
+import 'presentation/pages/auth_page.dart';
 import 'presentation/theme/app_theme.dart';
 import 'presentation/pages/timer_page.dart';
 
@@ -22,6 +24,18 @@ void main() async {
 
 class SaltaRubikApp extends StatelessWidget {
   const SaltaRubikApp({super.key});
+
+  String _resolveInitialRoute() {
+    if (kIsWeb && Uri.base.path == '/auth/callback') {
+      return '/auth/callback';
+    }
+
+    if (kIsWeb && Uri.base.path == '/auth') {
+      return '/auth';
+    }
+
+    return '/';
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -43,7 +57,14 @@ class SaltaRubikApp extends StatelessWidget {
       child: MaterialApp(
         title: 'Salta Rubik',
         theme: AppTheme.darkTheme,
-        home: const TimerPage(),
+        initialRoute: _resolveInitialRoute(),
+        routes: {
+          '/': (context) => const TimerPage(),
+          '/auth': (context) => const AuthPage(),
+          '/auth/callback': (context) => const AuthPage(
+                completeWcaCallbackOnLoad: true,
+              ),
+        },
         debugShowCheckedModeBanner: false,
       ),
     );

@@ -1,16 +1,25 @@
 import 'package:get_it/get_it.dart';
 import 'package:injectable/injectable.dart';
+import 'package:http/http.dart' as http;
 
+import 'data/datasources/auth_local_datasource.dart';
+import 'data/datasources/auth_remote_datasource.dart';
 import 'data/datasources/local_database.dart';
 import 'data/datasources/solve_local_datasource.dart';
 import 'data/datasources/session_local_datasource.dart';
+import 'data/repositories/auth_repository_impl.dart';
 import 'data/repositories/solve_repository_impl.dart';
 import 'data/repositories/session_repository_impl.dart';
+import 'domain/repositories/auth_repository.dart';
 import 'domain/repositories/solve_repository.dart';
 import 'domain/repositories/session_repository.dart';
 import 'domain/usecases/add_solve.dart';
+import 'domain/usecases/build_wca_login_uri.dart';
+import 'domain/usecases/clear_auth_session.dart';
+import 'domain/usecases/complete_wca_callback.dart';
 import 'domain/usecases/get_solves.dart';
 import 'domain/usecases/get_statistics.dart';
+import 'domain/usecases/get_stored_auth_session.dart';
 import 'domain/usecases/update_solve.dart';
 import 'domain/usecases/delete_solve.dart';
 import 'domain/usecases/delete_solves_by_session.dart';
@@ -28,12 +37,24 @@ final sl = GetIt.instance;
 
 @InjectableInit()
 Future<void> configureDependencies() async {
+  sl.registerLazySingleton<http.Client>(
+    () => http.Client(),
+  );
+
   // Database helper
   sl.registerLazySingleton<LocalDatabase>(
     () => LocalDatabase(),
   );
 
   // Data sources
+  sl.registerLazySingleton<AuthLocalDataSource>(
+    () => AuthLocalDataSourceImpl(),
+  );
+
+  sl.registerLazySingleton<AuthRemoteDataSource>(
+    () => AuthRemoteDataSourceImpl(sl<http.Client>()),
+  );
+
   sl.registerLazySingleton<SolveLocalDataSource>(
     () => SolveLocalDataSourceImpl(sl<LocalDatabase>()),
   );
@@ -43,6 +64,13 @@ Future<void> configureDependencies() async {
   );
 
   // Repositories
+  sl.registerLazySingleton<AuthRepository>(
+    () => AuthRepositoryImpl(
+      localDataSource: sl(),
+      remoteDataSource: sl(),
+    ),
+  );
+
   sl.registerLazySingleton<SolveRepository>(
     () => SolveRepositoryImpl(sl()),
   );
@@ -53,8 +81,12 @@ Future<void> configureDependencies() async {
 
   // Use cases
   sl.registerLazySingleton(() => AddSolve(sl()));
+  sl.registerLazySingleton(() => BuildWcaLoginUri(sl()));
+  sl.registerLazySingleton(() => ClearAuthSession(sl()));
+  sl.registerLazySingleton(() => CompleteWcaCallback(sl()));
   sl.registerLazySingleton(() => GetSolves(sl()));
   sl.registerLazySingleton(() => GetStatistics(sl()));
+  sl.registerLazySingleton(() => GetStoredAuthSession(sl()));
   sl.registerLazySingleton(() => UpdateSolve(sl()));
   sl.registerLazySingleton(() => DeleteSolve(sl()));
   sl.registerLazySingleton(() => DeleteSolvesBySession(sl()));

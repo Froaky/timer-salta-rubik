@@ -83,6 +83,12 @@ Current auth direction:
 - WCA OAuth is handled by the backend, not directly by Flutter clients
 - the backend issues its own bearer token after successful WCA login
 - the same backend flow is designed to work for both web redirects and future mobile deep links
+- the Flutter app now exposes a WCA login entry in `AuthPage` and, on web, consumes the backend callback token through `/auth/callback`
+
+Frontend auth config:
+
+- optional compile-time override for API base URL:
+  - `--dart-define=SALTA_API_BASE_URL=https://your-api-domain`
 
 ## Current web scope
 

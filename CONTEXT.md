@@ -152,6 +152,8 @@ Este archivo resume lo indispensable para continuar el desarrollo de este repo s
   - la API oficial v0 de WCA sirve para OAuth y perfil autenticado (`/oauth/authorize`, `/oauth/token`, `/api/v0/me`), pero para datos publicos generales WCA misma recomienda su API no oficial/endosada o exports de base.
   - el backend ya emite un bearer token propio de Salta Rubik despues de OAuth WCA; eso evita meter secretos WCA en Flutter y permite una sesion comun entre web y mobile.
   - el flujo WCA ya soporta `state` persistido en DB (`oauth_states`) y redirects permitidos por allowlist para volver seguro a web o mobile.
+  - el frontend Flutter ya tiene un primer consumo real de ese flujo en `AuthPage`: en web puede iniciar OAuth WCA, volver por `/auth/callback`, pedir `auth/me` y persistir la sesion local.
+  - en mobile el boton WCA todavia no cierra el ciclo: la UI avisa que faltan deep links/app links antes de ofrecer login real en telefono.
   - el backend usa `soft delete` (`deleted_at`) en `sessions` y `solves` para no perder tombstones utiles para sync futura.
   - las stats remotas deben seguir siendo derivadas de solves; no conviene usarlas como fuente de verdad.
 
@@ -241,6 +243,7 @@ Notas:
   - y PostgreSQL/ORM.
 - Si se usa WCA, hacerlo como proveedor opcional de login/vinculacion y no como prerequisito para usar timer/sesiones locales.
 - Si se integra login en Flutter, el cliente debe iniciar OAuth contra el backend y luego usar el token de Salta Rubik para `/auth/me`; no conviene guardar ni manejar el secreto OAuth del proveedor en la app.
+- El frontend usa `SALTA_API_BASE_URL` como `dart-define` opcional; si no se pasa, cae por default al backend Railway actual.
 - No exponer la base de datos directo al cliente; Flutter debe hablar con endpoints propios cuando llegue la integracion remota.
 - No asumir que "subir a Railway" obliga a cambiar la UX mobile actual; Android debe conservar su vista y flujo mientras se habilita web.
 - Regla explicita: cualquier ajuste de UX/layout/inputs para web o desktop debe quedar aislado y no cambiar mobile salvo pedido explicito del usuario.
@@ -388,6 +391,12 @@ Entradas actuales:
   - archivos afectados: `backend/prisma/schema.prisma`, `backend/prisma/migrations/20260421224500_add_oauth_states/migration.sql`, `backend/src/lib/auth_token.ts`, `backend/src/lib/auth_redirects.ts`, `backend/src/routes/auth.ts`, `backend/.env.example`, `backend/README.md`, `lib/TODO.TXT`, `README.md`, `CONTEXT.md`
   - validacion: `npm run prisma:generate`, `npx prisma validate`, `npm run build` en `backend/`
   - siguiente paso: pushear estos cambios, agregar envs `AUTH_*` y `WCA_OAUTH_*` en Railway, crear la OAuth app en WCA y despues integrar Flutter web/mobile con `start` + `auth/me`
+
+- `2026-04-21`
+  - se conecto el frontend Flutter al primer flujo real de login WCA en web: `AuthPage` ahora muestra acceso WCA, consume el callback `/auth/callback`, pide `auth/me` al backend y persiste la sesion local; tambien se agrego configuracion `SALTA_API_BASE_URL`
+  - archivos afectados: `pubspec.yaml`, `lib/core/config/app_config.dart`, `lib/data/datasources/auth_*`, `lib/data/models/auth_session_model.dart`, `lib/data/repositories/auth_repository_impl.dart`, `lib/domain/entities/auth_session.dart`, `lib/domain/repositories/auth_repository.dart`, `lib/domain/usecases/auth_*`, `lib/injection_container.dart`, `lib/main.dart`, `lib/presentation/pages/auth_page.dart`, `test/presentation/pages/auth_page_test.dart`, `README.md`, `CONTEXT.md`
+  - validacion: `dart pub get`, `dart format lib test`, `flutter test --no-pub`, `flutter analyze --no-pub` sin warnings nuevos; siguen solo warnings/info viejos del repo
+  - siguiente paso: configurar OAuth app de WCA + envs Railway, verificar login web extremo a extremo y luego encarar deep links para mobile
 
 - `2026-04-21`
   - se definio la linea de producto para el backend: API propia separada, ORM para manejar esquema/migraciones y Postgres remoto, manteniendo la app Flutter local-first y sin cambios de UX mobile
