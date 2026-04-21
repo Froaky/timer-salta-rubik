@@ -88,3 +88,8 @@ Backend + API roadmap
 -| BE-US-008 | Como usuario con cuenta futura, quiero una identidad remota estable, para ver mis datos en web y mobile con la misma cuenta.
 -| BE-US-009 | Como usuario que ya tiene datos locales, quiero un flujo de vinculacion o migracion a cuenta, para no perder historial cuando se habilite sync.
 -| BE-US-010 | Como producto, quiero reglas de sync y resolucion de conflictos, para evitar duplicados o stats inconsistentes entre local y remoto.
+-| BE-US-011 | Como usuario con cuenta WCA, quiero poder vincular o iniciar sesion con mi cuenta WCA, para reutilizar mi identidad oficial sin crear otra cuenta desde cero.
+-| BE-US-012 | Como producto, quiero usar los datos basicos del perfil WCA enlazado, para enriquecer cuenta, avatar, pais y futura importacion de contexto oficial sin depender de scraping.
+-| BE-US-013 | Como usuario web, quiero iniciar sesion con WCA y volver seguro a la app web con una sesion propia de Salta Rubik, para no exponer secretos OAuth en el cliente.
+-| BE-US-014 | Como usuario mobile, quiero iniciar sesion con WCA desde navegador y volver por deep link a la app con una sesion valida, para usar la misma identidad en el telefono.
+-| BE-US-015 | Como cliente Flutter, quiero consultar `auth/me` con el token de Salta Rubik, para reconstruir la sesion sin depender directamente de la API WCA.

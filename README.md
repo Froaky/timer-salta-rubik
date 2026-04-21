@@ -76,6 +76,14 @@ Backend deploy notes:
 - provide `DATABASE_URL` from Railway PostgreSQL
 - keep the Flutter client local-first until auth/sync is explicitly integrated
 
+The backend is also prepared for optional WCA OAuth linking later. This should be used as an extra identity provider, not as the only login path for Salta Rubik.
+
+Current auth direction:
+
+- WCA OAuth is handled by the backend, not directly by Flutter clients
+- the backend issues its own bearer token after successful WCA login
+- the same backend flow is designed to work for both web redirects and future mobile deep links
+
 ## Current web scope
 
 This first web slice is intentionally narrow:

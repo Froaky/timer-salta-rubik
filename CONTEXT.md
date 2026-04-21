@@ -148,6 +148,10 @@ Este archivo resume lo indispensable para continuar el desarrollo de este repo s
     - frontend Flutter web,
     - backend API,
     - PostgreSQL.
+  - WCA conviene usarla como proveedor externo opcional de identidad, no como auth unica del producto; mucha gente puede querer usar la app sin cuenta WCA.
+  - la API oficial v0 de WCA sirve para OAuth y perfil autenticado (`/oauth/authorize`, `/oauth/token`, `/api/v0/me`), pero para datos publicos generales WCA misma recomienda su API no oficial/endosada o exports de base.
+  - el backend ya emite un bearer token propio de Salta Rubik despues de OAuth WCA; eso evita meter secretos WCA en Flutter y permite una sesion comun entre web y mobile.
+  - el flujo WCA ya soporta `state` persistido en DB (`oauth_states`) y redirects permitidos por allowlist para volver seguro a web o mobile.
   - el backend usa `soft delete` (`deleted_at`) en `sessions` y `solves` para no perder tombstones utiles para sync futura.
   - las stats remotas deben seguir siendo derivadas de solves; no conviene usarlas como fuente de verdad.
 
@@ -179,6 +183,8 @@ Quedan visibles estos items sin cerrar en `lib/TODO.TXT`:
 - checklist de salida a Play Store (`PS-001` a `PS-010`).
 - roadmap web/Railway (`EPIC-WEB-001` a `EPIC-WEB-004` y `WEB-US-001` a `WEB-US-014`).
 - roadmap backend/API (`EPIC-BE-001` a `EPIC-BE-003` y `BE-US-001` a `BE-US-010`).
+- readiness de auth externa/WCA (`BE-US-011` y `BE-US-012`).
+- cierre del flujo auth WCA cross-platform (`BE-US-013` a `BE-US-015`).
 
 ## 9. Tests utiles
 
@@ -233,6 +239,8 @@ Notas:
   - frontend Flutter web,
   - backend API propio,
   - y PostgreSQL/ORM.
+- Si se usa WCA, hacerlo como proveedor opcional de login/vinculacion y no como prerequisito para usar timer/sesiones locales.
+- Si se integra login en Flutter, el cliente debe iniciar OAuth contra el backend y luego usar el token de Salta Rubik para `/auth/me`; no conviene guardar ni manejar el secreto OAuth del proveedor en la app.
 - No exponer la base de datos directo al cliente; Flutter debe hablar con endpoints propios cuando llegue la integracion remota.
 - No asumir que "subir a Railway" obliga a cambiar la UX mobile actual; Android debe conservar su vista y flujo mientras se habilita web.
 - Regla explicita: cualquier ajuste de UX/layout/inputs para web o desktop debe quedar aislado y no cambiar mobile salvo pedido explicito del usuario.
@@ -368,6 +376,18 @@ Entradas actuales:
   - archivos afectados: `backend/*`, `lib/TODO.TXT`, `README.md`, `CONTEXT.md`, `.gitignore`
   - validacion: `npm install`, `npm run prisma:generate`, `npx prisma validate`, `npm run build` en `backend/`
   - siguiente paso: desplegar el backend como servicio separado en Railway usando `backend/Dockerfile`, conectarlo a PostgreSQL y luego agregar stats/auth/sync por slices
+
+- `2026-04-21`
+  - se agrego readiness para cuenta WCA como proveedor externo opcional en el backend: tabla `external_accounts`, rutas de discovery/start/callback OAuth y backlog `BE-US-011`/`BE-US-012`
+  - archivos afectados: `backend/prisma/schema.prisma`, `backend/prisma/migrations/20260421210000_add_external_accounts/migration.sql`, `backend/src/routes/auth.ts`, `backend/src/app.ts`, `backend/.env.example`, `backend/README.md`, `lib/TODO.TXT`, `README.md`, `CONTEXT.md`
+  - validacion: `npm run prisma:generate`, `npx prisma validate`, `npm run build` en `backend/`
+  - siguiente paso: crear una OAuth application en WCA, cargar `WCA_OAUTH_CLIENT_ID/SECRET/REDIRECT_URI` en Railway y probar `GET /api/v1/auth/providers` seguido del flujo de callback real
+
+- `2026-04-21`
+  - se completo el siguiente slice de auth WCA cross-platform: `oauth_states` para `state`, allowlist de redirects, bearer token propio del backend y endpoint `GET /api/v1/auth/me` para reconstruir sesion en clientes web/mobile
+  - archivos afectados: `backend/prisma/schema.prisma`, `backend/prisma/migrations/20260421224500_add_oauth_states/migration.sql`, `backend/src/lib/auth_token.ts`, `backend/src/lib/auth_redirects.ts`, `backend/src/routes/auth.ts`, `backend/.env.example`, `backend/README.md`, `lib/TODO.TXT`, `README.md`, `CONTEXT.md`
+  - validacion: `npm run prisma:generate`, `npx prisma validate`, `npm run build` en `backend/`
+  - siguiente paso: pushear estos cambios, agregar envs `AUTH_*` y `WCA_OAUTH_*` en Railway, crear la OAuth app en WCA y despues integrar Flutter web/mobile con `start` + `auth/me`
 
 - `2026-04-21`
   - se definio la linea de producto para el backend: API propia separada, ORM para manejar esquema/migraciones y Postgres remoto, manteniendo la app Flutter local-first y sin cambios de UX mobile
