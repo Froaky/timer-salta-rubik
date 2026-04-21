@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
+import 'package:flutter/services.dart';
 import 'package:salta_rubik/presentation/bloc/session/session_bloc.dart';
 import 'package:salta_rubik/presentation/bloc/session/session_event.dart';
 import 'package:salta_rubik/presentation/bloc/session/session_state.dart';
@@ -21,6 +22,10 @@ void main() {
   late MockSessionBloc sessionBloc;
   late MockSolveBloc solveBloc;
   late MockTimerBloc timerBloc;
+  final testerView = TestWidgetsFlutterBinding.ensureInitialized()
+      .platformDispatcher
+      .views
+      .first;
 
   setUpAll(registerTestFallbacks);
 
@@ -30,10 +35,16 @@ void main() {
     timerBloc = MockTimerBloc();
   });
 
+  tearDown(() {
+    testerView.resetPhysicalSize();
+    testerView.resetDevicePixelRatio();
+  });
+
   Widget buildPage({
     required SessionState sessionState,
     required SolveState solveState,
     required TimerState timerState,
+    bool? enableDesktopExperienceOverride,
   }) {
     whenListen(sessionBloc, const Stream<SessionState>.empty(),
         initialState: sessionState);
@@ -55,8 +66,10 @@ void main() {
         BlocProvider<SolveBloc>.value(value: solveBloc),
         BlocProvider<TimerBloc>.value(value: timerBloc),
       ],
-      child: const MaterialApp(
-        home: TimerPage(),
+      child: MaterialApp(
+        home: TimerPage(
+          enableDesktopExperienceOverride: enableDesktopExperienceOverride,
+        ),
       ),
     );
   }
@@ -424,5 +437,141 @@ void main() {
     expect(find.byType(TimerDisplay), findsOneWidget);
     expect(find.byKey(const ValueKey('timer-scramble-preview-trigger')),
         findsOneWidget);
+  });
+
+  testWidgets('uses desktop timer workspace on wide desktop-class screens',
+      (tester) async {
+    tester.view.physicalSize = const Size(1600, 1000);
+    tester.view.devicePixelRatio = 1.0;
+
+    await tester.pumpWidget(
+      buildPage(
+        sessionState: SessionState.initial().copyWith(
+          status: SessionStatus.loaded,
+          sessions: [session],
+          currentSession: session,
+        ),
+        solveState: SolveState.initial().copyWith(
+          status: SolveStatus.loaded,
+          solves: solves,
+          currentScramble: scramble,
+          statistics: statistics,
+        ),
+        timerState: TimerState.initial(),
+        enableDesktopExperienceOverride: true,
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const ValueKey('desktop-scramble-preview-trigger')),
+        findsOneWidget);
+    expect(find.text('Hold Space'), findsOneWidget);
+  });
+
+  testWidgets(
+      'spacebar starts hold and release stops hold on desktop-class input',
+      (tester) async {
+    final idleState = TimerState.initial();
+    final armedState = idleState.copyWith(
+      status: TimerStatus.armed,
+      color: TimerColor.green,
+    );
+
+    await tester.pumpWidget(
+      buildPage(
+        sessionState: SessionState.initial().copyWith(
+          status: SessionStatus.loaded,
+          sessions: [session],
+          currentSession: session,
+        ),
+        solveState: SolveState.initial().copyWith(
+          status: SolveStatus.loaded,
+          solves: solves,
+          currentScramble: scramble,
+          statistics: statistics,
+        ),
+        timerState: idleState,
+        enableDesktopExperienceOverride: true,
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.sendKeyDownEvent(LogicalKeyboardKey.space);
+    await tester.pump();
+
+    verify(() => timerBloc.add(any(that: isA<TimerStartHold>()))).called(1);
+
+    when(() => timerBloc.state).thenReturn(armedState);
+
+    await tester.sendKeyUpEvent(LogicalKeyboardKey.space);
+    await tester.pump();
+
+    verify(() => timerBloc.add(any(that: isA<TimerStopHold>()))).called(1);
+  });
+
+  testWidgets('any non-escape key stops a running timer on desktop-class input',
+      (tester) async {
+    final runningState = TimerState.initial().copyWith(
+      status: TimerStatus.running,
+      elapsedMs: 520,
+      startTime: DateTime.now().subtract(const Duration(milliseconds: 520)),
+    );
+
+    await tester.pumpWidget(
+      buildPage(
+        sessionState: SessionState.initial().copyWith(
+          status: SessionStatus.loaded,
+          sessions: [session],
+          currentSession: session,
+        ),
+        solveState: SolveState.initial().copyWith(
+          status: SolveStatus.loaded,
+          solves: solves,
+          currentScramble: scramble,
+          statistics: statistics,
+        ),
+        timerState: runningState,
+        enableDesktopExperienceOverride: true,
+      ),
+    );
+    await tester.pump();
+
+    await tester.sendKeyDownEvent(LogicalKeyboardKey.keyA);
+    await tester.pump();
+
+    verify(() => timerBloc.add(any(that: isA<TimerStop>()))).called(1);
+  });
+
+  testWidgets('escape does not stop a running timer on desktop-class input',
+      (tester) async {
+    final runningState = TimerState.initial().copyWith(
+      status: TimerStatus.running,
+      elapsedMs: 520,
+      startTime: DateTime.now().subtract(const Duration(milliseconds: 520)),
+    );
+
+    await tester.pumpWidget(
+      buildPage(
+        sessionState: SessionState.initial().copyWith(
+          status: SessionStatus.loaded,
+          sessions: [session],
+          currentSession: session,
+        ),
+        solveState: SolveState.initial().copyWith(
+          status: SolveStatus.loaded,
+          solves: solves,
+          currentScramble: scramble,
+          statistics: statistics,
+        ),
+        timerState: runningState,
+        enableDesktopExperienceOverride: true,
+      ),
+    );
+    await tester.pump();
+
+    await tester.sendKeyDownEvent(LogicalKeyboardKey.escape);
+    await tester.pump();
+
+    verifyNever(() => timerBloc.add(any(that: isA<TimerStop>())));
   });
 }

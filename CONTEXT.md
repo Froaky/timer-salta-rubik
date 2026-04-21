@@ -219,6 +219,7 @@ Notas:
   - persistencia local compatible con navegador,
   - y sync/cuenta remota futura.
 - No asumir que "subir a Railway" obliga a cambiar la UX mobile actual; Android debe conservar su vista y flujo mientras se habilita web.
+- Regla explicita: cualquier ajuste de UX/layout/inputs para web o desktop debe quedar aislado y no cambiar mobile salvo pedido explicito del usuario.
 - Si se trabaja en web, preservar las mismas semanticas de timer, sesiones, penalties, scramble y stats entre plataformas.
 - En este entorno Windows, `dart pub get` funciona mejor que `flutter pub get` si Developer Mode no esta habilitado; `flutter pub get` puede frenarse por symlinks de plugins.
 
@@ -339,3 +340,9 @@ Entradas actuales:
   - archivos afectados: `pubspec.yaml`, `pubspec.lock`, `README.md`, `Dockerfile`, `.dockerignore`, `deploy/Caddyfile`, `lib/data/datasources/local_database*.dart`, archivos generados de plugins desktop, `CONTEXT.md`
   - validacion: `dart pub get`, `flutter test --no-pub`, `flutter build web --no-pub`; `flutter analyze --no-pub` sigue con warnings/info viejos del repo
   - siguiente paso: desplegar en Railway y hacer smoke test real en browser para decidir que stories web ya pueden cerrarse
+
+- `2026-04-21`
+  - se ajusto la experiencia desktop/web del timer sin tocar mobile: layout mas estandar para pantallas anchas y atajos de teclado para timer (`Space` para hold/start, cualquier tecla menos `Esc` para stop)
+  - archivos afectados: `lib/presentation/pages/timer_page.dart`, `test/presentation/pages/timer_page_test.dart`, `CONTEXT.md`
+  - validacion: `flutter test --no-pub test/presentation/pages/timer_page_test.dart`, `flutter test --no-pub`; `flutter analyze --no-pub` sigue con warnings/info viejos del repo
+  - siguiente paso: probar en Railway que el flujo de teclado y el layout desktop se sientan bien en browser real antes de seguir con auth/sync

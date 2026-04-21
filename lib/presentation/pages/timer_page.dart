@@ -1,4 +1,6 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'settings_page.dart';
 import 'auth_page.dart';
@@ -26,26 +28,47 @@ import '../widgets/timer/timer_actions.dart';
 import 'compete_page.dart';
 
 class TimerPage extends StatefulWidget {
-  const TimerPage({super.key});
+  final bool? enableDesktopExperienceOverride;
+
+  const TimerPage({
+    super.key,
+    this.enableDesktopExperienceOverride,
+  });
 
   @override
   State<TimerPage> createState() => _TimerPageState();
 }
 
 class _TimerPageState extends State<TimerPage> {
+  static const double _desktopLayoutBreakpoint = 1100;
+
   bool _showStatistics = false;
   bool _showSolveList = false;
   String? _lastSessionId;
   String? _lastCubeType;
   int? _latchedStopElapsedMs;
   int? _lastDisplayedElapsedMs;
+  late final FocusNode _keyboardFocusNode;
+  bool _spacebarPressed = false;
 
   @override
   void initState() {
     super.initState();
+    _keyboardFocusNode = FocusNode(debugLabel: 'timer-page-keyboard-focus');
     // Load initial data
     context.read<SessionBloc>().add(LoadSessions());
     context.read<SolveBloc>().add(GenerateNewScramble('3x3'));
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        _requestDesktopKeyboardFocus();
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _keyboardFocusNode.dispose();
+    super.dispose();
   }
 
   void _onSessionChanged(SessionState sessionState) {
@@ -170,8 +193,7 @@ class _TimerPageState extends State<TimerPage> {
           body: BlocBuilder<TimerBloc, TimerState>(
             builder: (context, timerState) {
               final isTimerImmersive = _isTimerImmersive(timerState);
-
-              return Column(
+              final body = Column(
                 children: [
                   if (!isTimerImmersive) const SessionSelector(),
                   Expanded(
@@ -183,6 +205,8 @@ class _TimerPageState extends State<TimerPage> {
                   ),
                 ],
               );
+
+              return _wrapWithDesktopKeyboardLayer(body);
             },
           ),
         ));
@@ -213,20 +237,175 @@ class _TimerPageState extends State<TimerPage> {
           });
         }
       },
-      child: Column(
-        children: [
-          if (!isImmersive) const ScrambleDisplay(),
-          Expanded(
-            flex: 1,
-            child: AnimatedScale(
-              duration: const Duration(milliseconds: 220),
-              curve: Curves.easeOutCubic,
-              scale: isImmersive ? 1.02 : 1,
-              child: _buildTimerWithControls(isImmersive: isImmersive),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final useDesktopLayout =
+              !isImmersive && _useDesktopTimerLayout(constraints.maxWidth);
+
+          if (useDesktopLayout) {
+            return BlocBuilder<SessionBloc, SessionState>(
+              builder: (context, sessionState) {
+                return BlocBuilder<SolveBloc, SolveState>(
+                  builder: (context, solveState) {
+                    return Center(
+                      child: ConstrainedBox(
+                        constraints: const BoxConstraints(maxWidth: 1480),
+                        child: Padding(
+                          padding: const EdgeInsets.fromLTRB(20, 10, 20, 20),
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              Expanded(
+                                flex: 5,
+                                child: Column(
+                                  children: [
+                                    const ScrambleDisplay(),
+                                    const SizedBox(height: 8),
+                                    Expanded(
+                                      child: AnimatedScale(
+                                        duration:
+                                            const Duration(milliseconds: 220),
+                                        curve: Curves.easeOutCubic,
+                                        scale: 1,
+                                        child: _buildTimerWithControls(
+                                          isImmersive: false,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              const SizedBox(width: 20),
+                              SizedBox(
+                                width: 300,
+                                child: _buildDesktopSidebar(
+                                  solveState: solveState,
+                                  sessionState: sessionState,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    );
+                  },
+                );
+              },
+            );
+          }
+
+          return Column(
+            children: [
+              if (!isImmersive) const ScrambleDisplay(),
+              Expanded(
+                flex: 1,
+                child: AnimatedScale(
+                  duration: const Duration(milliseconds: 220),
+                  curve: Curves.easeOutCubic,
+                  scale: isImmersive ? 1.02 : 1,
+                  child: _buildTimerWithControls(isImmersive: isImmersive),
+                ),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildDesktopSidebar({
+    required SolveState solveState,
+    required SessionState sessionState,
+  }) {
+    final currentSession = sessionState.currentSession;
+    final currentScramble = solveState.currentScramble;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        if (currentSession != null)
+          _DesktopInfoCard(
+            title: 'Session',
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  currentSession.name,
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        color: AppTheme.textPrimary,
+                        fontWeight: FontWeight.w600,
+                      ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  currentSession.cubeType.toUpperCase(),
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        color: AppTheme.textSecondary,
+                        letterSpacing: 0.8,
+                      ),
+                ),
+              ],
+            ),
+          ),
+        if (currentSession != null) const SizedBox(height: 16),
+        _DesktopInfoCard(
+          title: 'Keyboard',
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _buildShortcutRow('Start', 'Hold Space'),
+              const SizedBox(height: 10),
+              _buildShortcutRow('Release', 'Lift Space'),
+              const SizedBox(height: 10),
+              _buildShortcutRow('Stop', 'Any key except Esc'),
+            ],
+          ),
+        ),
+        if (currentScramble != null &&
+            ScramblePreview.supports(currentScramble.cubeType)) ...[
+          const SizedBox(height: 16),
+          _DesktopInfoCard(
+            title: 'Preview',
+            child: GestureDetector(
+              key: const ValueKey('desktop-scramble-preview-trigger'),
+              onTap: () =>
+                  _showExpandedScramblePreview(context, currentScramble),
+              child: Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: AppTheme.secondaryColor.withValues(alpha: 0.7),
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(
+                    color: AppTheme.textMuted.withValues(alpha: 0.18),
+                  ),
+                ),
+                child: Column(
+                  children: [
+                    ScramblePreview(
+                      scramble: currentScramble,
+                      width: 260,
+                      height: 190,
+                      showLabel: false,
+                      padding: EdgeInsets.zero,
+                      backgroundColor: Colors.transparent,
+                      containerKey:
+                          const ValueKey('desktop-scramble-preview-container'),
+                      svgKey: const ValueKey('desktop-scramble-preview-svg'),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'Click to expand',
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                            color: AppTheme.textSecondary,
+                          ),
+                    ),
+                  ],
+                ),
+              ),
             ),
           ),
         ],
-      ),
+      ],
     );
   }
 
@@ -303,6 +482,7 @@ class _TimerPageState extends State<TimerPage> {
   }
 
   void _handleTimerTapDown() {
+    _requestDesktopKeyboardFocus();
     final timerBloc = context.read<TimerBloc>();
     final timerState = timerBloc.state;
 
@@ -313,18 +493,7 @@ class _TimerPageState extends State<TimerPage> {
     }
 
     if (timerState.status == TimerStatus.running) {
-      final stoppedAt = DateTime.now();
-      final displayedElapsedMs =
-          _lastDisplayedElapsedMs ?? timerState.elapsedMs;
-      setState(() {
-        _latchedStopElapsedMs = displayedElapsedMs;
-      });
-      timerBloc.add(
-        TimerStop(
-          stoppedAt: stoppedAt,
-          elapsedMsOverride: displayedElapsedMs,
-        ),
-      );
+      _stopRunningTimer(timerBloc, timerState);
       return;
     }
 
@@ -334,6 +503,7 @@ class _TimerPageState extends State<TimerPage> {
   }
 
   void _handleTimerTapUp() {
+    _requestDesktopKeyboardFocus();
     final timerState = context.read<TimerBloc>().state;
     if (timerState.status == TimerStatus.holdPending ||
         timerState.status == TimerStatus.armed) {
@@ -347,6 +517,149 @@ class _TimerPageState extends State<TimerPage> {
         timerState.status == TimerStatus.armed) {
       context.read<TimerBloc>().add(TimerStopHold());
     }
+  }
+
+  void _stopRunningTimer(TimerBloc timerBloc, TimerState timerState) {
+    final stoppedAt = DateTime.now();
+    final displayedElapsedMs = _lastDisplayedElapsedMs ?? timerState.elapsedMs;
+    setState(() {
+      _latchedStopElapsedMs = displayedElapsedMs;
+    });
+    timerBloc.add(
+      TimerStop(
+        stoppedAt: stoppedAt,
+        elapsedMsOverride: displayedElapsedMs,
+      ),
+    );
+  }
+
+  Widget _wrapWithDesktopKeyboardLayer(Widget child) {
+    if (!_supportsDesktopClassInput) {
+      return child;
+    }
+
+    return Listener(
+      behavior: HitTestBehavior.translucent,
+      onPointerDown: (_) => _requestDesktopKeyboardFocus(),
+      child: Focus(
+        autofocus: true,
+        focusNode: _keyboardFocusNode,
+        onKeyEvent: _handleDesktopKeyEvent,
+        child: child,
+      ),
+    );
+  }
+
+  KeyEventResult _handleDesktopKeyEvent(FocusNode node, KeyEvent event) {
+    if (!_supportsDesktopClassInput) {
+      return KeyEventResult.ignored;
+    }
+
+    if (event.logicalKey == LogicalKeyboardKey.escape) {
+      return KeyEventResult.ignored;
+    }
+
+    if (event is KeyRepeatEvent) {
+      return KeyEventResult.handled;
+    }
+
+    final timerBloc = context.read<TimerBloc>();
+    final timerState = timerBloc.state;
+
+    if (event is KeyDownEvent) {
+      if (event.logicalKey == LogicalKeyboardKey.space) {
+        if (_spacebarPressed) {
+          return KeyEventResult.handled;
+        }
+        _spacebarPressed = true;
+
+        if (timerState.status == TimerStatus.idle ||
+            timerState.status == TimerStatus.stopped) {
+          timerBloc.add(TimerStartHold());
+          return KeyEventResult.handled;
+        }
+      }
+
+      if (timerState.status == TimerStatus.running) {
+        _stopRunningTimer(timerBloc, timerState);
+        return KeyEventResult.handled;
+      }
+    }
+
+    if (event is KeyUpEvent && event.logicalKey == LogicalKeyboardKey.space) {
+      _spacebarPressed = false;
+      if (timerState.status == TimerStatus.holdPending ||
+          timerState.status == TimerStatus.armed) {
+        timerBloc.add(TimerStopHold());
+        return KeyEventResult.handled;
+      }
+    }
+
+    return KeyEventResult.ignored;
+  }
+
+  void _requestDesktopKeyboardFocus() {
+    if (_supportsDesktopClassInput && !_keyboardFocusNode.hasFocus) {
+      _keyboardFocusNode.requestFocus();
+    }
+  }
+
+  bool _useDesktopTimerLayout(double maxWidth) {
+    return _supportsDesktopClassInput && maxWidth >= _desktopLayoutBreakpoint;
+  }
+
+  bool get _supportsDesktopClassInput {
+    final override = widget.enableDesktopExperienceOverride;
+    if (override != null) {
+      return override;
+    }
+
+    if (kIsWeb) {
+      return true;
+    }
+
+    switch (defaultTargetPlatform) {
+      case TargetPlatform.macOS:
+      case TargetPlatform.windows:
+      case TargetPlatform.linux:
+        return true;
+      case TargetPlatform.android:
+      case TargetPlatform.iOS:
+      case TargetPlatform.fuchsia:
+        return false;
+    }
+  }
+
+  Widget _buildShortcutRow(String label, String shortcut) {
+    return Row(
+      children: [
+        Expanded(
+          child: Text(
+            label,
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  color: AppTheme.textSecondary,
+                ),
+          ),
+        ),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+          decoration: BoxDecoration(
+            color: AppTheme.secondaryColor.withValues(alpha: 0.95),
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(
+              color: AppTheme.textMuted.withValues(alpha: 0.16),
+            ),
+          ),
+          child: Text(
+            shortcut,
+            style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                  color: AppTheme.textPrimary,
+                  fontWeight: FontWeight.w700,
+                ),
+          ),
+        ),
+      ],
+    );
   }
 
   Widget? _buildTimerScramblePreview(BuildContext context, Scramble? scramble) {
@@ -624,6 +937,52 @@ class _TimerPageState extends State<TimerPage> {
           },
         );
       },
+    );
+  }
+}
+
+class _DesktopInfoCard extends StatelessWidget {
+  final String title;
+  final Widget child;
+
+  const _DesktopInfoCard({
+    required this.title,
+    required this.child,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppTheme.cardColor,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(
+          color: AppTheme.textMuted.withValues(alpha: 0.14),
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.08),
+            blurRadius: 16,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            title.toUpperCase(),
+            style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                  color: AppTheme.textSecondary,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 1.4,
+                ),
+          ),
+          const SizedBox(height: 14),
+          child,
+        ],
+      ),
     );
   }
 }
