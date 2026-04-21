@@ -4,6 +4,8 @@ Salta Rubik is a Flutter speedcubing timer with sessions, WCA-style scrambles, s
 
 The app remains mobile-first, but the repo now also supports Flutter Web so the same product can be deployed to Railway without changing the current Android UI flow.
 
+This repository now also contains a separate backend foundation under [backend/](C:/Users/MateoCoca/Documents/REPOS/timer-salta-rubik/backend) for future account-backed sessions, solves, and sync. The mobile app still remains local-first.
+
 ## Stack
 
 - Flutter
@@ -53,6 +55,26 @@ Railway references used for this setup:
 - Dockerfiles: https://docs.railway.com/deploy/dockerfiles
 - Static hosting guide: https://docs.railway.com/guides/static-hosting
 - Public networking / `PORT`: https://docs.railway.com/public-networking
+
+## Backend API foundation
+
+There is now a separate backend service in [backend/](C:/Users/MateoCoca/Documents/REPOS/timer-salta-rubik/backend) built with:
+
+- Fastify
+- Prisma ORM
+- PostgreSQL
+
+It is meant to be deployed as its own Railway service with:
+
+- service 1: Flutter web frontend
+- service 2: backend API
+- service 3: PostgreSQL
+
+Backend deploy notes:
+
+- use `backend/Dockerfile` as the service Dockerfile path
+- provide `DATABASE_URL` from Railway PostgreSQL
+- keep the Flutter client local-first until auth/sync is explicitly integrated
 
 ## Current web scope
 

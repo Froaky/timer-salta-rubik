@@ -11,3 +11,5 @@ android/build
 linux/build
 macos/Build
 windows/build
+backend/node_modules
+backend/dist

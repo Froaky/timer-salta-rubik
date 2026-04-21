@@ -141,6 +141,15 @@ Este archivo resume lo indispensable para continuar el desarrollo de este repo s
     - web usa `localStorage` del navegador.
   - `firebase_core`, `firebase_auth` y `cloud_firestore` salieron del `pubspec` porque aun no habia login real y estaban rompiendo la compilacion web.
   - hay path de deploy para Railway con `Dockerfile` multi-stage y `deploy/Caddyfile` para servir `build/web` con fallback SPA.
+- Backend / API:
+  - el repo ahora tiene una base de backend separada en `backend/` con `Fastify + Prisma + PostgreSQL`.
+  - el backend no reemplaza ni rompe el modo local-first actual; prepara cuenta/sync futura sin volver obligatoria la red.
+  - el deploy esperado en Railway es con servicios separados:
+    - frontend Flutter web,
+    - backend API,
+    - PostgreSQL.
+  - el backend usa `soft delete` (`deleted_at`) en `sessions` y `solves` para no perder tombstones utiles para sync futura.
+  - las stats remotas deben seguir siendo derivadas de solves; no conviene usarlas como fuente de verdad.
 
 ## 7. Estado actual del motor visual del scramble
 
@@ -169,6 +178,7 @@ Quedan visibles estos items sin cerrar en `lib/TODO.TXT`:
 - insercion manual de tiempos.
 - checklist de salida a Play Store (`PS-001` a `PS-010`).
 - roadmap web/Railway (`EPIC-WEB-001` a `EPIC-WEB-004` y `WEB-US-001` a `WEB-US-014`).
+- roadmap backend/API (`EPIC-BE-001` a `EPIC-BE-003` y `BE-US-001` a `BE-US-010`).
 
 ## 9. Tests utiles
 
@@ -214,10 +224,16 @@ Notas:
   - `.agents/skills/flutter-web-railway` para habilitar Flutter Web y deploy en Railway sin romper Android.
   - `.agents/skills/cross-platform-storage` para abstraer persistencia entre mobile y web.
   - `.agents/skills/auth-sync-readiness` para preparar login/sync futuro sin romper el modo local-first actual.
+- Para la iniciativa de backend, la direccion elegida es servicio separado con ORM + Postgres + API propia en Railway; la app Flutter sigue local-first y mobile no debe cambiar salvo pedido explicito del usuario.
 - Para web/Railway, separar claramente:
   - soporte de runtime web + deploy,
   - persistencia local compatible con navegador,
   - y sync/cuenta remota futura.
+- Para el nuevo backend, separar claramente:
+  - frontend Flutter web,
+  - backend API propio,
+  - y PostgreSQL/ORM.
+- No exponer la base de datos directo al cliente; Flutter debe hablar con endpoints propios cuando llegue la integracion remota.
 - No asumir que "subir a Railway" obliga a cambiar la UX mobile actual; Android debe conservar su vista y flujo mientras se habilita web.
 - Regla explicita: cualquier ajuste de UX/layout/inputs para web o desktop debe quedar aislado y no cambiar mobile salvo pedido explicito del usuario.
 - Si se trabaja en web, preservar las mismas semanticas de timer, sesiones, penalties, scramble y stats entre plataformas.
@@ -346,3 +362,15 @@ Entradas actuales:
   - archivos afectados: `lib/presentation/pages/timer_page.dart`, `test/presentation/pages/timer_page_test.dart`, `CONTEXT.md`
   - validacion: `flutter test --no-pub test/presentation/pages/timer_page_test.dart`, `flutter test --no-pub`; `flutter analyze --no-pub` sigue con warnings/info viejos del repo
   - siguiente paso: probar en Railway que el flujo de teclado y el layout desktop se sientan bien en browser real antes de seguir con auth/sync
+
+- `2026-04-21`
+  - se definio backlog de backend/API y se implemento el primer scaffold en `backend/` con `Fastify + Prisma + PostgreSQL`, incluyendo schema remoto de `users/sessions/solves`, migracion inicial, health endpoint y CRUD basico de `sessions/solves`
+  - archivos afectados: `backend/*`, `lib/TODO.TXT`, `README.md`, `CONTEXT.md`, `.gitignore`
+  - validacion: `npm install`, `npm run prisma:generate`, `npx prisma validate`, `npm run build` en `backend/`
+  - siguiente paso: desplegar el backend como servicio separado en Railway usando `backend/Dockerfile`, conectarlo a PostgreSQL y luego agregar stats/auth/sync por slices
+
+- `2026-04-21`
+  - se definio la linea de producto para el backend: API propia separada, ORM para manejar esquema/migraciones y Postgres remoto, manteniendo la app Flutter local-first y sin cambios de UX mobile
+  - archivos afectados: `CONTEXT.md`, backlog propuesto para `lib/TODO.TXT`
+  - validacion: decision documental; no hubo cambios funcionales
+  - siguiente paso: bajar `EPIC-BE-001` a stories implementables con orden de entrega y luego empezar el slice inicial de backend

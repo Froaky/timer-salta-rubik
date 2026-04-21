@@ -70,3 +70,21 @@ Railway + Web roadmap
 -| WEB-US-012 | Como usuario autenticado, quiero ver mis solves, penalties y orden cronologico en web, para revisar mis tiempos desde cualquier dispositivo.
 -| WEB-US-013 | Como usuario autenticado, quiero que las estadisticas mostradas en web respeten las mismas reglas que mobile, para confiar en que mis promedios y mejores tiempos son correctos.
 -| WEB-US-014 | Como usuario autenticado, quiero que al cambiar de sesion en web se mantengan alineados scramble, historial y stats, para que el comportamiento sea consistente con la app.
+
+Backend + API roadmap
+
+-| EPIC-BE-001 | Como producto, necesitamos una base de backend desplegable en Railway con ORM y Postgres, para dejar lista la infraestructura de datos remotos sin gestionar la base a mano.
+-| BE-US-001 | Como maintainer, quiero un backend desplegable en Railway con ORM y migraciones, para no administrar la base de datos a mano.
+-| BE-US-002 | Como maintainer, quiero una configuracion centralizada de DB y variables de entorno, para separar credenciales y entorno del codigo.
+-| BE-US-003 | Como maintainer, quiero health checks y logs minimos, para detectar rapido fallas de deploy o de conexion a la DB.
+
+-| EPIC-BE-002 | Como producto, necesitamos una API propia versionada para sessions y solves, para que web y mobile hablen con nuestros endpoints y no con la base directo.
+-| BE-US-004 | Como usuario, quiero que mis sesiones existan como recurso remoto, para poder recuperarlas desde otros dispositivos cuando llegue login/sync.
+-| BE-US-005 | Como usuario, quiero que mis solves se guarden como entidades remotas, para mantener mi historial sincronizable.
+-| BE-US-006 | Como usuario, quiero consultar stats derivadas desde backend, para que web y mobile puedan usar la misma logica.
+-| BE-US-007 | Como maintainer, quiero una API versionada y documentada, para integrar Flutter sin adivinar contratos.
+
+-| EPIC-BE-003 | Como producto, necesitamos dejar lista la base de identidad remota y sync futura, para que el usuario vea sus mismos tiempos en web y mobile cuando llegue auth.
+-| BE-US-008 | Como usuario con cuenta futura, quiero una identidad remota estable, para ver mis datos en web y mobile con la misma cuenta.
+-| BE-US-009 | Como usuario que ya tiene datos locales, quiero un flujo de vinculacion o migracion a cuenta, para no perder historial cuando se habilite sync.
+-| BE-US-010 | Como producto, quiero reglas de sync y resolucion de conflictos, para evitar duplicados o stats inconsistentes entre local y remoto.

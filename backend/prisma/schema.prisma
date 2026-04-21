@@ -1,0 +1,62 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Penalty {
+  none
+  plus2
+  dnf
+}
+
+model User {
+  id        String    @id
+  email     String?   @unique
+  createdAt DateTime  @map("created_at")
+  updatedAt DateTime  @map("updated_at")
+  sessions  Session[]
+  solves    Solve[]
+
+  @@map("users")
+}
+
+model Session {
+  id          String    @id
+  ownerUserId String?   @map("owner_user_id")
+  name        String
+  cubeType    String    @map("cube_type")
+  createdAt   DateTime  @map("created_at")
+  updatedAt   DateTime  @map("updated_at")
+  deletedAt   DateTime? @map("deleted_at")
+  owner       User?     @relation(fields: [ownerUserId], references: [id], onDelete: SetNull)
+  solves      Solve[]
+
+  @@index([ownerUserId, createdAt(sort: Desc)])
+  @@index([deletedAt])
+  @@map("sessions")
+}
+
+model Solve {
+  id          String    @id
+  sessionId    String    @map("session_id")
+  ownerUserId  String?   @map("owner_user_id")
+  timeMs       Int       @map("time_ms")
+  penalty      Penalty
+  scramble     String
+  cubeType     String    @map("cube_type")
+  lane         Int       @default(0)
+  createdAt    DateTime  @map("created_at")
+  updatedAt    DateTime  @map("updated_at")
+  deletedAt    DateTime? @map("deleted_at")
+  session      Session   @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  owner        User?     @relation(fields: [ownerUserId], references: [id], onDelete: SetNull)
+
+  @@index([sessionId, createdAt(sort: Desc)])
+  @@index([ownerUserId, createdAt(sort: Desc)])
+  @@index([deletedAt])
+  @@map("solves")
+}
