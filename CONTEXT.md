@@ -77,6 +77,8 @@ Este archivo resume lo indispensable para continuar el desarrollo de este repo s
 
 ### Dominio / persistencia solves
 - DB local: [local_database.dart](C:/Users/MateoCoca/Documents/REPOS/timer-salta-rubik/lib/data/datasources/local_database.dart)
+- Impl mobile SQLite: [local_database_sqflite.dart](C:/Users/MateoCoca/Documents/REPOS/timer-salta-rubik/lib/data/datasources/local_database_sqflite.dart)
+- Impl web navegador: [local_database_browser.dart](C:/Users/MateoCoca/Documents/REPOS/timer-salta-rubik/lib/data/datasources/local_database_browser.dart)
 - Datasource solves: [solve_local_datasource.dart](C:/Users/MateoCoca/Documents/REPOS/timer-salta-rubik/lib/data/datasources/solve_local_datasource.dart)
 - Repo solves: [solve_repository_impl.dart](C:/Users/MateoCoca/Documents/REPOS/timer-salta-rubik/lib/data/repositories/solve_repository_impl.dart)
 - Use case borrado masivo: [delete_solves_by_session.dart](C:/Users/MateoCoca/Documents/REPOS/timer-salta-rubik/lib/domain/usecases/delete_solves_by_session.dart)
@@ -132,6 +134,13 @@ Este archivo resume lo indispensable para continuar el desarrollo de este repo s
 - Scramble display principal:
   - ya no usa una franja fija alta en `timer_page.dart`; el card del scramble mide su alto segun el texto real y queda compacto por default.
   - `2x2` y scrambles cortos usan menos alto, mientras scrambles largos/NxN reducen tipografia y pueden crecer hasta un maximo controlado.
+- Web / Railway:
+  - la app ya compila a web con `flutter build web --no-pub`.
+  - `LocalDatabase` quedo separado por plataforma via conditional export:
+    - mobile/desktop sigue con SQLite,
+    - web usa `localStorage` del navegador.
+  - `firebase_core`, `firebase_auth` y `cloud_firestore` salieron del `pubspec` porque aun no habia login real y estaban rompiendo la compilacion web.
+  - hay path de deploy para Railway con `Dockerfile` multi-stage y `deploy/Caddyfile` para servir `build/web` con fallback SPA.
 
 ## 7. Estado actual del motor visual del scramble
 
@@ -159,6 +168,7 @@ Quedan visibles estos items sin cerrar en `lib/TODO.TXT`:
 - ordenado/filtro de tiempos por fecha y tiempo.
 - insercion manual de tiempos.
 - checklist de salida a Play Store (`PS-001` a `PS-010`).
+- roadmap web/Railway (`EPIC-WEB-001` a `EPIC-WEB-004` y `WEB-US-001` a `WEB-US-014`).
 
 ## 9. Tests utiles
 
@@ -190,6 +200,7 @@ flutter test
 Notas:
 - `flutter test` estaba pasando completo al cierre de esta tanda.
 - `flutter analyze` sigue con warnings/info viejos del repo; no todos vienen de los ultimos cambios.
+- para este slice web, la validacion importante fue `flutter build web --no-pub`.
 
 ## 11. Convenciones de trabajo de este repo
 
@@ -198,17 +209,27 @@ Notas:
 - No tocar archivos generados manualmente.
 - Si se agrega un datasource, repository, use case o bloc nuevo, actualizar `injection_container.dart`.
 - Si se cierra un item del backlog, actualizar `lib/TODO.TXT`.
+- Hay un skill local en `.agents/skills/epic-story-writer` para convertir ideas de producto, bugs, feedback de testers o trabajo de release en epicas e historias de usuario bien cortadas para este repo.
+- Hay skills locales para el roadmap web:
+  - `.agents/skills/flutter-web-railway` para habilitar Flutter Web y deploy en Railway sin romper Android.
+  - `.agents/skills/cross-platform-storage` para abstraer persistencia entre mobile y web.
+  - `.agents/skills/auth-sync-readiness` para preparar login/sync futuro sin romper el modo local-first actual.
+- Para web/Railway, separar claramente:
+  - soporte de runtime web + deploy,
+  - persistencia local compatible con navegador,
+  - y sync/cuenta remota futura.
+- No asumir que "subir a Railway" obliga a cambiar la UX mobile actual; Android debe conservar su vista y flujo mientras se habilita web.
+- Si se trabaja en web, preservar las mismas semanticas de timer, sesiones, penalties, scramble y stats entre plataformas.
+- En este entorno Windows, `dart pub get` funciona mejor que `flutter pub get` si Developer Mode no esta habilitado; `flutter pub get` puede frenarse por symlinks de plugins.
 
 ## 12. Siguiente arranque recomendado
 
 Si retomaras sin contexto adicional, arrancar asi:
 
-1. abrir `lib/TODO.TXT` y atacar `FIX-014` y `FIX-015`.
-2. revisar `TimerBloc` y los tests actuales del timer.
-3. instrumentar tests de contrato:
-   - mantener presionado -> `armed` -> soltar -> `running` inmediato,
-   - tocar stop -> tiempo final exacto sin ticks extra.
-4. despues de eso, seguir con ordenado/filtro de historial o insercion manual de tiempos.
+1. desplegar el estado actual en Railway usando el `Dockerfile` de raiz.
+2. hacer smoke test real en browser: boot, crear sesion, agregar solve, recargar y verificar persistencia.
+3. si eso queda bien, decidir que items `WEB-US-001`, `WEB-US-003` y `WEB-US-004` ya pueden marcarse como hechos.
+4. despues seguir con filtro/orden del historial, insercion manual de tiempos o el proximo slice de auth/sync.
 
 ## 13. Context Journal
 
@@ -294,3 +315,27 @@ Entradas actuales:
   - archivos afectados: `lib/TODO.TXT`, `CONTEXT.md`
   - validacion: sin cambios funcionales; ultimo `flutter test` completo seguia pasando antes de este update documental
   - siguiente paso: cerrar `PS-001` a `PS-010` antes de intentar el primer upload real a Play Console
+
+- `2026-04-21`
+  - se agrego el skill local `epic-story-writer` para generar epicas, user stories, fix stories y items de release alineados con `CONTEXT.md` y `lib/TODO.TXT`
+  - archivos afectados: `.agents/skills/epic-story-writer/SKILL.md`, `.agents/skills/epic-story-writer/references/story-patterns.md`, `.agents/skills/epic-story-writer/agents/openai.yaml`, `CONTEXT.md`
+  - validacion: `quick_validate.py` del skill pasando
+  - siguiente paso: usar `epic-story-writer` cuando aparezcan nuevos pedidos de backlog, feedback de testers o trabajo de Play Store
+
+- `2026-04-21`
+  - se definio backlog de producto para llevar la app a Railway/Web sin romper Android: primero runtime web + deploy, luego persistencia cross-platform, y mas adelante cuenta/sync para ver sesiones y tiempos en web
+  - archivos afectados: `lib/TODO.TXT`, `CONTEXT.md`
+  - validacion: sin cambios funcionales; backlog alineado a invariantes actuales de timer, sesiones y stats
+  - siguiente paso: arrancar por `EPIC-WEB-001` y `WEB-US-001` a `WEB-US-004` antes de tocar sync o login
+
+- `2026-04-21`
+  - se agregaron skills expertos para el roadmap web: `flutter-web-railway`, `cross-platform-storage` y `auth-sync-readiness`, alineados con deploy web, persistencia cross-platform y preparacion de sync/login futuro
+  - archivos afectados: `.agents/skills/flutter-web-railway/*`, `.agents/skills/cross-platform-storage/*`, `.agents/skills/auth-sync-readiness/*`, `CONTEXT.md`
+  - validacion: `quick_validate.py` pasando en los tres skills
+  - siguiente paso: usar `flutter-web-railway` + `implementation-planner` para arrancar `EPIC-WEB-001`
+
+- `2026-04-21`
+  - se implemento el primer slice real de `EPIC-WEB-001`: la app compila a web, la persistencia local ya esta separada por plataforma, y el repo tiene `Dockerfile` + `Caddyfile` para deploy en Railway sin cambiar la UX Android
+  - archivos afectados: `pubspec.yaml`, `pubspec.lock`, `README.md`, `Dockerfile`, `.dockerignore`, `deploy/Caddyfile`, `lib/data/datasources/local_database*.dart`, archivos generados de plugins desktop, `CONTEXT.md`
+  - validacion: `dart pub get`, `flutter test --no-pub`, `flutter build web --no-pub`; `flutter analyze --no-pub` sigue con warnings/info viejos del repo
+  - siguiente paso: desplegar en Railway y hacer smoke test real en browser para decidir que stories web ya pueden cerrarse

@@ -1,0 +1,13 @@
+.dart_tool
+.git
+.gitignore
+build
+coverage
+test
+ios
+android/.gradle
+android/app/build
+android/build
+linux/build
+macos/Build
+windows/build

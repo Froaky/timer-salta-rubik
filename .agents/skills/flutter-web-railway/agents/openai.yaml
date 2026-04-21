@@ -1,0 +1,4 @@
+interface:
+  display_name: "Flutter Web + Railway"
+  short_description: "Ship Flutter Web safely on Railway"
+  default_prompt: "Use -web-railway to plan or implement safe Flutter Web support and Railway deployment for this repo."

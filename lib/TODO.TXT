@@ -46,3 +46,27 @@ Play Store launch checklist
 -| PS-008 | Hacer smoke test de release en dispositivos reales: timer, sesiones, historial, scrambles, clock, compete mode y auth.
 -| PS-009 | Crear track de testing interno/cerrado y probar instalacion, actualizacion y rollback basico desde Play.
 -| PS-010 | Revisar politicas activas de Google Play antes de subir: contenido, privacidad, cuenta de developer, declaraciones de app y formularios obligatorios.
+
+Railway + Web roadmap
+
+-| EPIC-WEB-001 | Como producto, necesitamos una base web compatible con navegador para poder publicar Salta Rubik en Railway sin romper la experiencia actual de Android.
+-| WEB-US-001 | Como usuario web, quiero abrir Salta Rubik desde una URL hosteada en Railway y que la app cargue correctamente en navegador, para poder usarla sin instalar la app mobile.
+-| WEB-US-002 | Como usuario mobile actual, quiero que agregar soporte web no cambie la vista ni el flujo de la app Android, para no introducir regresiones en la version de Play Store.
+-| WEB-US-003 | Como usuario web sin login, quiero que mis sesiones y solves queden guardados localmente en el navegador, para no perder mis tiempos al recargar la pagina.
+-| WEB-US-004 | Como maintainer, quiero un proceso reproducible de build y deploy de Flutter Web hacia Railway, para poder publicar updates sin pasos manuales fragiles.
+
+-| EPIC-WEB-002 | Como producto, necesitamos desacoplar persistencia y plataforma para que la app pueda vivir en mobile y web con el mismo dominio sin depender solo de `sqflite`.
+-| WEB-US-005 | Como desarrollador, quiero abstraer la persistencia local por plataforma, para que Android siga usando su storage actual y web pueda usar un storage compatible de navegador.
+-| WEB-US-006 | Como usuario, quiero que sesiones, solves, penalties y stats mantengan la misma semantica en mobile y web, para que no existan diferencias funcionales entre plataformas.
+-| WEB-US-007 | Como desarrollador, quiero contratos y tests de repositorio compartidos entre mobile y web, para detectar rapido cualquier divergencia de comportamiento.
+
+-| EPIC-WEB-003 | Como producto, necesitamos dejar lista la base de cuenta y sincronizacion para que en una etapa posterior el usuario vea en web los mismos tiempos y sesiones que en mobile.
+-| WEB-US-008 | Como usuario con cuenta, quiero que mis sesiones y solves tengan una identidad remota estable, para poder consultarlos desde cualquier dispositivo cuando llegue el login.
+-| WEB-US-009 | Como usuario que ya tiene tiempos locales en mobile, quiero un flujo claro para vincular o migrar mis datos a una cuenta, para no perder historial cuando se habilite sync.
+-| WEB-US-010 | Como producto, quiero definir reglas de sincronizacion y resolucion de conflictos entre datos locales y remotos, para evitar duplicados o stats inconsistentes entre dispositivos.
+
+-| EPIC-WEB-004 | Como usuario autenticado, quiero poder entrar a la web y ver mis sesiones, tiempos y estadisticas igual que en la app, para consultar mi progreso desde navegador.
+-| WEB-US-011 | Como usuario autenticado, quiero ver en web la lista de mis sesiones y poder cambiar entre ellas, para navegar mi historial igual que en mobile.
+-| WEB-US-012 | Como usuario autenticado, quiero ver mis solves, penalties y orden cronologico en web, para revisar mis tiempos desde cualquier dispositivo.
+-| WEB-US-013 | Como usuario autenticado, quiero que las estadisticas mostradas en web respeten las mismas reglas que mobile, para confiar en que mis promedios y mejores tiempos son correctos.
+-| WEB-US-014 | Como usuario autenticado, quiero que al cambiar de sesion en web se mantengan alineados scramble, historial y stats, para que el comportamiento sea consistente con la app.

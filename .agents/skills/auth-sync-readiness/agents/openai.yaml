@@ -1,0 +1,4 @@
+interface:
+  display_name: "Auth Sync Readiness"
+  short_description: "Prepare account-backed sync safely"
+  default_prompt: "Use -sync-readiness to shape or implement account and sync foundations without breaking current local behavior."

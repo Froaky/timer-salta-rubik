@@ -1,0 +1,4 @@
+interface:
+  display_name: "Epic & Story Writer"
+  short_description: "Write epics and user stories"
+  default_prompt: "Use this skill to turn product ideas, bugs, tester feedback, or launch work into structured epics and implementation-ready user stories."

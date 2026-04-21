@@ -1,0 +1,4 @@
+interface:
+  display_name: "Cross-Platform Storage"
+  short_description: "Abstract local storage across web/mobile"
+  default_prompt: "Use -platform-storage to design or implement platform-safe persistence for mobile and web in this repo."
