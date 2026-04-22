@@ -6,3 +6,7 @@ Future<bool> openInSameTab(Uri uri) async {
   html.window.location.assign(uri.toString());
   return true;
 }
+
+void replaceCurrentPath(String path) {
+  html.window.history.replaceState(null, '', path);
+}

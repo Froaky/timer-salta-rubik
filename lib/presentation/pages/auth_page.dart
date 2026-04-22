@@ -84,11 +84,7 @@ class _AuthPageState extends State<AuthPage> {
         session = await _completeWcaCallback(Uri.base);
         if (session != null) {
           statusMessage = 'Cuenta WCA conectada correctamente.';
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            if (mounted) {
-              Navigator.of(context).pushReplacementNamed('/auth');
-            }
-          });
+          replaceCurrentPath('/auth');
         } else {
           session = await _getStoredAuthSession();
           statusMessage = session == null

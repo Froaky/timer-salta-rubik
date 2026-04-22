@@ -157,6 +157,7 @@ Este archivo resume lo indispensable para continuar el desarrollo de este repo s
   - el boton de login WCA en Flutter web usa el asset real `assets/icons/wca_logo.svg`; `flutter_svg` emite warnings benignos con metadata extra del SVG en tests, pero el render sigue funcionando.
   - para OAuth web, Flutter ahora usa `usePathUrlStrategy()`; el callback WCA no debe depender del hash router porque chocaba con el fragmento `access_token` y dejaba la app en login vacio (`/auth/callback#/auth`).
   - el boton `Continuar con WCA` en web no debe depender solo de `url_launcher`: `AuthPage` usa una redireccion directa en la misma pestaña (`lib/core/navigation/web_redirect*.dart`) y recien cae al launcher como fallback si hiciera falta.
+  - despues del callback WCA exitoso, `AuthPage` no debe rehacer la navegacion con `pushReplacementNamed('/auth')`; es mas estable reemplazar la URL del navegador a `/auth` sin reload y quedarse con la sesion ya resuelta en memoria para evitar volver a la vista vacia.
   - en mobile el boton WCA todavia no cierra el ciclo: la UI avisa que faltan deep links/app links antes de ofrecer login real en telefono.
   - el backend usa `soft delete` (`deleted_at`) en `sessions` y `solves` para no perder tombstones utiles para sync futura.
   - las stats remotas deben seguir siendo derivadas de solves; no conviene usarlas como fuente de verdad.
@@ -419,6 +420,12 @@ Entradas actuales:
   - archivos afectados: `lib/core/navigation/web_redirect*.dart`, `lib/presentation/pages/auth_page.dart`, `test/presentation/pages/auth_page_test.dart`, `CONTEXT.md`
   - validacion: `flutter test --no-pub test/presentation/pages/auth_page_test.dart`, `flutter analyze --no-pub` (solo warnings/info viejos del repo)
   - siguiente paso: pushear y redeployar frontend en Railway para confirmar manualmente que `Continuar con WCA` vuelve a abrir el flujo OAuth
+
+- `2026-04-22`
+  - se corrigio la carrera del callback WCA web donde la cuenta podia quedar persistida pero la UI volvia a login vacio: el success path ahora conserva la pagina actual y solo limpia la URL a `/auth` via history API, sin reconstruir el flujo auth
+  - archivos afectados: `lib/core/navigation/web_redirect_stub.dart`, `lib/core/navigation/web_redirect_web.dart`, `lib/presentation/pages/auth_page.dart`, `CONTEXT.md`
+  - validacion: `flutter test --no-pub test/presentation/pages/auth_page_test.dart test/data/repositories/auth_repository_impl_test.dart`, `flutter analyze --no-pub` (solo warnings/info viejos del repo)
+  - siguiente paso: push/redeploy del frontend y smoke test real del login WCA en Railway
 
 - `2026-04-21`
   - se definio la linea de producto para el backend: API propia separada, ORM para manejar esquema/migraciones y Postgres remoto, manteniendo la app Flutter local-first y sin cambios de UX mobile
