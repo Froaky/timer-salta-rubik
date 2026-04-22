@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'settings_page.dart';
-import 'auth_page.dart';
 
 import '../../domain/entities/scramble.dart';
 import '../../domain/entities/solve.dart';
@@ -879,12 +878,7 @@ class _TimerPageState extends State<TimerPage> {
                   title: const Text('Perfil'),
                   onTap: () {
                     Navigator.pop(context);
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => const AuthPage(),
-                      ),
-                    );
+                    Navigator.of(context).pushNamed('/auth');
                   },
                 ),
                 ListTile(

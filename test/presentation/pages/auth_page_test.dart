@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:salta_rubik/domain/entities/auth_session.dart';
 import 'package:salta_rubik/domain/repositories/auth_repository.dart';
@@ -17,7 +18,8 @@ class _FakeAuthRepository implements AuthRepository {
   @override
   Uri buildWcaLoginUri({required bool isWeb}) {
     return Uri.parse(
-        'https://timer-api-production.up.railway.app/api/v1/auth/wca/start');
+      'https://timer-api-production.up.railway.app/api/v1/auth/wca/start',
+    );
   }
 
   @override
@@ -57,6 +59,7 @@ void main() {
 
     expect(find.text('Continuar con WCA'), findsOneWidget);
     expect(find.text('Sincroniza tus tiempos en la nube'), findsOneWidget);
+    expect(find.byType(SvgPicture), findsOneWidget);
   });
 
   testWidgets('shows linked WCA account when a stored session exists',
@@ -66,12 +69,13 @@ void main() {
         accessToken: 'token',
         userId: 'user-1',
         email: 'mateo@example.com',
-        name: 'Mateo',
+        name: 'Mateo Coca',
         providers: [
           AuthProviderProfile(
             provider: 'wca',
             wcaId: '2024TEST01',
-            name: 'Mateo',
+            name: 'Mateo Coca',
+            countryIso2: 'AR',
           ),
         ],
       ),
@@ -81,7 +85,10 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Cuenta conectada'), findsOneWidget);
-    expect(find.text('WCA ID: 2024TEST01'), findsOneWidget);
-    expect(find.text('Cerrar sesión'), findsOneWidget);
+    expect(find.text('Mateo Coca'), findsOneWidget);
+    expect(find.text('WCA ID: 2024TEST01'), findsAtLeastNWidgets(1));
+    expect(find.text('mateo@example.com'), findsOneWidget);
+    expect(find.text('Pais: AR'), findsOneWidget);
+    expect(find.text('Cerrar sesion'), findsOneWidget);
   });
 }

@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../domain/entities/auth_session.dart';
@@ -76,9 +77,19 @@ class _AuthPageState extends State<AuthPage> {
 
       if (widget.completeWcaCallbackOnLoad && kIsWeb) {
         session = await _completeWcaCallback(Uri.base);
-        statusMessage = session == null
-            ? 'No llegó un token válido desde WCA.'
-            : 'Cuenta WCA conectada correctamente.';
+        if (session != null) {
+          statusMessage = 'Cuenta WCA conectada correctamente.';
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (mounted) {
+              Navigator.of(context).pushReplacementNamed('/auth');
+            }
+          });
+        } else {
+          session = await _getStoredAuthSession();
+          statusMessage = session == null
+              ? 'No llego un token valido desde WCA.'
+              : 'Sesion restaurada correctamente.';
+        }
       } else {
         session = await _getStoredAuthSession();
       }
@@ -123,16 +134,35 @@ class _AuthPageState extends State<AuthPage> {
     if (!mounted) return;
     setState(() {
       _session = null;
-      _statusMessage = 'Sesión cerrada.';
+      _statusMessage = 'Sesion cerrada.';
     });
   }
 
+  AuthProviderProfile? _getWcaProfile() {
+    for (final provider
+        in _session?.providers ?? const <AuthProviderProfile>[]) {
+      if (provider.provider == 'wca') {
+        return provider;
+      }
+    }
+
+    return null;
+  }
+
+  String _buildInitials(String value) {
+    return value
+        .trim()
+        .split(RegExp(r'\s+'))
+        .where((part) => part.isNotEmpty)
+        .take(2)
+        .map((part) => part.characters.first.toUpperCase())
+        .join();
+  }
+
   Widget _buildLoggedInCard(BuildContext context) {
-    final AuthProviderProfile? wcaProfile =
-        _session?.providers.cast<AuthProviderProfile?>().firstWhere(
-              (provider) => provider?.provider == 'wca',
-              orElse: () => null,
-            );
+    final wcaProfile = _getWcaProfile();
+    final userLabel = _session?.name ?? _session?.email ?? 'Sesion conectada';
+    final initials = _buildInitials(userLabel);
 
     return Container(
       width: double.infinity,
@@ -148,20 +178,34 @@ class _AuthPageState extends State<AuthPage> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const _WcaBadge(active: true),
+              _ProfileAvatar(
+                avatarUrl: wcaProfile?.avatarUrl,
+                initials: initials.isEmpty ? 'SR' : initials,
+              ),
               const SizedBox(width: 12),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      _session?.name ?? _session?.email ?? 'Sesión conectada',
+                      userLabel,
                       style: Theme.of(context).textTheme.titleMedium,
                     ),
                     const SizedBox(height: 4),
+                    if ((_session?.email ?? '').isNotEmpty) ...[
+                      Text(
+                        _session!.email!,
+                        style: Theme.of(context)
+                            .textTheme
+                            .bodyMedium
+                            ?.copyWith(color: AppTheme.textSecondary),
+                      ),
+                      const SizedBox(height: 4),
+                    ],
                     Text(
-                      wcaProfile?.wcaId != null
+                      (wcaProfile?.wcaId ?? '').isNotEmpty
                           ? 'WCA ID: ${wcaProfile!.wcaId}'
                           : 'Cuenta WCA vinculada',
                       style: Theme.of(context)
@@ -172,11 +216,34 @@ class _AuthPageState extends State<AuthPage> {
                   ],
                 ),
               ),
+              const SizedBox(width: 12),
+              const _WcaBadge(active: true),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              const _InfoChip(
+                label: 'Proveedor',
+                value: 'WCA',
+              ),
+              if ((wcaProfile?.wcaId ?? '').isNotEmpty)
+                _InfoChip(
+                  label: 'WCA ID',
+                  value: wcaProfile!.wcaId!,
+                ),
+              if ((wcaProfile?.countryIso2 ?? '').isNotEmpty)
+                _InfoChip(
+                  label: 'Pais',
+                  value: wcaProfile!.countryIso2!,
+                ),
             ],
           ),
           const SizedBox(height: 16),
           Text(
-            'Tu sesión de Salta Rubik ya está lista para usar el backend y futura sincronización.',
+            'Tu sesion de Salta Rubik ya esta lista para usar el backend y futura sincronizacion.',
             style: Theme.of(context)
                 .textTheme
                 .bodyMedium
@@ -187,7 +254,7 @@ class _AuthPageState extends State<AuthPage> {
             alignment: Alignment.centerRight,
             child: OutlinedButton(
               onPressed: _logout,
-              child: const Text('Cerrar sesión'),
+              child: const Text('Cerrar sesion'),
             ),
           ),
         ],
@@ -205,7 +272,11 @@ class _AuthPageState extends State<AuthPage> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          const _WcaBadge(active: true),
+          SvgPicture.asset(
+            'WCAlogo_notext.svg',
+            width: 24,
+            height: 24,
+          ),
           const SizedBox(width: 12),
           Text(_isBusy ? 'Conectando...' : 'Continuar con WCA'),
         ],
@@ -215,22 +286,29 @@ class _AuthPageState extends State<AuthPage> {
 
   @override
   Widget build(BuildContext context) {
+    final displayIdentity = _session?.name ?? _session?.email ?? 'SR';
+
     return Scaffold(
       appBar: AppBar(
-        title: Text(_isLogin ? 'Iniciar Sesión' : 'Crear Cuenta'),
+        title: Text(_isLogin ? 'Iniciar Sesion' : 'Crear Cuenta'),
         backgroundColor: AppTheme.primaryColor,
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(24.0),
         child: Column(
           children: [
-            const Hero(
+            Hero(
               tag: 'app_logo',
-              child: Icon(
-                Icons.account_circle,
-                size: 80,
-                color: AppTheme.accentColor,
-              ),
+              child: _session != null
+                  ? _ProfileAvatar(
+                      avatarUrl: _getWcaProfile()?.avatarUrl,
+                      initials: _buildInitials(displayIdentity),
+                    )
+                  : const Icon(
+                      Icons.account_circle,
+                      size: 80,
+                      color: AppTheme.accentColor,
+                    ),
             ),
             const SizedBox(height: 32),
             Text(
@@ -243,8 +321,8 @@ class _AuthPageState extends State<AuthPage> {
             const SizedBox(height: 8),
             Text(
               _session == null
-                  ? 'Usá tu cuenta WCA para entrar sin depender de formularios que todavía no están activos.'
-                  : 'Tu sesión actual quedó asociada a Salta Rubik usando WCA como proveedor.',
+                  ? 'Usa tu cuenta WCA para entrar sin depender de formularios que todavia no estan activos.'
+                  : 'Tu sesion actual quedo asociada a Salta Rubik usando WCA como proveedor.',
               style: Theme.of(context)
                   .textTheme
                   .bodyMedium
@@ -290,7 +368,7 @@ class _AuthPageState extends State<AuthPage> {
               TextField(
                 controller: _passwordController,
                 decoration: const InputDecoration(
-                  labelText: 'Contraseña',
+                  labelText: 'Contrasena',
                   prefixIcon: Icon(Icons.lock_outline),
                 ),
                 style: const TextStyle(color: AppTheme.textPrimary),
@@ -303,7 +381,7 @@ class _AuthPageState extends State<AuthPage> {
                   onPressed: () {
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(
-                        content: Text('Usá el acceso con WCA por ahora.'),
+                        content: Text('Usa el acceso con WCA por ahora.'),
                       ),
                     );
                   },
@@ -319,8 +397,8 @@ class _AuthPageState extends State<AuthPage> {
                 },
                 child: Text(
                   _isLogin
-                      ? '¿No tienes cuenta? Regístrate'
-                      : '¿Ya tienes cuenta? Ingresa',
+                      ? 'No tienes cuenta? Registrate'
+                      : 'Ya tienes cuenta? Ingresa',
                   style: const TextStyle(color: AppTheme.accentColor),
                 ),
               ),
@@ -359,6 +437,67 @@ class _WcaBadge extends StatelessWidget {
         style: Theme.of(context).textTheme.titleMedium?.copyWith(
               color: active ? AppTheme.primaryColor : AppTheme.textPrimary,
               fontWeight: FontWeight.w900,
+            ),
+      ),
+    );
+  }
+}
+
+class _ProfileAvatar extends StatelessWidget {
+  final String? avatarUrl;
+  final String initials;
+
+  const _ProfileAvatar({
+    required this.avatarUrl,
+    required this.initials,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return CircleAvatar(
+      radius: 28,
+      backgroundColor: AppTheme.cardColor,
+      backgroundImage: avatarUrl != null && avatarUrl!.isNotEmpty
+          ? NetworkImage(avatarUrl!)
+          : null,
+      child: avatarUrl == null || avatarUrl!.isEmpty
+          ? Text(
+              initials.isEmpty ? 'SR' : initials,
+              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    color: AppTheme.textPrimary,
+                    fontWeight: FontWeight.w800,
+                  ),
+            )
+          : null,
+    );
+  }
+}
+
+class _InfoChip extends StatelessWidget {
+  final String label;
+  final String value;
+
+  const _InfoChip({
+    required this.label,
+    required this.value,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      decoration: BoxDecoration(
+        color: AppTheme.primaryColor,
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(
+          color: AppTheme.textMuted.withValues(alpha: 0.14),
+        ),
+      ),
+      child: Text(
+        '$label: $value',
+        style: Theme.of(context).textTheme.labelMedium?.copyWith(
+              color: AppTheme.textPrimary,
+              fontWeight: FontWeight.w700,
             ),
       ),
     );

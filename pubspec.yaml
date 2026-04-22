@@ -80,6 +80,7 @@ flutter:
     - assets/images/
     - assets/icons/
     - assets/icons/categories/
+    - WCAlogo_notext.svg
   
   # fonts:
   #   - family: RobotoMono
