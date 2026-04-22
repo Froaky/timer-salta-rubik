@@ -124,9 +124,11 @@ void main() {
 
     expect(find.text('Cuenta conectada'), findsOneWidget);
     expect(find.text('Mateo Coca'), findsOneWidget);
-    expect(find.text('WCA ID: 2024TEST01'), findsAtLeastNWidgets(1));
+    expect(find.text('WCA ID 2024TEST01'), findsOneWidget);
+    expect(find.text('2024TEST01'), findsOneWidget);
     expect(find.text('mateo@example.com'), findsOneWidget);
-    expect(find.text('Pais: AR'), findsOneWidget);
+    expect(find.text('AR'), findsOneWidget);
+    expect(find.text('Ir al timer'), findsOneWidget);
     expect(find.text('Cerrar sesion'), findsOneWidget);
   });
 

@@ -26,6 +26,7 @@ type WcaMeResponse = {
     country_iso2?: string | null;
     avatar?: {
       url?: string | null;
+      thumb_url?: string | null;
     } | null;
   };
 };
@@ -277,7 +278,7 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
             name: profile.name ?? null,
             wcaId: profile.wca_id ?? null,
             countryIso2: profile.country_iso2 ?? null,
-            avatarUrl: profile.avatar?.url ?? null,
+            avatarUrl: profile.avatar?.thumb_url ?? profile.avatar?.url ?? null,
             accessToken: tokenJson.access_token,
             refreshToken: tokenJson.refresh_token ?? null,
             expiresAt,
@@ -292,7 +293,7 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
             name: profile.name ?? null,
             wcaId: profile.wca_id ?? null,
             countryIso2: profile.country_iso2 ?? null,
-            avatarUrl: profile.avatar?.url ?? null,
+            avatarUrl: profile.avatar?.thumb_url ?? profile.avatar?.url ?? null,
             accessToken: tokenJson.access_token,
             refreshToken: tokenJson.refresh_token ?? null,
             expiresAt,

@@ -166,6 +166,8 @@ Este archivo resume lo indispensable para continuar el desarrollo de este repo s
   - si el callback WCA web vuelve a fallar, `AuthPage` ahora muestra un diagnostico visible y sanitizado con la callback URI, `Uri.base`, presencia de token en query/fragment y si se pudo restaurar una sesion; eso sirve para aislar si el token nunca llego o se perdio antes del parseo.
   - en callback exitoso web no conviene limpiar la URL hacia `/auth`: eso puede disparar un cambio de ruta/remount mientras se esta cerrando el OAuth. Es mas estable quedarse en `/auth/callback` y solo sacar query/hash del token.
   - en Flutter Web, el callback OAuth puede llegar como route name completo (`/auth/callback?access_token=...`); un `routes` map estatico puede no matchearlo y hacer fallback a `/`. Para este flujo conviene usar `onGenerateRoute` y parsear `settings.name` como `Uri`.
+  - el perfil auth logueado ahora usa un layout mas visual con header, paneles de identidad/estado y CTA de volver al timer; si se toca de nuevo la UX de perfil, mantener la experiencia “panel” y no volver a una card plana.
+  - el avatar WCA no debe depender de `CircleAvatar.backgroundImage` sin fallback: el perfil usa `Image.network` con `errorBuilder` y normaliza URLs relativas/protocol-relative. Ademas el backend prefiere `avatar.thumb_url` de WCA sobre `avatar.url` para mostrar una foto mas chica/estable en UI.
   - en mobile el boton WCA todavia no cierra el ciclo: la UI avisa que faltan deep links/app links antes de ofrecer login real en telefono.
   - el backend usa `soft delete` (`deleted_at`) en `sessions` y `solves` para no perder tombstones utiles para sync futura.
   - las stats remotas deben seguir siendo derivadas de solves; no conviene usarlas como fuente de verdad.
@@ -476,6 +478,12 @@ Entradas actuales:
   - archivos afectados: `lib/main.dart`, `CONTEXT.md`
   - validacion: `dart format lib/main.dart`, `flutter test --no-pub test/presentation/pages/auth_page_test.dart test/widget_test.dart`, `flutter analyze --no-pub` con solo warnings/info viejos del repo
   - siguiente paso: pushear/redeployar frontend y reprobar login WCA; si todavia falla, el siguiente foco seria inspeccionar si la sesion se guarda pero `/auth/me` devuelve datos incompletos
+
+- `2026-04-22`
+  - se mejoro fuerte la UX del perfil auth: el estado logueado ahora tiene un header mas “account panel”, paneles de identidad/estado, CTA de volver al timer y logout mas limpio. Tambien se endurecio el avatar WCA con fallback real de iniciales y normalizacion de URLs; el backend ahora prefiere `avatar.thumb_url` del `/api/v0/me` de WCA para renderizar una foto mas estable
+  - archivos afectados: `lib/presentation/pages/auth_page.dart`, `test/presentation/pages/auth_page_test.dart`, `backend/src/routes/auth.ts`, `CONTEXT.md`
+  - validacion: `npm run build` en `backend`, `flutter test --no-pub test/presentation/pages/auth_page_test.dart test/widget_test.dart`
+  - siguiente paso: pushear/redeployar frontend y backend, luego reloguear una vez para que el backend refresque el avatar almacenado y verificar si ya aparece la foto real
 
 - `2026-04-21`
   - se definio la linea de producto para el backend: API propia separada, ORM para manejar esquema/migraciones y Postgres remoto, manteniendo la app Flutter local-first y sin cambios de UX mobile

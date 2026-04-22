@@ -200,6 +200,11 @@ class _AuthPageState extends State<AuthPage> {
     });
   }
 
+  void _goToTimerHome() {
+    final navigator = Navigator.of(context);
+    navigator.popUntil((route) => route.isFirst);
+  }
+
   AuthProviderProfile? _getWcaProfile() {
     for (final provider
         in _session?.providers ?? const <AuthProviderProfile>[]) {
@@ -221,102 +226,298 @@ class _AuthPageState extends State<AuthPage> {
         .join();
   }
 
-  Widget _buildLoggedInCard(BuildContext context) {
+  Widget _buildLoggedInPanel(BuildContext context) {
     final wcaProfile = _getWcaProfile();
     final userLabel = _session?.name ?? _session?.email ?? 'Sesion conectada';
     final initials = _buildInitials(userLabel);
+    final identityRows = <_ProfileStatRow>[
+      _ProfileStatRow(label: 'Proveedor', value: 'WCA'),
+      if ((_session?.email ?? '').isNotEmpty)
+        _ProfileStatRow(label: 'Email', value: _session!.email!),
+      if ((wcaProfile?.wcaId ?? '').isNotEmpty)
+        _ProfileStatRow(label: 'WCA ID', value: wcaProfile!.wcaId!),
+      if ((wcaProfile?.countryIso2 ?? '').isNotEmpty)
+        _ProfileStatRow(label: 'Pais', value: wcaProfile!.countryIso2!),
+    ];
 
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: AppTheme.cardColor,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(
-          color: AppTheme.accentColor.withValues(alpha: 0.2),
-        ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
+    return ConstrainedBox(
+      constraints: const BoxConstraints(maxWidth: 980),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final useWideLayout = constraints.maxWidth >= 760;
+
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              _ProfileAvatar(
-                avatarUrl: wcaProfile?.avatarUrl,
-                initials: initials.isEmpty ? 'SR' : initials,
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      userLabel,
-                      style: Theme.of(context).textTheme.titleMedium,
-                    ),
-                    const SizedBox(height: 4),
-                    if ((_session?.email ?? '').isNotEmpty) ...[
-                      Text(
-                        _session!.email!,
-                        style: Theme.of(context)
-                            .textTheme
-                            .bodyMedium
-                            ?.copyWith(color: AppTheme.textSecondary),
-                      ),
-                      const SizedBox(height: 4),
+              Container(
+                padding: const EdgeInsets.all(24),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(28),
+                  gradient: LinearGradient(
+                    colors: [
+                      AppTheme.cardColor,
+                      AppTheme.secondaryColor.withValues(alpha: 0.92),
                     ],
-                    Text(
-                      (wcaProfile?.wcaId ?? '').isNotEmpty
-                          ? 'WCA ID: ${wcaProfile!.wcaId}'
-                          : 'Cuenta WCA vinculada',
-                      style: Theme.of(context)
-                          .textTheme
-                          .bodyMedium
-                          ?.copyWith(color: AppTheme.textSecondary),
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  border: Border.all(
+                    color: AppTheme.accentColor.withValues(alpha: 0.22),
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.22),
+                      blurRadius: 24,
+                      offset: const Offset(0, 14),
                     ),
                   ],
                 ),
+                child: useWideLayout
+                    ? Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          _ProfileAvatar(
+                            avatarUrl: wcaProfile?.avatarUrl,
+                            initials: initials.isEmpty ? 'SR' : initials,
+                            radius: 42,
+                            showAccentRing: true,
+                          ),
+                          const SizedBox(width: 20),
+                          Expanded(
+                            child: _buildProfileHeroText(
+                              context,
+                              userLabel: userLabel,
+                              wcaProfile: wcaProfile,
+                            ),
+                          ),
+                          const SizedBox(width: 20),
+                          _buildProfileActions(context),
+                        ],
+                      )
+                    : Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              _ProfileAvatar(
+                                avatarUrl: wcaProfile?.avatarUrl,
+                                initials: initials.isEmpty ? 'SR' : initials,
+                                radius: 38,
+                                showAccentRing: true,
+                              ),
+                              const Spacer(),
+                              const _WcaBadge(active: true),
+                            ],
+                          ),
+                          const SizedBox(height: 18),
+                          _buildProfileHeroText(
+                            context,
+                            userLabel: userLabel,
+                            wcaProfile: wcaProfile,
+                          ),
+                          const SizedBox(height: 18),
+                          _buildProfileActions(context, compact: true),
+                        ],
+                      ),
               ),
-              const SizedBox(width: 12),
-              const _WcaBadge(active: true),
-            ],
-          ),
-          const SizedBox(height: 16),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: [
-              const _InfoChip(
-                label: 'Proveedor',
-                value: 'WCA',
+              const SizedBox(height: 20),
+              Wrap(
+                spacing: 16,
+                runSpacing: 16,
+                children: [
+                  _ProfileInfoPanel(
+                    width: useWideLayout
+                        ? (constraints.maxWidth - 8) / 2
+                        : constraints.maxWidth,
+                    title: 'Identidad',
+                    subtitle: 'Datos que llegaron desde tu cuenta WCA.',
+                    child: Column(
+                      children: identityRows
+                          .map((row) => _buildProfileRow(context, row))
+                          .toList(),
+                    ),
+                  ),
+                  _ProfileInfoPanel(
+                    width: useWideLayout
+                        ? (constraints.maxWidth - 8) / 2
+                        : constraints.maxWidth,
+                    title: 'Estado',
+                    subtitle:
+                        'Tu cuenta ya puede usarse para web y futura sync.',
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Wrap(
+                          spacing: 8,
+                          runSpacing: 8,
+                          children: [
+                            const _InfoChip(
+                              label: 'Proveedor',
+                              value: 'WCA',
+                            ),
+                            const _InfoChip(
+                              label: 'Sesion',
+                              value: 'Activa',
+                            ),
+                            if ((wcaProfile?.countryIso2 ?? '').isNotEmpty)
+                              _InfoChip(
+                                label: 'Pais',
+                                value: wcaProfile!.countryIso2!,
+                              ),
+                          ],
+                        ),
+                        const SizedBox(height: 16),
+                        Text(
+                          'Tu sesion de Salta Rubik ya esta lista para usar el backend y futura sincronizacion en web y mobile.',
+                          style:
+                              Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                    color: AppTheme.textSecondary,
+                                    height: 1.5,
+                                  ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
               ),
-              if ((wcaProfile?.wcaId ?? '').isNotEmpty)
-                _InfoChip(
-                  label: 'WCA ID',
-                  value: wcaProfile!.wcaId!,
-                ),
-              if ((wcaProfile?.countryIso2 ?? '').isNotEmpty)
-                _InfoChip(
-                  label: 'Pais',
-                  value: wcaProfile!.countryIso2!,
-                ),
             ],
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildProfileHeroText(
+    BuildContext context, {
+    required String userLabel,
+    required AuthProviderProfile? wcaProfile,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              decoration: BoxDecoration(
+                color: AppTheme.accentColor.withValues(alpha: 0.16),
+                borderRadius: BorderRadius.circular(999),
+                border: Border.all(
+                  color: AppTheme.accentColor.withValues(alpha: 0.22),
+                ),
+              ),
+              child: Text(
+                'WCA CONNECTED',
+                style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                      color: AppTheme.textAccent,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: 1,
+                    ),
+              ),
+            ),
+            const SizedBox(width: 10),
+            const _WcaBadge(active: true),
+          ],
+        ),
+        const SizedBox(height: 16),
+        Text(
+          userLabel,
+          style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                fontWeight: FontWeight.w700,
+              ),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          (wcaProfile?.wcaId ?? '').isNotEmpty
+              ? 'WCA ID ${wcaProfile!.wcaId}'
+              : 'Cuenta WCA vinculada correctamente',
+          style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                color: AppTheme.textSecondary,
+                fontWeight: FontWeight.w600,
+              ),
+        ),
+        const SizedBox(height: 12),
+        Text(
+          'Perfil conectado a Salta Rubik. Desde aca vas a poder acceder a tus tiempos y sesiones cuando quede lista la sincronizacion completa.',
+          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                color: AppTheme.textSecondary,
+                height: 1.5,
+              ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildProfileActions(
+    BuildContext context, {
+    bool compact = false,
+  }) {
+    final buttons = <Widget>[
+      OutlinedButton.icon(
+        onPressed: _goToTimerHome,
+        icon: const Icon(Icons.timer_outlined),
+        label: const Text('Ir al timer'),
+      ),
+      OutlinedButton.icon(
+        onPressed: _logout,
+        icon: const Icon(Icons.logout_rounded),
+        label: const Text('Cerrar sesion'),
+      ),
+    ];
+
+    if (compact) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          for (var i = 0; i < buttons.length; i++) ...[
+            SizedBox(
+              width: double.infinity,
+              child: buttons[i],
+            ),
+            if (i != buttons.length - 1) const SizedBox(height: 10),
+          ],
+        ],
+      );
+    }
+
+    return ConstrainedBox(
+      constraints: const BoxConstraints(maxWidth: 210),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          for (var i = 0; i < buttons.length; i++) ...[
+            buttons[i],
+            if (i != buttons.length - 1) const SizedBox(height: 10),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildProfileRow(BuildContext context, _ProfileStatRow row) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 92,
+            child: Text(
+              row.label,
+              style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                    color: AppTheme.textMuted,
+                    letterSpacing: 0.8,
+                  ),
+            ),
           ),
-          const SizedBox(height: 16),
-          Text(
-            'Tu sesion de Salta Rubik ya esta lista para usar el backend y futura sincronizacion.',
-            style: Theme.of(context)
-                .textTheme
-                .bodyMedium
-                ?.copyWith(color: AppTheme.textMuted),
-          ),
-          const SizedBox(height: 16),
-          Align(
-            alignment: Alignment.centerRight,
-            child: OutlinedButton(
-              onPressed: _logout,
-              child: const Text('Cerrar sesion'),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              row.value,
+              style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                    color: AppTheme.textPrimary,
+                    fontWeight: FontWeight.w600,
+                  ),
             ),
           ),
         ],
@@ -473,7 +674,7 @@ class _AuthPageState extends State<AuthPage> {
               const SizedBox(height: 24),
             ],
             if (_session != null) ...[
-              _buildLoggedInCard(context),
+              _buildLoggedInPanel(context),
             ] else ...[
               if (!_isLogin) ...[
                 TextField(
@@ -574,34 +775,172 @@ class _WcaBadge extends StatelessWidget {
   }
 }
 
-class _ProfileAvatar extends StatelessWidget {
-  final String? avatarUrl;
-  final String initials;
+class _ProfileInfoPanel extends StatelessWidget {
+  final String title;
+  final String subtitle;
+  final Widget child;
+  final double width;
 
-  const _ProfileAvatar({
-    required this.avatarUrl,
-    required this.initials,
+  const _ProfileInfoPanel({
+    required this.title,
+    required this.subtitle,
+    required this.child,
+    required this.width,
   });
 
   @override
   Widget build(BuildContext context) {
-    return CircleAvatar(
-      radius: 28,
-      backgroundColor: AppTheme.cardColor,
-      backgroundImage: avatarUrl != null && avatarUrl!.isNotEmpty
-          ? NetworkImage(avatarUrl!)
-          : null,
-      child: avatarUrl == null || avatarUrl!.isEmpty
-          ? Text(
-              initials.isEmpty ? 'SR' : initials,
+    return SizedBox(
+      width: width,
+      child: Container(
+        padding: const EdgeInsets.all(18),
+        decoration: BoxDecoration(
+          color: AppTheme.cardColor,
+          borderRadius: BorderRadius.circular(22),
+          border: Border.all(
+            color: AppTheme.textMuted.withValues(alpha: 0.14),
+          ),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              title,
               style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    color: AppTheme.textPrimary,
-                    fontWeight: FontWeight.w800,
+                    fontWeight: FontWeight.w700,
                   ),
-            )
-          : null,
+            ),
+            const SizedBox(height: 6),
+            Text(
+              subtitle,
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: AppTheme.textMuted,
+                    height: 1.4,
+                  ),
+            ),
+            const SizedBox(height: 18),
+            child,
+          ],
+        ),
+      ),
     );
   }
+}
+
+class _ProfileAvatar extends StatelessWidget {
+  final String? avatarUrl;
+  final String initials;
+  final double radius;
+  final bool showAccentRing;
+
+  const _ProfileAvatar({
+    required this.avatarUrl,
+    required this.initials,
+    this.radius = 28,
+    this.showAccentRing = false,
+  });
+
+  String? _resolvedAvatarUrl() {
+    final raw = avatarUrl?.trim();
+    if (raw == null || raw.isEmpty) {
+      return null;
+    }
+
+    if (raw.startsWith('//')) {
+      return 'https:$raw';
+    }
+
+    if (raw.startsWith('/')) {
+      return 'https://www.worldcubeassociation.org$raw';
+    }
+
+    return raw;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final resolvedAvatarUrl = _resolvedAvatarUrl();
+    final diameter = radius * 2;
+    final fallback = _ProfileAvatarFallback(
+      initials: initials,
+      fontSize: radius * 0.62,
+    );
+
+    return Container(
+      width: diameter,
+      height: diameter,
+      padding: EdgeInsets.all(showAccentRing ? 3 : 0),
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        gradient: showAccentRing
+            ? const LinearGradient(
+                colors: [
+                  Color(0xFF60A5FA),
+                  Color(0xFF2563EB),
+                ],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              )
+            : null,
+      ),
+      child: ClipOval(
+        child: DecoratedBox(
+          decoration: const BoxDecoration(
+            color: AppTheme.cardColor,
+          ),
+          child: resolvedAvatarUrl == null
+              ? fallback
+              : Image.network(
+                  resolvedAvatarUrl,
+                  fit: BoxFit.cover,
+                  errorBuilder: (context, error, stackTrace) => fallback,
+                  loadingBuilder: (context, child, loadingProgress) {
+                    if (loadingProgress == null) {
+                      return child;
+                    }
+                    return fallback;
+                  },
+                ),
+        ),
+      ),
+    );
+  }
+}
+
+class _ProfileAvatarFallback extends StatelessWidget {
+  final String initials;
+  final double fontSize;
+
+  const _ProfileAvatarFallback({
+    required this.initials,
+    required this.fontSize,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      color: const Color(0xFF1B263B),
+      alignment: Alignment.center,
+      child: Text(
+        initials.isEmpty ? 'SR' : initials,
+        style: Theme.of(context).textTheme.titleMedium?.copyWith(
+              color: AppTheme.textPrimary,
+              fontWeight: FontWeight.w800,
+              fontSize: fontSize,
+            ),
+      ),
+    );
+  }
+}
+
+class _ProfileStatRow {
+  final String label;
+  final String value;
+
+  const _ProfileStatRow({
+    required this.label,
+    required this.value,
+  });
 }
 
 class _InfoChip extends StatelessWidget {
