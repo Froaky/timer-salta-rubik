@@ -165,6 +165,7 @@ Este archivo resume lo indispensable para continuar el desarrollo de este repo s
   - para el callback WCA web, no alcanza con leer la URL dentro de `AuthPage.initState()`: la app captura la URI del navegador en `main()` antes de `usePathUrlStrategy()` y se la pasa a la ruta `/auth/callback`, porque el bootstrap web puede llegar a limpiar la query antes de que el widget arranque.
   - si el callback WCA web vuelve a fallar, `AuthPage` ahora muestra un diagnostico visible y sanitizado con la callback URI, `Uri.base`, presencia de token en query/fragment y si se pudo restaurar una sesion; eso sirve para aislar si el token nunca llego o se perdio antes del parseo.
   - en callback exitoso web no conviene limpiar la URL hacia `/auth`: eso puede disparar un cambio de ruta/remount mientras se esta cerrando el OAuth. Es mas estable quedarse en `/auth/callback` y solo sacar query/hash del token.
+  - en Flutter Web, el callback OAuth puede llegar como route name completo (`/auth/callback?access_token=...`); un `routes` map estatico puede no matchearlo y hacer fallback a `/`. Para este flujo conviene usar `onGenerateRoute` y parsear `settings.name` como `Uri`.
   - en mobile el boton WCA todavia no cierra el ciclo: la UI avisa que faltan deep links/app links antes de ofrecer login real en telefono.
   - el backend usa `soft delete` (`deleted_at`) en `sessions` y `solves` para no perder tombstones utiles para sync futura.
   - las stats remotas deben seguir siendo derivadas de solves; no conviene usarlas como fuente de verdad.
@@ -469,6 +470,12 @@ Entradas actuales:
   - archivos afectados: `lib/presentation/pages/auth_page.dart`, `CONTEXT.md`
   - validacion: `flutter test --no-pub test/presentation/pages/auth_page_test.dart`
   - siguiente paso: pushear y redeployar frontend; reprobar login WCA y verificar que despues del callback quede la card logueada en la misma pantalla
+
+- `2026-04-22`
+  - se encontro una causa mas fuerte del rebote final a `/`: en web, la app podia recibir `/auth/callback?access_token=...` como route name completo y el `routes` map no lo matcheaba, asi que Flutter terminaba cayendo al home/timer. `SaltaRubikApp` ahora usa `onGenerateRoute` y parsea `settings.name` como `Uri`, preservando query string para el callback WCA
+  - archivos afectados: `lib/main.dart`, `CONTEXT.md`
+  - validacion: `dart format lib/main.dart`, `flutter test --no-pub test/presentation/pages/auth_page_test.dart test/widget_test.dart`, `flutter analyze --no-pub` con solo warnings/info viejos del repo
+  - siguiente paso: pushear/redeployar frontend y reprobar login WCA; si todavia falla, el siguiente foco seria inspeccionar si la sesion se guarda pero `/auth/me` devuelve datos incompletos
 
 - `2026-04-21`
   - se definio la linea de producto para el backend: API propia separada, ORM para manejar esquema/migraciones y Postgres remoto, manteniendo la app Flutter local-first y sin cambios de UX mobile

@@ -42,14 +42,57 @@ class SaltaRubikApp extends StatelessWidget {
     final startupUri = initialBrowserUri ?? Uri.base;
 
     if (kIsWeb && startupUri.path == '/auth/callback') {
-      return '/auth/callback';
+      return startupUri.toString();
     }
 
     if (kIsWeb && startupUri.path == '/auth') {
-      return '/auth';
+      return startupUri.toString();
     }
 
     return '/';
+  }
+
+  Route<dynamic> _buildRoute(RouteSettings settings) {
+    final rawName = settings.name ?? '/';
+    final parsedUri = Uri.tryParse(rawName);
+    final normalizedPath = parsedUri != null && parsedUri.path.isNotEmpty
+        ? parsedUri.path
+        : rawName;
+
+    switch (normalizedPath) {
+      case '/auth/callback':
+        return MaterialPageRoute(
+          settings: settings,
+          builder: (context) => AuthPage(
+            completeWcaCallbackOnLoad: true,
+            initialCallbackUri: _resolveCallbackUri(parsedUri),
+          ),
+        );
+      case '/auth':
+        return MaterialPageRoute(
+          settings: settings,
+          builder: (context) => const AuthPage(),
+        );
+      case '/':
+      default:
+        return MaterialPageRoute(
+          settings: settings,
+          builder: (context) => const TimerPage(),
+        );
+    }
+  }
+
+  Uri? _resolveCallbackUri(Uri? parsedUri) {
+    if (parsedUri != null && parsedUri.path == '/auth/callback') {
+      return parsedUri;
+    }
+
+    if (initialBrowserUri != null &&
+        initialBrowserUri!.path == '/auth/callback') {
+      return initialBrowserUri;
+    }
+
+    return null;
   }
 
   @override
@@ -73,14 +116,7 @@ class SaltaRubikApp extends StatelessWidget {
         title: 'Salta Rubik',
         theme: AppTheme.darkTheme,
         initialRoute: _resolveInitialRoute(),
-        routes: {
-          '/': (context) => const TimerPage(),
-          '/auth': (context) => const AuthPage(),
-          '/auth/callback': (context) => AuthPage(
-                completeWcaCallbackOnLoad: true,
-                initialCallbackUri: initialBrowserUri,
-              ),
-        },
+        onGenerateRoute: _buildRoute,
         debugShowCheckedModeBanner: false,
       ),
     );
