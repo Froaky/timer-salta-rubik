@@ -3,3 +3,7 @@ Future<bool> openInSameTab(Uri uri) async {
 }
 
 void replaceCurrentPath(String path) {}
+
+Uri? getCurrentBrowserUri() {
+  return null;
+}

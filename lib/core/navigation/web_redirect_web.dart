@@ -10,3 +10,7 @@ Future<bool> openInSameTab(Uri uri) async {
 void replaceCurrentPath(String path) {
   html.window.history.replaceState(null, '', path);
 }
+
+Uri? getCurrentBrowserUri() {
+  return Uri.tryParse(html.window.location.href);
+}

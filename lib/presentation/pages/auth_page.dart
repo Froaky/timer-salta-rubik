@@ -81,7 +81,8 @@ class _AuthPageState extends State<AuthPage> {
       String? statusMessage = _statusMessage;
 
       if (widget.completeWcaCallbackOnLoad && kIsWeb) {
-        session = await _completeWcaCallback(Uri.base);
+        final callbackUri = getCurrentBrowserUri() ?? Uri.base;
+        session = await _completeWcaCallback(callbackUri);
         if (session != null) {
           statusMessage = 'Cuenta WCA conectada correctamente.';
           replaceCurrentPath('/auth');
