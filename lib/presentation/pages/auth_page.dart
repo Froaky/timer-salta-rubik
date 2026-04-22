@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../core/navigation/web_redirect.dart';
 import '../../domain/entities/auth_session.dart';
 import '../../domain/usecases/build_wca_login_uri.dart';
 import '../../domain/usecases/clear_auth_session.dart';
@@ -17,6 +18,7 @@ class AuthPage extends StatefulWidget {
   final CompleteWcaCallback? completeWcaCallback;
   final GetStoredAuthSession? getStoredAuthSession;
   final ClearAuthSession? clearAuthSession;
+  final Future<bool> Function(Uri uri)? openWcaLoginUri;
 
   const AuthPage({
     super.key,
@@ -25,6 +27,7 @@ class AuthPage extends StatefulWidget {
     this.completeWcaCallback,
     this.getStoredAuthSession,
     this.clearAuthSession,
+    this.openWcaLoginUri,
   });
 
   @override
@@ -49,6 +52,8 @@ class _AuthPageState extends State<AuthPage> {
       widget.getStoredAuthSession ?? sl<GetStoredAuthSession>();
   late final ClearAuthSession _clearAuthSession =
       widget.clearAuthSession ?? sl<ClearAuthSession>();
+  late final Future<bool> Function(Uri uri) _openWcaLoginUri =
+      widget.openWcaLoginUri ?? openInSameTab;
 
   @override
   void initState() {
@@ -114,7 +119,8 @@ class _AuthPageState extends State<AuthPage> {
   }
 
   Future<void> _startWcaLogin() async {
-    if (!kIsWeb) {
+    final allowInjectedRedirect = widget.openWcaLoginUri != null;
+    if (!kIsWeb && !allowInjectedRedirect) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text(
@@ -125,8 +131,39 @@ class _AuthPageState extends State<AuthPage> {
       return;
     }
 
+    setState(() {
+      _isBusy = true;
+    });
+
     final uri = _buildWcaLoginUri(isWeb: true);
-    await launchUrl(uri, webOnlyWindowName: '_self');
+    try {
+      final redirected = await _openWcaLoginUri(uri);
+      if (redirected) {
+        return;
+      }
+
+      final launched = await launchUrl(uri, webOnlyWindowName: '_self');
+      if (launched) {
+        return;
+      }
+    } catch (_) {
+      if (!mounted) {
+        return;
+      }
+    }
+
+    if (!mounted) {
+      return;
+    }
+
+    setState(() {
+      _isBusy = false;
+    });
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('No se pudo abrir el login de WCA.'),
+      ),
+    );
   }
 
   Future<void> _logout() async {

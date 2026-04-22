@@ -39,7 +39,10 @@ class _FakeAuthRepository implements AuthRepository {
 }
 
 void main() {
-  Widget buildPage(_FakeAuthRepository repository) {
+  Widget buildPage(
+    _FakeAuthRepository repository, {
+    Future<bool> Function(Uri uri)? openWcaLoginUri,
+  }) {
     return MaterialApp(
       theme: AppTheme.darkTheme,
       home: AuthPage(
@@ -47,6 +50,7 @@ void main() {
         completeWcaCallback: CompleteWcaCallback(repository),
         getStoredAuthSession: GetStoredAuthSession(repository),
         clearAuthSession: ClearAuthSession(repository),
+        openWcaLoginUri: openWcaLoginUri,
       ),
     );
   }
@@ -60,6 +64,34 @@ void main() {
     expect(find.text('Continuar con WCA'), findsOneWidget);
     expect(find.text('Sincroniza tus tiempos en la nube'), findsOneWidget);
     expect(find.byType(SvgPicture), findsOneWidget);
+  });
+
+  testWidgets('pressing WCA button uses injected web redirect handler',
+      (tester) async {
+    final repository = _FakeAuthRepository();
+    Uri? redirectedTo;
+
+    await tester.pumpWidget(
+      buildPage(
+        repository,
+        openWcaLoginUri: (uri) async {
+          redirectedTo = uri;
+          return true;
+        },
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.ensureVisible(find.text('Continuar con WCA'));
+    await tester.tap(find.text('Continuar con WCA'));
+    await tester.pump();
+
+    expect(
+      redirectedTo,
+      Uri.parse(
+        'https://timer-api-production.up.railway.app/api/v1/auth/wca/start',
+      ),
+    );
   });
 
   testWidgets('shows linked WCA account when a stored session exists',
