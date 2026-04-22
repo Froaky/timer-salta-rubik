@@ -154,7 +154,8 @@ Este archivo resume lo indispensable para continuar el desarrollo de este repo s
   - el flujo WCA ya soporta `state` persistido en DB (`oauth_states`) y redirects permitidos por allowlist para volver seguro a web o mobile.
   - el frontend Flutter ya tiene un primer consumo real de ese flujo en `AuthPage`: en web puede iniciar OAuth WCA, volver por `/auth/callback`, pedir `auth/me` y persistir la sesion local.
   - `AuthPage` ya restaura la sesion guardada al volver por `/auth` y, si existe cuenta WCA enlazada, muestra nombre, email, WCA ID, pais y avatar del perfil; el entry point `Perfil` desde `TimerPage` debe navegar por la ruta `/auth` para reutilizar esa restauracion.
-  - el boton de login WCA en Flutter web usa el asset real `WCAlogo_notext.svg` de la raiz del repo; `flutter_svg` emite warnings benignos con metadata extra del SVG en tests, pero el render sigue funcionando.
+  - el boton de login WCA en Flutter web usa el asset real `assets/icons/wca_logo.svg`; `flutter_svg` emite warnings benignos con metadata extra del SVG en tests, pero el render sigue funcionando.
+  - para OAuth web, Flutter ahora usa `usePathUrlStrategy()`; el callback WCA no debe depender del hash router porque chocaba con el fragmento `access_token` y dejaba la app en login vacio (`/auth/callback#/auth`).
   - en mobile el boton WCA todavia no cierra el ciclo: la UI avisa que faltan deep links/app links antes de ofrecer login real en telefono.
   - el backend usa `soft delete` (`deleted_at`) en `sessions` y `solves` para no perder tombstones utiles para sync futura.
   - las stats remotas deben seguir siendo derivadas de solves; no conviene usarlas como fuente de verdad.
@@ -405,6 +406,12 @@ Entradas actuales:
   - archivos afectados: `lib/presentation/pages/auth_page.dart`, `lib/presentation/pages/timer_page.dart`, `pubspec.yaml`, `test/presentation/pages/auth_page_test.dart`, `CONTEXT.md`
   - validacion: `dart pub get`, `flutter analyze --no-pub` (solo warnings/info viejos del repo), `flutter test --no-pub` completo pasando
   - siguiente paso: probar manualmente en Railway que despues del callback WCA la home y el perfil muestren la sesion restaurada sin volver a pantalla de login; luego encarar deep links mobile (`BE-US-014`)
+
+- `2026-04-22`
+  - se corrigio el bug del callback web WCA que dejaba la URL en `/auth/callback#/auth` y no reconstruia sesion: web usa path URL strategy, `AuthRepositoryImpl` ya parsea token tanto desde fragmento directo como desde hash-route query, y el logo WCA se movio a `assets/icons/`
+  - archivos afectados: `lib/main.dart`, `lib/data/repositories/auth_repository_impl.dart`, `lib/presentation/pages/auth_page.dart`, `pubspec.yaml`, `assets/icons/wca_logo.svg`, `test/data/repositories/auth_repository_impl_test.dart`, `CONTEXT.md`
+  - validacion: `dart pub get`, `flutter analyze --no-pub` (solo warnings/info viejos del repo), `flutter test --no-pub` completo pasando
+  - siguiente paso: redeployar frontend en Railway y verificar manualmente que el login WCA vuelva a `/auth`, muestre avatar/nombre/WCA ID y renderice el SVG real del boton
 
 - `2026-04-21`
   - se definio la linea de producto para el backend: API propia separada, ORM para manejar esquema/migraciones y Postgres remoto, manteniendo la app Flutter local-first y sin cambios de UX mobile

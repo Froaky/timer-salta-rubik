@@ -35,12 +35,7 @@ class AuthRepositoryImpl implements AuthRepository {
 
   @override
   Future<AuthSession?> completeWcaCallback(Uri callbackUri) async {
-    final fragment = callbackUri.fragment;
-    if (fragment.isEmpty) {
-      return null;
-    }
-
-    final params = Uri.splitQueryString(fragment);
+    final params = _extractCallbackParams(callbackUri);
     final accessToken = params['access_token'];
     if (accessToken == null || accessToken.isEmpty) {
       return null;
@@ -54,5 +49,28 @@ class AuthRepositoryImpl implements AuthRepository {
   @override
   Future<AuthSession?> getStoredSession() {
     return localDataSource.getStoredSession();
+  }
+
+  Map<String, String> _extractCallbackParams(Uri callbackUri) {
+    if (callbackUri.queryParameters.isNotEmpty) {
+      return callbackUri.queryParameters;
+    }
+
+    final fragment = callbackUri.fragment.trim();
+    if (fragment.isEmpty) {
+      return const {};
+    }
+
+    if (fragment.contains('=') && !fragment.startsWith('/')) {
+      return Uri.splitQueryString(fragment);
+    }
+
+    final normalized = fragment.startsWith('/') ? fragment : '/$fragment';
+    final fragmentUri = Uri.parse(normalized);
+    if (fragmentUri.queryParameters.isNotEmpty) {
+      return fragmentUri.queryParameters;
+    }
+
+    return const {};
   }
 }

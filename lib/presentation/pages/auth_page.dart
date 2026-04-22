@@ -273,7 +273,7 @@ class _AuthPageState extends State<AuthPage> {
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           SvgPicture.asset(
-            'WCAlogo_notext.svg',
+            'assets/icons/wca_logo.svg',
             width: 24,
             height: 24,
           ),
