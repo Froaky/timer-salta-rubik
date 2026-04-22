@@ -160,6 +160,7 @@ Este archivo resume lo indispensable para continuar el desarrollo de este repo s
   - despues del callback WCA exitoso, `AuthPage` no debe rehacer la navegacion con `pushReplacementNamed('/auth')`; es mas estable reemplazar la URL del navegador a `/auth` sin reload y quedarse con la sesion ya resuelta en memoria para evitar volver a la vista vacia.
   - `AuthLocalDataSource` mantiene cache en memoria ademas de `SharedPreferences`; en web eso evita que un cambio de ruta inmediato despues del callback vuelva a leer `null` mientras la UI ya habia recibido una sesion valida.
   - si el frontend web corre en un dominio distinto al backend (`timer-salta-rubik-production` vs `timer-api-production`), el backend debe exponer CORS para ese host o `GET /api/v1/auth/me` puede fallar en navegador aunque el redirect OAuth y el token sean correctos.
+  - para callback OAuth web, el backend no debe devolver el token en `#fragment` si el frontend usa el router web actual; es mas estable devolver `access_token` en query string (`/auth/callback?access_token=...`) porque `AuthRepositoryImpl` ya lo parsea y no depende de que el fragment sobreviva al bootstrap.
   - en mobile el boton WCA todavia no cierra el ciclo: la UI avisa que faltan deep links/app links antes de ofrecer login real en telefono.
   - el backend usa `soft delete` (`deleted_at`) en `sessions` y `solves` para no perder tombstones utiles para sync futura.
   - las stats remotas deben seguir siendo derivadas de solves; no conviene usarlas como fuente de verdad.
@@ -440,6 +441,12 @@ Entradas actuales:
   - archivos afectados: `backend/package.json`, `backend/.env.example`, `backend/README.md`, `backend/src/app.ts`, `lib/presentation/pages/timer_page.dart`, `CONTEXT.md`
   - validacion: `npm install`, `npm run build` en `backend/`; `flutter test --no-pub test/data/datasources/auth_local_datasource_test.dart test/presentation/pages/auth_page_test.dart`
   - siguiente paso: push y redeploy del backend en Railway; si el frontend no redeploya solo, redeployarlo tambien y luego reprobar login WCA / logout
+
+- `2026-04-22`
+  - se encontro otra causa dura del login WCA web: el backend seguia armando el success redirect con `#access_token=...`, pero en esta app/routing ese fragmento podia perderse antes de que Flutter lo leyera; `buildSuccessRedirectUrl` ahora devuelve el token en query string y el repo Flutter ya lo parsea por `queryParameters`
+  - archivos afectados: `backend/src/lib/auth_redirects.ts`, `test/data/repositories/auth_repository_impl_test.dart`, `CONTEXT.md`
+  - validacion: `npm run build` en `backend`; `flutter test --no-pub test/data/repositories/auth_repository_impl_test.dart test/presentation/pages/auth_page_test.dart`; `flutter analyze --no-pub` con solo warnings viejos del repo
+  - siguiente paso: pushear y redeployar backend + frontend, luego reprobar login WCA en Railway
 
 - `2026-04-21`
   - se definio la linea de producto para el backend: API propia separada, ORM para manejar esquema/migraciones y Postgres remoto, manteniendo la app Flutter local-first y sin cambios de UX mobile

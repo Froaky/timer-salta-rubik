@@ -91,6 +91,25 @@ void main() {
     expect(result, session);
   });
 
+  test('completes callback when token comes as regular query parameter',
+      () async {
+    final localDataSource = _FakeAuthLocalDataSource();
+    final remoteDataSource = _FakeAuthRemoteDataSource(session);
+    final repository = AuthRepositoryImpl(
+      localDataSource: localDataSource,
+      remoteDataSource: remoteDataSource,
+    );
+
+    final result = await repository.completeWcaCallback(
+      Uri.parse(
+          'https://timer-salta-rubik-production.up.railway.app/auth/callback?access_token=abc123&token_type=Bearer'),
+    );
+
+    expect(remoteDataSource.lastAccessToken, 'abc123');
+    expect(localDataSource.lastSavedSession, session);
+    expect(result, session);
+  });
+
   test('returns null when callback does not contain access token', () async {
     final localDataSource = _FakeAuthLocalDataSource();
     final remoteDataSource = _FakeAuthRemoteDataSource(session);

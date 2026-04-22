@@ -26,10 +26,9 @@ export function isAllowedRedirectUri(redirectUri?: string | null) {
 
 export function buildSuccessRedirectUrl(redirectUri: string, accessToken: string) {
   const url = new URL(redirectUri);
-  url.hash = new URLSearchParams({
-    access_token: accessToken,
-    token_type: 'Bearer',
-    provider: 'wca',
-  }).toString();
+  url.searchParams.set('access_token', accessToken);
+  url.searchParams.set('token_type', 'Bearer');
+  url.searchParams.set('provider', 'wca');
+  url.hash = '';
   return url.toString();
 }
