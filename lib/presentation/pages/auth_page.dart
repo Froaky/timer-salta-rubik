@@ -97,7 +97,9 @@ class _AuthPageState extends State<AuthPage> {
         session = await _completeWcaCallback(callbackUri);
         if (session != null) {
           statusMessage = 'Cuenta WCA conectada correctamente.';
-          replaceCurrentPath('/auth');
+          replaceCurrentPath(
+            callbackUri.path.isEmpty ? '/auth/callback' : callbackUri.path,
+          );
         } else {
           session = await _getStoredAuthSession();
           statusMessage = session == null
