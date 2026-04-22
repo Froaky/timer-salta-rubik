@@ -158,6 +158,7 @@ Este archivo resume lo indispensable para continuar el desarrollo de este repo s
   - para OAuth web, Flutter ahora usa `usePathUrlStrategy()`; el callback WCA no debe depender del hash router porque chocaba con el fragmento `access_token` y dejaba la app en login vacio (`/auth/callback#/auth`).
   - el boton `Continuar con WCA` en web no debe depender solo de `url_launcher`: `AuthPage` usa una redireccion directa en la misma pestaña (`lib/core/navigation/web_redirect*.dart`) y recien cae al launcher como fallback si hiciera falta.
   - despues del callback WCA exitoso, `AuthPage` no debe rehacer la navegacion con `pushReplacementNamed('/auth')`; es mas estable reemplazar la URL del navegador a `/auth` sin reload y quedarse con la sesion ya resuelta en memoria para evitar volver a la vista vacia.
+  - `AuthLocalDataSource` mantiene cache en memoria ademas de `SharedPreferences`; en web eso evita que un cambio de ruta inmediato despues del callback vuelva a leer `null` mientras la UI ya habia recibido una sesion valida.
   - en mobile el boton WCA todavia no cierra el ciclo: la UI avisa que faltan deep links/app links antes de ofrecer login real en telefono.
   - el backend usa `soft delete` (`deleted_at`) en `sessions` y `solves` para no perder tombstones utiles para sync futura.
   - las stats remotas deben seguir siendo derivadas de solves; no conviene usarlas como fuente de verdad.
@@ -426,6 +427,12 @@ Entradas actuales:
   - archivos afectados: `lib/core/navigation/web_redirect_stub.dart`, `lib/core/navigation/web_redirect_web.dart`, `lib/presentation/pages/auth_page.dart`, `CONTEXT.md`
   - validacion: `flutter test --no-pub test/presentation/pages/auth_page_test.dart test/data/repositories/auth_repository_impl_test.dart`, `flutter analyze --no-pub` (solo warnings/info viejos del repo)
   - siguiente paso: push/redeploy del frontend y smoke test real del login WCA en Railway
+
+- `2026-04-22`
+  - se endurecio la persistencia auth para web: `AuthLocalDataSourceImpl` ahora cachea la sesion en memoria ademas de guardarla en `SharedPreferences`, con tests de roundtrip y clear; esto apunta a la carrera donde el callback podia guardar bien pero la siguiente pantalla leía `null` y mostraba login vacio
+  - archivos afectados: `lib/data/datasources/auth_local_datasource.dart`, `test/data/datasources/auth_local_datasource_test.dart`, `CONTEXT.md`
+  - validacion: `flutter test --no-pub test/data/datasources/auth_local_datasource_test.dart test/data/repositories/auth_repository_impl_test.dart test/presentation/pages/auth_page_test.dart`, `flutter analyze --no-pub` (solo warnings/info viejos del repo)
+  - siguiente paso: push/redeploy del frontend y retestar manualmente el flujo WCA en Railway
 
 - `2026-04-21`
   - se definio la linea de producto para el backend: API propia separada, ORM para manejar esquema/migraciones y Postgres remoto, manteniendo la app Flutter local-first y sin cambios de UX mobile
