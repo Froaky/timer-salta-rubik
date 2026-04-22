@@ -162,6 +162,8 @@ Este archivo resume lo indispensable para continuar el desarrollo de este repo s
   - si el frontend web corre en un dominio distinto al backend (`timer-salta-rubik-production` vs `timer-api-production`), el backend debe exponer CORS para ese host o `GET /api/v1/auth/me` puede fallar en navegador aunque el redirect OAuth y el token sean correctos.
   - para callback OAuth web, el backend no debe devolver el token en `#fragment` si el frontend usa el router web actual; es mas estable devolver `access_token` en query string (`/auth/callback?access_token=...`) porque `AuthRepositoryImpl` ya lo parsea y no depende de que el fragment sobreviva al bootstrap.
   - en `AuthPage`, el callback WCA web no debe confiar solo en `Uri.base`; la pagina usa `getCurrentBrowserUri()` para leer la URL cruda del navegador y evitar que query/hash del callback se pierdan durante el bootstrap del router web.
+  - para el callback WCA web, no alcanza con leer la URL dentro de `AuthPage.initState()`: la app captura la URI del navegador en `main()` antes de `usePathUrlStrategy()` y se la pasa a la ruta `/auth/callback`, porque el bootstrap web puede llegar a limpiar la query antes de que el widget arranque.
+  - si el callback WCA web vuelve a fallar, `AuthPage` ahora muestra un diagnostico visible y sanitizado con la callback URI, `Uri.base`, presencia de token en query/fragment y si se pudo restaurar una sesion; eso sirve para aislar si el token nunca llego o se perdio antes del parseo.
   - en mobile el boton WCA todavia no cierra el ciclo: la UI avisa que faltan deep links/app links antes de ofrecer login real en telefono.
   - el backend usa `soft delete` (`deleted_at`) en `sessions` y `solves` para no perder tombstones utiles para sync futura.
   - las stats remotas deben seguir siendo derivadas de solves; no conviene usarlas como fuente de verdad.
@@ -454,6 +456,12 @@ Entradas actuales:
   - archivos afectados: `lib/core/navigation/web_redirect_stub.dart`, `lib/core/navigation/web_redirect_web.dart`, `lib/presentation/pages/auth_page.dart`, `CONTEXT.md`
   - validacion: `flutter test --no-pub test/presentation/pages/auth_page_test.dart test/data/repositories/auth_repository_impl_test.dart`
   - siguiente paso: pushear/redeployar frontend y volver a probar el login WCA en Railway
+
+- `2026-04-22`
+  - se detecto un punto mas temprano del fallo WCA web: el token puede perderse antes de `AuthPage.initState()` si el bootstrap/routing limpia la query del callback. La app ahora captura la URI inicial del navegador en `main()` antes de `usePathUrlStrategy()` y la inyecta en `/auth/callback`; ademas `AuthPage` muestra un diagnostico sanitizado si sigue sin encontrar token
+  - archivos afectados: `lib/main.dart`, `lib/presentation/pages/auth_page.dart`, `lib/data/repositories/auth_repository_impl.dart`, `lib/core/auth/auth_callback_parser.dart`, `test/presentation/pages/auth_page_test.dart`
+  - validacion: `dart format lib/main.dart lib/presentation/pages/auth_page.dart lib/data/repositories/auth_repository_impl.dart lib/core/auth/auth_callback_parser.dart test/presentation/pages/auth_page_test.dart`, `flutter test --no-pub`, `flutter analyze --no-pub` con solo warnings/info viejos del repo
+  - siguiente paso: pushear y redeployar el frontend en Railway; si todavia falla el login, copiar el bloque `Diagnostico callback web` que aparezca en pantalla para ubicar exactamente donde se pierde el token
 
 - `2026-04-21`
   - se definio la linea de producto para el backend: API propia separada, ORM para manejar esquema/migraciones y Postgres remoto, manteniendo la app Flutter local-first y sin cambios de UX mobile

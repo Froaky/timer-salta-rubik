@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../core/auth/auth_callback_parser.dart';
 import '../../core/navigation/web_redirect.dart';
 import '../../domain/entities/auth_session.dart';
 import '../../domain/usecases/build_wca_login_uri.dart';
@@ -19,6 +20,7 @@ class AuthPage extends StatefulWidget {
   final GetStoredAuthSession? getStoredAuthSession;
   final ClearAuthSession? clearAuthSession;
   final Future<bool> Function(Uri uri)? openWcaLoginUri;
+  final Uri? initialCallbackUri;
 
   const AuthPage({
     super.key,
@@ -28,6 +30,7 @@ class AuthPage extends StatefulWidget {
     this.getStoredAuthSession,
     this.clearAuthSession,
     this.openWcaLoginUri,
+    this.initialCallbackUri,
   });
 
   @override
@@ -38,6 +41,7 @@ class _AuthPageState extends State<AuthPage> {
   bool _isLogin = true;
   bool _isBusy = false;
   String? _statusMessage;
+  String? _callbackDiagnostic;
   AuthSession? _session;
 
   final _emailController = TextEditingController();
@@ -70,18 +74,26 @@ class _AuthPageState extends State<AuthPage> {
   }
 
   Future<void> _bootstrapAuthState() async {
+    final shouldCompleteWcaCallback = widget.completeWcaCallbackOnLoad &&
+        (kIsWeb || widget.initialCallbackUri != null);
+
     setState(() {
       _isBusy = true;
       _statusMessage =
-          widget.completeWcaCallbackOnLoad ? 'Validando login de WCA...' : null;
+          shouldCompleteWcaCallback ? 'Validando login de WCA...' : null;
+      _callbackDiagnostic = null;
     });
+
+    Uri? callbackUri;
 
     try {
       AuthSession? session;
       String? statusMessage = _statusMessage;
+      String? callbackDiagnostic;
 
-      if (widget.completeWcaCallbackOnLoad && kIsWeb) {
-        final callbackUri = getCurrentBrowserUri() ?? Uri.base;
+      if (shouldCompleteWcaCallback) {
+        callbackUri =
+            widget.initialCallbackUri ?? getCurrentBrowserUri() ?? Uri.base;
         session = await _completeWcaCallback(callbackUri);
         if (session != null) {
           statusMessage = 'Cuenta WCA conectada correctamente.';
@@ -91,6 +103,10 @@ class _AuthPageState extends State<AuthPage> {
           statusMessage = session == null
               ? 'No llego un token valido desde WCA.'
               : 'Sesion restaurada correctamente.';
+          callbackDiagnostic = _buildCallbackDiagnostic(
+            callbackUri,
+            storedSessionFound: session != null,
+          );
         }
       } else {
         session = await _getStoredAuthSession();
@@ -100,11 +116,21 @@ class _AuthPageState extends State<AuthPage> {
       setState(() {
         _session = session;
         _statusMessage = statusMessage;
+        _callbackDiagnostic = callbackDiagnostic;
       });
-    } catch (_) {
+    } catch (error) {
+      final diagnosticUri = callbackUri ??
+          widget.initialCallbackUri ??
+          getCurrentBrowserUri() ??
+          Uri.base;
       if (!mounted) return;
       setState(() {
         _statusMessage = 'No se pudo completar el login con WCA.';
+        _callbackDiagnostic = _buildCallbackDiagnostic(
+          diagnosticUri,
+          storedSessionFound: false,
+          error: error,
+        );
       });
     } finally {
       if (mounted) {
@@ -318,6 +344,68 @@ class _AuthPageState extends State<AuthPage> {
     );
   }
 
+  String _buildCallbackDiagnostic(
+    Uri callbackUri, {
+    required bool storedSessionFound,
+    Object? error,
+  }) {
+    final params = extractAuthCallbackParams(callbackUri);
+    final fragmentParams = extractAuthCallbackFragmentParams(callbackUri);
+    final sanitizedCallbackUri = sanitizeAuthCallbackUri(callbackUri);
+    final sanitizedBaseUri = sanitizeAuthCallbackUri(Uri.base);
+
+    return [
+      'Diagnostico callback web',
+      'callbackUri: $sanitizedCallbackUri',
+      'uriBase: $sanitizedBaseUri',
+      'queryKeys: ${callbackUri.queryParameters.keys.join(', ')}',
+      'fragmentKeys: ${fragmentParams.keys.join(', ')}',
+      'hasTokenInParams: ${params.containsKey('access_token')}',
+      'hasTokenInQuery: ${callbackUri.queryParameters.containsKey('access_token')}',
+      'hasTokenInFragment: ${fragmentParams.containsKey('access_token')}',
+      'storedSessionFound: $storedSessionFound',
+      if (error != null) 'error: $error',
+    ].join('\n');
+  }
+
+  Widget _buildCallbackDiagnosticCard(BuildContext context) {
+    if (_callbackDiagnostic == null ||
+        !widget.completeWcaCallbackOnLoad ||
+        (!kIsWeb && widget.initialCallbackUri == null) ||
+        _session != null) {
+      return const SizedBox.shrink();
+    }
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppTheme.cardColor,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: AppTheme.textMuted.withValues(alpha: 0.24),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Diagnostico callback web',
+            style: Theme.of(context).textTheme.titleSmall,
+          ),
+          const SizedBox(height: 8),
+          SelectableText(
+            _callbackDiagnostic!,
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: AppTheme.textSecondary,
+                  height: 1.4,
+                ),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final displayIdentity = _session?.name ?? _session?.email ?? 'SR';
@@ -373,6 +461,13 @@ class _AuthPageState extends State<AuthPage> {
                     ?.copyWith(color: AppTheme.accentColor),
                 textAlign: TextAlign.center,
               ),
+              const SizedBox(height: 24),
+            ],
+            if (_callbackDiagnostic != null &&
+                widget.completeWcaCallbackOnLoad &&
+                (kIsWeb || widget.initialCallbackUri != null) &&
+                _session == null) ...[
+              _buildCallbackDiagnosticCard(context),
               const SizedBox(height: 24),
             ],
             if (_session != null) ...[

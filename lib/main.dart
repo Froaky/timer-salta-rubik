@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_web_plugins/url_strategy.dart';
 
+import 'core/navigation/web_redirect.dart';
 // Presentation layer
 import 'presentation/bloc/timer/timer_bloc.dart';
 import 'presentation/bloc/solve/solve_bloc.dart';
@@ -17,6 +18,8 @@ import 'injection_container.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
+  final initialBrowserUri = kIsWeb ? getCurrentBrowserUri() : null;
+
   if (kIsWeb) {
     usePathUrlStrategy();
   }
@@ -24,18 +27,25 @@ void main() async {
   // Initialize dependency injection
   await configureDependencies();
 
-  runApp(const SaltaRubikApp());
+  runApp(SaltaRubikApp(initialBrowserUri: initialBrowserUri));
 }
 
 class SaltaRubikApp extends StatelessWidget {
-  const SaltaRubikApp({super.key});
+  final Uri? initialBrowserUri;
+
+  const SaltaRubikApp({
+    super.key,
+    this.initialBrowserUri,
+  });
 
   String _resolveInitialRoute() {
-    if (kIsWeb && Uri.base.path == '/auth/callback') {
+    final startupUri = initialBrowserUri ?? Uri.base;
+
+    if (kIsWeb && startupUri.path == '/auth/callback') {
       return '/auth/callback';
     }
 
-    if (kIsWeb && Uri.base.path == '/auth') {
+    if (kIsWeb && startupUri.path == '/auth') {
       return '/auth';
     }
 
@@ -66,8 +76,9 @@ class SaltaRubikApp extends StatelessWidget {
         routes: {
           '/': (context) => const TimerPage(),
           '/auth': (context) => const AuthPage(),
-          '/auth/callback': (context) => const AuthPage(
+          '/auth/callback': (context) => AuthPage(
                 completeWcaCallbackOnLoad: true,
+                initialCallbackUri: initialBrowserUri,
               ),
         },
         debugShowCheckedModeBanner: false,

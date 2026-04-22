@@ -12,6 +12,7 @@ import 'package:salta_rubik/presentation/theme/app_theme.dart';
 
 class _FakeAuthRepository implements AuthRepository {
   AuthSession? storedSession;
+  Uri? lastCallbackUri;
 
   _FakeAuthRepository({this.storedSession});
 
@@ -29,6 +30,7 @@ class _FakeAuthRepository implements AuthRepository {
 
   @override
   Future<AuthSession?> completeWcaCallback(Uri callbackUri) async {
+    lastCallbackUri = callbackUri;
     return storedSession;
   }
 
@@ -42,15 +44,19 @@ void main() {
   Widget buildPage(
     _FakeAuthRepository repository, {
     Future<bool> Function(Uri uri)? openWcaLoginUri,
+    bool completeWcaCallbackOnLoad = false,
+    Uri? initialCallbackUri,
   }) {
     return MaterialApp(
       theme: AppTheme.darkTheme,
       home: AuthPage(
+        completeWcaCallbackOnLoad: completeWcaCallbackOnLoad,
         buildWcaLoginUri: BuildWcaLoginUri(repository),
         completeWcaCallback: CompleteWcaCallback(repository),
         getStoredAuthSession: GetStoredAuthSession(repository),
         clearAuthSession: ClearAuthSession(repository),
         openWcaLoginUri: openWcaLoginUri,
+        initialCallbackUri: initialCallbackUri,
       ),
     );
   }
@@ -122,5 +128,60 @@ void main() {
     expect(find.text('mateo@example.com'), findsOneWidget);
     expect(find.text('Pais: AR'), findsOneWidget);
     expect(find.text('Cerrar sesion'), findsOneWidget);
+  });
+
+  testWidgets('uses startup callback uri to complete WCA auth on web callback',
+      (tester) async {
+    final repository = _FakeAuthRepository(
+      storedSession: const AuthSession(
+        accessToken: 'token',
+        userId: 'user-1',
+        name: 'Mateo Coca',
+        providers: [
+          AuthProviderProfile(
+            provider: 'wca',
+            wcaId: '2024TEST01',
+          ),
+        ],
+      ),
+    );
+    final callbackUri = Uri.parse(
+      'https://timer-salta-rubik-production.up.railway.app/auth/callback?access_token=abc123&provider=wca',
+    );
+
+    await tester.pumpWidget(
+      buildPage(
+        repository,
+        completeWcaCallbackOnLoad: true,
+        initialCallbackUri: callbackUri,
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(repository.lastCallbackUri, callbackUri);
+    expect(find.text('Cuenta conectada'), findsOneWidget);
+    expect(find.text('Mateo Coca'), findsOneWidget);
+  });
+
+  testWidgets('shows callback diagnostics when token is missing',
+      (tester) async {
+    final repository = _FakeAuthRepository();
+    final callbackUri = Uri.parse(
+      'https://timer-salta-rubik-production.up.railway.app/auth/callback',
+    );
+
+    await tester.pumpWidget(
+      buildPage(
+        repository,
+        completeWcaCallbackOnLoad: true,
+        initialCallbackUri: callbackUri,
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('No llego un token valido desde WCA.'), findsOneWidget);
+    expect(find.text('Diagnostico callback web'), findsAtLeastNWidgets(1));
+    expect(find.textContaining('hasTokenInParams: false'), findsOneWidget);
+    expect(find.textContaining('storedSessionFound: false'), findsOneWidget);
   });
 }

@@ -1,3 +1,4 @@
+import '../../core/auth/auth_callback_parser.dart';
 import '../../core/config/app_config.dart';
 import '../../domain/entities/auth_session.dart';
 import '../../domain/repositories/auth_repository.dart';
@@ -35,7 +36,7 @@ class AuthRepositoryImpl implements AuthRepository {
 
   @override
   Future<AuthSession?> completeWcaCallback(Uri callbackUri) async {
-    final params = _extractCallbackParams(callbackUri);
+    final params = extractAuthCallbackParams(callbackUri);
     final accessToken = params['access_token'];
     if (accessToken == null || accessToken.isEmpty) {
       return null;
@@ -49,28 +50,5 @@ class AuthRepositoryImpl implements AuthRepository {
   @override
   Future<AuthSession?> getStoredSession() {
     return localDataSource.getStoredSession();
-  }
-
-  Map<String, String> _extractCallbackParams(Uri callbackUri) {
-    if (callbackUri.queryParameters.isNotEmpty) {
-      return callbackUri.queryParameters;
-    }
-
-    final fragment = callbackUri.fragment.trim();
-    if (fragment.isEmpty) {
-      return const {};
-    }
-
-    if (fragment.contains('=') && !fragment.startsWith('/')) {
-      return Uri.splitQueryString(fragment);
-    }
-
-    final normalized = fragment.startsWith('/') ? fragment : '/$fragment';
-    final fragmentUri = Uri.parse(normalized);
-    if (fragmentUri.queryParameters.isNotEmpty) {
-      return fragmentUri.queryParameters;
-    }
-
-    return const {};
   }
 }
