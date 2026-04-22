@@ -16,6 +16,7 @@
     "prisma:migrate:deploy": "prisma migrate deploy"
   },
   "dependencies": {
+    "@fastify/cors": "^11.1.0",
     "@prisma/client": "^6.7.0",
     "fastify": "^5.2.1"
   },

@@ -6,6 +6,8 @@ import 'settings_page.dart';
 
 import '../../domain/entities/scramble.dart';
 import '../../domain/entities/solve.dart';
+import '../../domain/usecases/clear_auth_session.dart';
+import '../../injection_container.dart';
 
 import '../bloc/timer/timer_bloc.dart';
 import '../bloc/timer/timer_event.dart';
@@ -921,9 +923,17 @@ class _TimerPageState extends State<TimerPage> {
                 ListTile(
                   leading: const Icon(Icons.logout),
                   title: const Text('Cerrar sesión'),
-                  onTap: () {
+                  onTap: () async {
                     Navigator.pop(context);
-                    // TODO: Implementar cierre de sesión
+                    await sl<ClearAuthSession>()();
+                    if (!mounted) {
+                      return;
+                    }
+                    ScaffoldMessenger.of(this.context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Sesion cerrada.'),
+                      ),
+                    );
                   },
                 ),
               ],

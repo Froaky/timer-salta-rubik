@@ -43,6 +43,7 @@ Default local port: `8081`
 
 If you want to allow users to link/sign in with their WCA account, configure:
 
+- `CORS_ALLOWED_ORIGINS`
 - `AUTH_JWT_SECRET`
 - `AUTH_TOKEN_TTL_SECONDS`
 - `AUTH_ALLOWED_REDIRECT_URIS`
@@ -59,6 +60,7 @@ The callback route expected by this backend is:
 Example Railway values:
 
 ```text
+CORS_ALLOWED_ORIGINS=https://timer-salta-rubik-production.up.railway.app
 AUTH_JWT_SECRET=<long random secret>
 AUTH_TOKEN_TTL_SECONDS=2592000
 AUTH_ALLOWED_REDIRECT_URIS=https://timer-salta-rubik-production.up.railway.app/auth/callback,saltarubik://auth/callback
@@ -111,3 +113,4 @@ Recommended Railway shape:
 - `oauth_states` exist to validate `state` and support safe web/mobile redirects after login.
 - `deleted_at` is soft-delete oriented so future sync does not lose tombstones.
 - Stats are intentionally deferred as derived data from solves, not stored as source of truth.
+- Web login against a separate frontend domain requires `CORS_ALLOWED_ORIGINS` to include the Flutter web host, or browser calls like `GET /api/v1/auth/me` will fail even if OAuth redirect succeeded.
