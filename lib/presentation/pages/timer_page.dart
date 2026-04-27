@@ -274,6 +274,14 @@ class _TimerPageState extends State<TimerPage> {
                                         ),
                                       ),
                                     ),
+                                    Builder(builder: (context) {
+                                      final stats = solveState.statistics ??
+                                          (solveState.solves.isNotEmpty
+                                              ? Statistics.fromSolves(
+                                                  solveState.solves)
+                                              : null);
+                                      return _buildInlineStats(context, stats);
+                                    }),
                                   ],
                                 ),
                               ),
@@ -310,10 +318,13 @@ class _TimerPageState extends State<TimerPage> {
               ),
               if (!isImmersive)
                 BlocBuilder<SolveBloc, SolveState>(
-                  builder: (context, solveState) => _buildInlineStats(
-                    context,
-                    solveState.statistics,
-                  ),
+                  builder: (context, solveState) {
+                    final stats = solveState.statistics ??
+                        (solveState.solves.isNotEmpty
+                            ? Statistics.fromSolves(solveState.solves)
+                            : null);
+                    return _buildInlineStats(context, stats);
+                  },
                 ),
             ],
           );
@@ -610,13 +621,17 @@ class _TimerPageState extends State<TimerPage> {
 
     if (event is KeyUpEvent && event.logicalKey == LogicalKeyboardKey.space) {
       _spacebarPressed = false;
+      // La inspección siempre termina al soltar espacio (independiente del modo)
+      if (timerState.status == TimerStatus.inspection) {
+        timerBloc.add(const TimerStopHold());
+        return KeyEventResult.handled;
+      }
       if (timerState.tapToStartEnabled) {
-        // En modo inicio rápido, el release de space no hace nada especial
+        // En modo inicio rápido sin inspección, el release no hace nada
         return KeyEventResult.handled;
       }
       if (timerState.status == TimerStatus.holdPending ||
-          timerState.status == TimerStatus.armed ||
-          timerState.status == TimerStatus.inspection) {
+          timerState.status == TimerStatus.armed) {
         timerBloc.add(const TimerStopHold());
         return KeyEventResult.handled;
       }

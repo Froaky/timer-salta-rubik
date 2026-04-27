@@ -71,7 +71,9 @@ class TimerBloc extends Bloc<TimerEvent, TimerState> {
     _holdTimer = null;
 
     if (state.status == TimerStatus.inspection) {
+      // Detener inspección e iniciar el timer de inmediato
       add(const TimerStopInspection());
+      add(const TimerStart());
       return;
     }
 
@@ -171,6 +173,12 @@ class TimerBloc extends Bloc<TimerEvent, TimerState> {
       TimerStartImmediate event, Emitter<TimerState> emit) {
     if (state.status != TimerStatus.idle &&
         state.status != TimerStatus.stopped) {
+      return;
+    }
+
+    // Si la inspección está activada, respetarla aunque sea inicio rápido
+    if (state.inspectionEnabled) {
+      add(const TimerStartInspection());
       return;
     }
 
