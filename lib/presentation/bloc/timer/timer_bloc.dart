@@ -21,6 +21,7 @@ class TimerBloc extends Bloc<TimerEvent, TimerState> {
   DateTime? _runStartTime;
   DateTime? _inspectionStartTime;
   int _inspectionPenaltyMs = 0;
+  bool _startedHoldFromInspection = false;
 
   TimerBloc({
     this.redThresholdMs = TimerThresholds.red,
@@ -46,15 +47,12 @@ class TimerBloc extends Bloc<TimerEvent, TimerState> {
   }
 
   void _onStartHold(TimerStartHold event, Emitter<TimerState> emit) {
-    if (state.status != TimerStatus.idle &&
-        state.status != TimerStatus.stopped) {
-      return;
-    }
+    final canStart = state.status == TimerStatus.idle ||
+        state.status == TimerStatus.stopped ||
+        state.status == TimerStatus.inspection;
+    if (!canStart) return;
 
-    if (state.inspectionEnabled) {
-      add(const TimerStartInspection());
-      return;
-    }
+    _startedHoldFromInspection = state.status == TimerStatus.inspection;
 
     _holdStartTime = DateTime.now();
     emit(state.copyWith(
@@ -70,18 +68,20 @@ class TimerBloc extends Bloc<TimerEvent, TimerState> {
     _holdTimer?.cancel();
     _holdTimer = null;
 
-    if (state.status == TimerStatus.inspection) {
-      // Detener inspección e iniciar el timer de inmediato
-      add(const TimerStopInspection());
-      add(const TimerStart());
+    if (state.status == TimerStatus.armed) {
+      if (_startedHoldFromInspection) {
+        _startedHoldFromInspection = false;
+        add(const TimerStopInspection());
+        add(const TimerStart());
+      } else if (state.inspectionEnabled) {
+        add(const TimerStartInspection());
+      } else {
+        add(const TimerStart());
+      }
       return;
     }
 
-    if (state.status == TimerStatus.armed) {
-      add(const TimerStart());
-    } else {
-      add(const TimerReset());
-    }
+    add(const TimerReset());
   }
 
   void _onTick(TimerTick event, Emitter<TimerState> emit) {
@@ -145,6 +145,7 @@ class TimerBloc extends Bloc<TimerEvent, TimerState> {
     _runStartTime = null;
     _inspectionStartTime = null;
     _inspectionPenaltyMs = 0;
+    _startedHoldFromInspection = false;
 
     emit(TimerState.initial());
   }
@@ -171,12 +172,17 @@ class TimerBloc extends Bloc<TimerEvent, TimerState> {
 
   void _onStartImmediate(
       TimerStartImmediate event, Emitter<TimerState> emit) {
+    if (state.status == TimerStatus.inspection) {
+      add(const TimerStopInspection());
+      add(const TimerStart());
+      return;
+    }
+
     if (state.status != TimerStatus.idle &&
         state.status != TimerStatus.stopped) {
       return;
     }
 
-    // Si la inspección está activada, respetarla aunque sea inicio rápido
     if (state.inspectionEnabled) {
       add(const TimerStartInspection());
       return;
@@ -197,7 +203,8 @@ class TimerBloc extends Bloc<TimerEvent, TimerState> {
   void _onStartInspection(
       TimerStartInspection event, Emitter<TimerState> emit) {
     if (state.status != TimerStatus.idle &&
-        state.status != TimerStatus.stopped) {
+        state.status != TimerStatus.stopped &&
+        state.status != TimerStatus.armed) {
       return;
     }
 

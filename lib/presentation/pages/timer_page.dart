@@ -401,16 +401,22 @@ class _TimerPageState extends State<TimerPage> {
                 ),
                 child: Column(
                   children: [
-                    ScramblePreview(
-                      scramble: currentScramble,
-                      width: 260,
-                      height: 190,
-                      showLabel: false,
-                      padding: EdgeInsets.zero,
-                      backgroundColor: Colors.transparent,
-                      containerKey:
-                          const ValueKey('desktop-scramble-preview-container'),
-                      svgKey: const ValueKey('desktop-scramble-preview-svg'),
+                    LayoutBuilder(
+                      builder: (context, constraints) {
+                        final w = constraints.maxWidth;
+                        return ScramblePreview(
+                          scramble: currentScramble,
+                          width: w,
+                          height: w * (190 / 260),
+                          showLabel: false,
+                          padding: EdgeInsets.zero,
+                          backgroundColor: Colors.transparent,
+                          containerKey: const ValueKey(
+                              'desktop-scramble-preview-container'),
+                          svgKey:
+                              const ValueKey('desktop-scramble-preview-svg'),
+                        );
+                      },
                     ),
                     const SizedBox(height: 8),
                     Text(
@@ -512,17 +518,14 @@ class _TimerPageState extends State<TimerPage> {
     }
 
     if (timerState.status == TimerStatus.idle ||
-        timerState.status == TimerStatus.stopped) {
+        timerState.status == TimerStatus.stopped ||
+        timerState.status == TimerStatus.inspection) {
       if (timerState.tapToStartEnabled) {
         timerBloc.add(const TimerStartImmediate());
       } else {
         timerBloc.add(const TimerStartHold());
       }
       return;
-    }
-
-    if (timerState.status == TimerStatus.inspection) {
-      timerBloc.add(const TimerStopHold());
     }
   }
 
@@ -597,13 +600,9 @@ class _TimerPageState extends State<TimerPage> {
         }
         _spacebarPressed = true;
 
-        if (timerState.status == TimerStatus.inspection) {
-          // Esperar el release para iniciar el timer desde inspección
-          return KeyEventResult.handled;
-        }
-
         if (timerState.status == TimerStatus.idle ||
-            timerState.status == TimerStatus.stopped) {
+            timerState.status == TimerStatus.stopped ||
+            timerState.status == TimerStatus.inspection) {
           if (timerState.tapToStartEnabled) {
             timerBloc.add(const TimerStartImmediate());
           } else {
@@ -621,13 +620,7 @@ class _TimerPageState extends State<TimerPage> {
 
     if (event is KeyUpEvent && event.logicalKey == LogicalKeyboardKey.space) {
       _spacebarPressed = false;
-      // La inspección siempre termina al soltar espacio (independiente del modo)
-      if (timerState.status == TimerStatus.inspection) {
-        timerBloc.add(const TimerStopHold());
-        return KeyEventResult.handled;
-      }
       if (timerState.tapToStartEnabled) {
-        // En modo inicio rápido sin inspección, el release no hace nada
         return KeyEventResult.handled;
       }
       if (timerState.status == TimerStatus.holdPending ||
