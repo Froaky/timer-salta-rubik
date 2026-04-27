@@ -7,6 +7,7 @@ import 'package:vibration/vibration.dart';
 
 import '../../domain/entities/solve.dart';
 import '../../domain/entities/scramble.dart';
+import '../../domain/entities/statistics.dart';
 
 import '../bloc/compete/compete_bloc.dart';
 import '../bloc/compete/compete_event.dart';
@@ -387,6 +388,16 @@ class _CompetePageState extends State<CompetePage> {
     final showScramble =
         scramble != null && competeState.status != CompeteStatus.inProgress;
 
+    final laneStats = laneData.solves.isNotEmpty
+        ? Statistics.fromSolves(laneData.solves)
+        : null;
+    final statsTextColor = color == CompeteTimerColor.white
+        ? Colors.black.withValues(alpha: 0.55)
+        : Colors.white.withValues(alpha: 0.7);
+    final statsLabelColor = color == CompeteTimerColor.white
+        ? Colors.black.withValues(alpha: 0.4)
+        : Colors.white.withValues(alpha: 0.55);
+
     Widget content = Listener(
       key: ValueKey('compete-lane-$laneNumber'),
       behavior: HitTestBehavior.opaque,
@@ -486,29 +497,101 @@ class _CompetePageState extends State<CompetePage> {
       ),
     );
 
+    Widget laneWithStats = Stack(
+      children: [
+        Positioned.fill(child: content),
+        Positioned(
+          right: 10,
+          top: 10,
+          bottom: 10,
+          child: IgnorePointer(
+            child: _buildLaneStatsOverlay(
+              laneNumber: laneNumber,
+              stats: laneStats,
+              labelColor: statsLabelColor,
+              valueColor: statsTextColor,
+            ),
+          ),
+        ),
+      ],
+    );
+
     // Invert content if needed
     if (isInverted) {
-      content = Transform.rotate(
+      laneWithStats = Transform.rotate(
         angle: 3.14159, // 180 degrees
-        child: content,
+        child: laneWithStats,
       );
     }
 
     return Container(
       color: AppTheme.backgroundColor,
-      child: content,
+      child: laneWithStats,
     );
   }
 
-  String _formatTime(int milliseconds) {
-    final seconds = milliseconds / 1000;
-    if (seconds < 60) {
-      return seconds.toStringAsFixed(2);
-    } else {
-      final minutes = (seconds / 60).floor();
-      final remainingSeconds = seconds % 60;
-      return '$minutes:${remainingSeconds.toStringAsFixed(2).padLeft(5, '0')}';
-    }
+  Widget _buildLaneStatsOverlay({
+    required int laneNumber,
+    required Statistics? stats,
+    required Color labelColor,
+    required Color valueColor,
+  }) {
+    final entries = <MapEntry<String, String>>[
+      MapEntry(
+          'single',
+          stats == null || stats.recentSolves.isEmpty
+              ? '-'
+              : stats.recentSolves.first.formattedTimeWithPenalty),
+      MapEntry(
+          'ao5',
+          stats == null
+              ? '-'
+              : Statistics.formatTime(stats.averageOf5)),
+      MapEntry(
+          'ao12',
+          stats == null
+              ? '-'
+              : Statistics.formatTime(stats.averageOf12)),
+    ];
+
+    return Align(
+      alignment: Alignment.centerRight,
+      child: Container(
+        key: ValueKey('compete-lane-$laneNumber-stats'),
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+        decoration: BoxDecoration(
+          color: Colors.black.withValues(alpha: 0.05),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: [
+            for (final entry in entries) ...[
+              Text(
+                entry.key,
+                style: TextStyle(
+                  color: labelColor,
+                  fontSize: 9,
+                  letterSpacing: 0.6,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              Text(
+                entry.value,
+                style: TextStyle(
+                  color: valueColor,
+                  fontSize: 11,
+                  fontFamily: 'RobotoMono',
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              const SizedBox(height: 4),
+            ],
+          ],
+        ),
+      ),
+    );
   }
 
   Widget _buildScrambleDisplay(
@@ -545,70 +628,58 @@ class _CompetePageState extends State<CompetePage> {
   }
 
   void _showCompetitionResults(CompeteState competeState) {
+    final lane1Solves = competeState.lane1.solves;
+    final lane2Solves = competeState.lane2.solves;
+    final roundCount = lane1Solves.length > lane2Solves.length
+        ? lane1Solves.length
+        : lane2Solves.length;
+
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Resultados de la Competencia'),
+        title: const Text('Resultados por ronda'),
+        contentPadding:
+            const EdgeInsets.fromLTRB(12, 16, 12, 8),
         content: SizedBox(
+          key: const ValueKey('compete-results-content'),
           width: double.maxFinite,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              // Jugador 1
-              Card(
-                child: Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Jugador 1',
-                        style:
-                            Theme.of(context).textTheme.titleMedium?.copyWith(
-                                  fontWeight: FontWeight.bold,
-                                ),
-                      ),
-                      const SizedBox(height: 8),
-                      if (competeState.lane1.solves.isEmpty)
-                        const Text('Sin tiempos registrados')
-                      else
-                        ...competeState.lane1.solves.map((solve) => Padding(
-                              padding: const EdgeInsets.symmetric(vertical: 2),
-                              child: Text(_formatTime(solve.timeMs)),
-                            )),
-                    ],
+          child: roundCount == 0
+              ? const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 24),
+                  child: Center(
+                    child: Text('Sin rondas registradas'),
+                  ),
+                )
+              : ConstrainedBox(
+                  constraints: BoxConstraints(
+                    maxHeight: MediaQuery.of(context).size.height * 0.6,
+                  ),
+                  child: Scrollbar(
+                    child: ListView.separated(
+                      key: const ValueKey('compete-results-rounds'),
+                      shrinkWrap: true,
+                      physics: const ClampingScrollPhysics(),
+                      itemCount: roundCount,
+                      separatorBuilder: (_, __) => const SizedBox(height: 8),
+                      itemBuilder: (context, index) {
+                        final lane1Solve =
+                            index < lane1Solves.length ? lane1Solves[index] : null;
+                        final lane2Solve =
+                            index < lane2Solves.length ? lane2Solves[index] : null;
+                        final scrambleNotation = lane1Solve?.scramble ??
+                            lane2Solve?.scramble ??
+                            '';
+
+                        return _buildRoundRow(
+                          roundIndex: index,
+                          scrambleNotation: scrambleNotation,
+                          lane1Solve: lane1Solve,
+                          lane2Solve: lane2Solve,
+                        );
+                      },
+                    ),
                   ),
                 ),
-              ),
-              const SizedBox(height: 16),
-              // Jugador 2
-              Card(
-                child: Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Jugador 2',
-                        style:
-                            Theme.of(context).textTheme.titleMedium?.copyWith(
-                                  fontWeight: FontWeight.bold,
-                                ),
-                      ),
-                      const SizedBox(height: 8),
-                      if (competeState.lane2.solves.isEmpty)
-                        const Text('Sin tiempos registrados')
-                      else
-                        ...competeState.lane2.solves.map((solve) => Padding(
-                              padding: const EdgeInsets.symmetric(vertical: 2),
-                              child: Text(_formatTime(solve.timeMs)),
-                            )),
-                    ],
-                  ),
-                ),
-              ),
-            ],
-          ),
         ),
         actions: [
           TextButton(
@@ -616,6 +687,111 @@ class _CompetePageState extends State<CompetePage> {
             child: const Text('Cerrar'),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildRoundRow({
+    required int roundIndex,
+    required String scrambleNotation,
+    required Solve? lane1Solve,
+    required Solve? lane2Solve,
+  }) {
+    final lane1Text = lane1Solve == null
+        ? '-'
+        : lane1Solve.formattedTimeWithPenalty;
+    final lane2Text = lane2Solve == null
+        ? '-'
+        : lane2Solve.formattedTimeWithPenalty;
+
+    return Card(
+      key: ValueKey('compete-results-round-$roundIndex'),
+      margin: EdgeInsets.zero,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(
+              'Ronda ${roundIndex + 1}',
+              style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                    color: AppTheme.textSecondary,
+                    letterSpacing: 1.0,
+                    fontWeight: FontWeight.w700,
+                  ),
+            ),
+            const SizedBox(height: 6),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'J1',
+                        style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                              color: AppTheme.textMuted,
+                              fontWeight: FontWeight.w600,
+                            ),
+                      ),
+                      Text(
+                        lane1Text,
+                        key: ValueKey('compete-results-round-$roundIndex-lane1'),
+                        style:
+                            Theme.of(context).textTheme.titleMedium?.copyWith(
+                                  fontFamily: 'RobotoMono',
+                                  fontWeight: FontWeight.w600,
+                                ),
+                      ),
+                    ],
+                  ),
+                ),
+                Expanded(
+                  flex: 2,
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 6),
+                    child: Text(
+                      scrambleNotation.isEmpty ? '-' : scrambleNotation,
+                      key: ValueKey(
+                          'compete-results-round-$roundIndex-scramble'),
+                      style: const TextStyle(
+                        fontFamily: 'RobotoMono',
+                        fontSize: 11,
+                        height: 1.2,
+                      ),
+                      textAlign: TextAlign.center,
+                      softWrap: true,
+                    ),
+                  ),
+                ),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      Text(
+                        'J2',
+                        style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                              color: AppTheme.textMuted,
+                              fontWeight: FontWeight.w600,
+                            ),
+                      ),
+                      Text(
+                        lane2Text,
+                        key: ValueKey('compete-results-round-$roundIndex-lane2'),
+                        style:
+                            Theme.of(context).textTheme.titleMedium?.copyWith(
+                                  fontFamily: 'RobotoMono',
+                                  fontWeight: FontWeight.w600,
+                                ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }

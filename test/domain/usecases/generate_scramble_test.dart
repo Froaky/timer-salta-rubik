@@ -24,11 +24,45 @@ void main() {
 
     test('generates official style 4x4 scrambles', () {
       final scramble = usecase('4x4');
-      final movePattern = RegExp(r"^(R|U|F|L|D|B|Rw|Uw|Fw|Lw|Dw|Bw)(2|'|)?$");
+      final movePattern = RegExp(r"^(R|U|F|L|D|B|Rw|Uw|Fw)(2|'|)?$");
 
       expect(scramble.cubeType, '4x4');
       expect(scramble.moves.length, 40);
       expect(scramble.moves.every(movePattern.hasMatch), isTrue);
+    });
+
+    test('4x4 scrambles never emit Dw, Lw or Bw wides (FIX-017)', () {
+      final forbidden = RegExp(r"^(Dw|Lw|Bw)");
+
+      for (final cubeType in const ['4x4', '444bf']) {
+        for (var i = 0; i < 30; i++) {
+          final scramble = usecase(cubeType);
+          for (final move in scramble.moves) {
+            expect(
+              forbidden.hasMatch(move),
+              isFalse,
+              reason: 'Move "$move" appeared in $cubeType scramble (run $i)',
+            );
+          }
+        }
+      }
+    });
+
+    test('4x4 scrambles start with a 3x3 style outer block (FIX-017)', () {
+      final outerOnly = RegExp(r"^(R|U|F|L|D|B)(2|'|)?$");
+
+      for (var i = 0; i < 30; i++) {
+        final scramble = usecase('4x4');
+        final prefix = scramble.moves.take(8).toList();
+        for (final move in prefix) {
+          expect(
+            outerOnly.hasMatch(move),
+            isTrue,
+            reason:
+                'Prefix move "$move" should be outer-only (3x3 block), full=$prefix',
+          );
+        }
+      }
     });
 
     test('generates official style 6x6 scrambles with wide 3-layer moves', () {

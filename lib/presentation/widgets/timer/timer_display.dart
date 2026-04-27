@@ -13,6 +13,7 @@ class TimerDisplay extends StatefulWidget {
   final ValueChanged<int>? onDisplayedElapsedChanged;
   final int? frozenElapsedMs;
   final Widget? previewOverlay;
+  final double previewOverlayBottomOffset;
   final bool immersiveMode;
 
   const TimerDisplay({
@@ -24,6 +25,7 @@ class TimerDisplay extends StatefulWidget {
     this.onDisplayedElapsedChanged,
     this.frozenElapsedMs,
     this.previewOverlay,
+    this.previewOverlayBottomOffset = 18,
     this.immersiveMode = false,
   });
 
@@ -119,7 +121,7 @@ class _TimerDisplayState extends State<TimerDisplay>
           if (widget.previewOverlay != null)
             Positioned(
               right: 18,
-              bottom: 18,
+              bottom: widget.previewOverlayBottomOffset,
               child: widget.previewOverlay!,
             ),
         ],

@@ -195,6 +195,69 @@ void main() {
       await bloc.close();
     });
 
+    test(
+        'brief tap after stop returns to stopped state preserving elapsed (FIX-016)',
+        () async {
+      final bloc = TimerBloc(
+        yellowThresholdMs: 20,
+        greenThresholdMs: 40,
+      );
+
+      bloc.add(const TimerStartHold());
+      await Future<void>.delayed(const Duration(milliseconds: 55));
+      expect(bloc.state.status, TimerStatus.armed);
+
+      bloc.add(const TimerStopHold());
+      await Future<void>.delayed(const Duration(milliseconds: 5));
+      expect(bloc.state.status, TimerStatus.running);
+
+      bloc.add(TimerStop(elapsedMsOverride: 4321));
+      await Future<void>.delayed(const Duration(milliseconds: 5));
+      expect(bloc.state.status, TimerStatus.stopped);
+      expect(bloc.state.elapsedMs, 4321);
+
+      // Brief tap that does NOT reach the green threshold should NOT erase
+      // the previously stopped time.
+      bloc.add(const TimerStartHold());
+      await Future<void>.delayed(const Duration(milliseconds: 10));
+      bloc.add(const TimerStopHold());
+      await Future<void>.delayed(const Duration(milliseconds: 10));
+
+      expect(bloc.state.status, TimerStatus.stopped);
+      expect(bloc.state.elapsedMs, 4321);
+
+      await bloc.close();
+    });
+
+    test('tap-to-start ignores quick taps within the stop cooldown (FIX-016)',
+        () async {
+      final bloc = TimerBloc(
+        yellowThresholdMs: 20,
+        greenThresholdMs: 40,
+      );
+
+      bloc.add(const TimerToggleTapToStart());
+      await Future<void>.delayed(Duration.zero);
+
+      // Reach a stopped state with a known elapsed time.
+      bloc.add(const TimerStartImmediate());
+      await Future<void>.delayed(const Duration(milliseconds: 30));
+      expect(bloc.state.status, TimerStatus.running);
+
+      bloc.add(TimerStop(elapsedMsOverride: 9876));
+      await Future<void>.delayed(const Duration(milliseconds: 5));
+      expect(bloc.state.status, TimerStatus.stopped);
+      expect(bloc.state.elapsedMs, 9876);
+
+      // Immediate retap during cooldown should be ignored.
+      bloc.add(const TimerStartImmediate());
+      await Future<void>.delayed(const Duration(milliseconds: 10));
+      expect(bloc.state.status, TimerStatus.stopped);
+      expect(bloc.state.elapsedMs, 9876);
+
+      await bloc.close();
+    });
+
     test('inspection over configured dnf threshold produces dnf', () async {
       final bloc = TimerBloc(
         inspectionDurationMs: 80,

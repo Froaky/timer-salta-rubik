@@ -52,6 +52,7 @@ class _TimerPageState extends State<TimerPage> {
   int? _lastDisplayedElapsedMs;
   late final FocusNode _keyboardFocusNode;
   bool _spacebarPressed = false;
+  TimerStatus? _previousTimerStatus;
 
   @override
   void initState() {
@@ -217,6 +218,9 @@ class _TimerPageState extends State<TimerPage> {
   Widget _buildTimerView({required bool isImmersive}) {
     return BlocListener<TimerBloc, TimerState>(
       listener: (context, timerState) {
+        final wasRunning = _previousTimerStatus == TimerStatus.running;
+        _previousTimerStatus = timerState.status;
+
         if (timerState.status != TimerStatus.running &&
             _latchedStopElapsedMs != null) {
           setState(() {
@@ -228,8 +232,11 @@ class _TimerPageState extends State<TimerPage> {
           _lastDisplayedElapsedMs = null;
         }
 
-        // When timer stops, save the solve and generate new scramble
-        if (timerState.status == TimerStatus.stopped &&
+        // Save solve only on the running -> stopped transition,
+        // so brief taps that bounce stopped -> holdPending -> stopped
+        // don't trigger duplicate saves (FIX-016).
+        if (wasRunning &&
+            timerState.status == TimerStatus.stopped &&
             timerState.elapsedMs > 0) {
           WidgetsBinding.instance.addPostFrameCallback((_) {
             if (!mounted) {
@@ -313,19 +320,34 @@ class _TimerPageState extends State<TimerPage> {
                   duration: const Duration(milliseconds: 220),
                   curve: Curves.easeOutCubic,
                   scale: isImmersive ? 1.02 : 1,
-                  child: _buildTimerWithControls(isImmersive: isImmersive),
+                  child: Stack(
+                    children: [
+                      Positioned.fill(
+                        child:
+                            _buildTimerWithControls(isImmersive: isImmersive),
+                      ),
+                      if (!isImmersive)
+                        Positioned(
+                          left: 0,
+                          right: 0,
+                          bottom: 12,
+                          child: IgnorePointer(
+                            child: BlocBuilder<SolveBloc, SolveState>(
+                              builder: (context, solveState) {
+                                final stats = solveState.statistics ??
+                                    (solveState.solves.isNotEmpty
+                                        ? Statistics.fromSolves(
+                                            solveState.solves)
+                                        : null);
+                                return _buildFloatingStats(context, stats);
+                              },
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
                 ),
               ),
-              if (!isImmersive)
-                BlocBuilder<SolveBloc, SolveState>(
-                  builder: (context, solveState) {
-                    final stats = solveState.statistics ??
-                        (solveState.solves.isNotEmpty
-                            ? Statistics.fromSolves(solveState.solves)
-                            : null);
-                    return _buildInlineStats(context, stats);
-                  },
-                ),
             ],
           );
         },
@@ -442,6 +464,13 @@ class _TimerPageState extends State<TimerPage> {
           builder: (context, sessionState) {
             return BlocBuilder<SolveBloc, SolveState>(
               builder: (context, solveState) {
+                final quickStats = solveState.statistics ??
+                    (solveState.solves.isNotEmpty
+                        ? Statistics.fromSolves(solveState.solves)
+                        : null);
+                final hasFloatingStats =
+                    !isImmersive && _hasQuickStats(quickStats);
+
                 return AnimatedContainer(
                   duration: const Duration(milliseconds: 220),
                   curve: Curves.easeOutCubic,
@@ -461,6 +490,7 @@ class _TimerPageState extends State<TimerPage> {
                                 context,
                                 solveState.currentScramble,
                               ),
+                        previewOverlayBottomOffset: hasFloatingStats ? 26 : 18,
                         onTapDown: _handleTimerTapDown,
                         onTapUp: _handleTimerTapUp,
                         onTapCancel: _handleTimerTapCancel,
@@ -925,6 +955,104 @@ class _TimerPageState extends State<TimerPage> {
             .map((item) => _buildStatChip(context, item.label, item.value))
             .toList(),
       ),
+    );
+  }
+
+  Widget _buildFloatingStats(BuildContext context, Statistics? stats) {
+    if (stats == null || stats.totalSolves == 0) {
+      return const SizedBox.shrink();
+    }
+
+    final items = <_StatItem>[];
+
+    if (stats.personalBest != null) {
+      items.add(_StatItem('PB', Statistics.formatTime(stats.personalBest)));
+    }
+    if (stats.meanOf3 != null) {
+      items.add(_StatItem('mo3', Statistics.formatTime(stats.meanOf3)));
+    }
+    if (stats.averageOf5 != null) {
+      items.add(_StatItem('ao5', Statistics.formatTime(stats.averageOf5)));
+    }
+    if (stats.averageOf12 != null) {
+      items.add(_StatItem('ao12', Statistics.formatTime(stats.averageOf12)));
+    }
+
+    if (items.isEmpty) return const SizedBox.shrink();
+
+    return Center(
+      child: Container(
+        key: const ValueKey('floating-stats'),
+        constraints: BoxConstraints(
+          maxWidth: MediaQuery.sizeOf(context).width - 32,
+        ),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+        decoration: BoxDecoration(
+          color: Colors.black.withValues(alpha: 0.32),
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(
+            color: Colors.white.withValues(alpha: 0.12),
+          ),
+        ),
+        child: FittedBox(
+          fit: BoxFit.scaleDown,
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              for (var i = 0; i < items.length; i++) ...[
+                if (i > 0)
+                  Container(
+                    width: 1,
+                    height: 14,
+                    margin: const EdgeInsets.symmetric(horizontal: 8),
+                    color: Colors.white.withValues(alpha: 0.18),
+                  ),
+                _buildFloatingStatChip(context, items[i].label, items[i].value),
+              ],
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  bool _hasQuickStats(Statistics? stats) {
+    if (stats == null || stats.totalSolves == 0) {
+      return false;
+    }
+
+    return stats.personalBest != null ||
+        stats.meanOf3 != null ||
+        stats.averageOf5 != null ||
+        stats.averageOf12 != null;
+  }
+
+  Widget _buildFloatingStatChip(
+      BuildContext context, String label, String value) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        Text(
+          label,
+          style: TextStyle(
+            color: Colors.white.withValues(alpha: 0.62),
+            fontSize: 10,
+            letterSpacing: 0.6,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        const SizedBox(width: 4),
+        Text(
+          value,
+          style: TextStyle(
+            color: Colors.white.withValues(alpha: 0.92),
+            fontFamily: 'RobotoMono',
+            fontSize: 11,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+      ],
     );
   }
 

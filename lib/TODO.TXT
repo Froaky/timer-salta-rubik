@@ -26,6 +26,16 @@ DISCLAIMER DEL DESARROLLADOR: Hagamos una pequena animacion de zoom al empezar e
 DISCLAIMER DEL DESARROLLADOR: La imagen de la mezcla en cubos NxN deberia ser representada como si el cubo arrancara con la cara blanca arriba y verde en frente, para hacer la mezcla y en funcion a eso deberia estar hecha la imagen.
 -| US-010 ✅ | Como usuario que esta viendo la imagen del scramble, quiero que el boton atras cierre primero esa vista o pida confirmacion antes de salir de la app, para no cerrar la aplicacion por error cuando solo quiero salir del modal o preview actual. [done]
 
+-| US-011 ✅ | Como competidor en modo versus, quiero ver de forma sutil el ultimo single, el ultimo avg/ao5 y el ultimo avg12 de cada jugador sobre su timer, para tener una referencia rapida de como viene cada uno sin abrir otra vista. [done]
+CRITERIOS:
+- En cada carril de competencia se muestran `single`, `avg`/`ao5` y `avg12` calculados solo con los solves de ese carril.
+- La informacion aparece del lado derecho de cada competidor, cerca/sobre el timer, en tamano chico y con bajo peso visual para no saturar la pantalla.
+- El bloque es solo informativo: no debe ser interactuable ni capturar gestos que impidan iniciar, detener o mantener presionado el timer.
+- Si un carril todavia no tiene suficientes solves para `ao5` o `ao12`, se muestra un placeholder discreto en vez de esconder o romper el layout.
+- Los valores respetan penalties, DNF y el formato de tiempo existente de `Statistics`.
+- La referencia se actualiza despues de cada solve guardado en el carril correspondiente y no mezcla datos entre `lane` 1 y `lane` 2.
+- Agregar cobertura en `test/presentation/pages/compete_page_test.dart` para verificar render sutil/no interactuable y calculo separado por carril.
+
 Feedback adicional -> Fixes nuevos
 
 -| FIX-011 ✅ | Como usuario del timer principal, quiero que el scramble vuelva a mostrarse arriba del timer como antes, para mantener la jerarquia visual correcta de la pantalla inicial. [done]
@@ -33,6 +43,46 @@ Feedback adicional -> Fixes nuevos
 -| FIX-013 ✅ | Como competidor, quiero que al detener un timer en modo competencia el tiempo quede congelado de forma inmediata y aislada de cualquier otra actualizacion, para que la generacion o refresco del scramble no agregue milisegundos al tiempo final registrado. [done]
 -| FIX-014 ✅ | Como usuario del timer principal, quiero que al mantener presionado el tiempo requerido y soltar la pantalla el timer empiece inmediatamente en el primer intento, para no tener que tocar una segunda vez despues de la animacion o expansion visual. [done]
 -| FIX-015 ✅ | Como speedcuber, quiero que al tocar para detener el timer el tiempo se congele exactamente en ese instante sin sumar ni media centesima por animaciones, rebuilds, scrambles o cualquier otro proceso, para que el tiempo final registrado sea fiel al toque real de stop. [done]
+-| FIX-016 ✅ | Como speedcuber del timer principal, quiero que el tiempo final quede visible despues de detener el solve y no se borre por un toque accidental posterior, para poder leer y confirmar mi resultado antes de empezar un nuevo intento. [done]
+CRITERIOS:
+- El tiempo en pantalla permanece en estado `stopped` hasta que empiece efectivamente un nuevo solve.
+- Con `Inicio rapido` desactivado, un toque breve posterior al stop no resetea ni borra el tiempo final.
+- Con `Inicio rapido` activado, un toque dentro de los primeros 500 ms posteriores al stop se ignora para evitar dobles toques involuntarios; despues de ese cooldown, tocar puede iniciar un nuevo solve.
+- El fix no debe alterar el instante exacto de stop, el tiempo guardado, ni generar solves duplicados por doble toque.
+-| FIX-017 ✅ | Como speedcuber de 4x4, quiero que los scrambles de 4x4 usen una notacion y estructura parecida a los scrambles oficiales/referidos, para practicar con mezclas confiables y faciles de leer. [done]
+CRITERIOS:
+- Para `4x4` y `444bf`, el generador no debe emitir movimientos wide `Dw`, `Lw` ni `Bw`.
+- Los unicos wide permitidos en 4x4 son `Rw`, `Uw` y `Fw`, con modificadores vacio, `'` o `2`.
+- El scramble debe empezar con un bloque tipo 3x3 compuesto solo por movimientos externos (`R`, `U`, `F`, `L`, `D`, `B`) antes de entrar en la parte 4x4 con wide moves.
+- La parte 4x4 puede combinar movimientos externos con `Rw`, `Uw` y `Fw`, evitando repeticiones invalidas o patrones triviales.
+- El cambio no debe alterar los generadores de 5x5, 6x6, 7x7 ni la alineacion de scramble con la sesion activa.
+- Agregar regresion en `test/domain/usecases/generate_scramble_test.dart` que falle si vuelve a aparecer `Dw`, `Lw` o `Bw`, o si el primer bloque deja de ser tipo 3x3.
+-| FIX-018 ✅ | Como competidor en modo versus, quiero que la vista de tiempos de competencia agrupe cada ronda por scramble y muestre el tiempo de cada jugador a los lados, para comparar rapidamente quien hizo que resultado con la misma mezcla. [done]
+CRITERIOS:
+- Al abrir resultados/historial desde modo competencia, no debe mostrarse una lista separada por jugador; debe mostrarse una vista comparativa por ronda/scramble.
+- Cada ronda visible muestra el scramble en el centro, el tiempo del jugador/carril 1 a un lado y el tiempo del jugador/carril 2 al otro.
+- La vista debe permitir recorrer multiples rondas con scroll/gesto desde cualquier zona del contenido, no solo arrastrando exactamente sobre el texto del scramble.
+- El orden de rondas debe respetar el orden en que se jugaron y agrupar solves por el mismo scramble/ronda usando `lane` 1 y 2.
+- Si una ronda tiene un solo carril registrado o algun dato incompleto, la UI debe mostrar el faltante sin romper el scroll ni mezclarlo con otro scramble.
+- Deben conservarse penalties, DNF y formato de tiempo existentes cuando se muestren los resultados.
+- La restriccion actual se mantiene: durante una ronda activa no se debe poder entrar a historial/resultados si el modo competencia lo bloquea.
+- Agregar cobertura en `test/presentation/pages/compete_page_test.dart` para verificar agrupacion por scramble, tiempos laterales y scroll/navegacion entre rondas.
+-| FIX-019 ✅ | Como usuario mobile del timer principal, quiero que el scramble siempre se vea completo y adaptado al tamano de pantalla, para poder leer la mezcla sin que 2x2 quede cortado ni que 7x7 o scrambles largos oculten movimientos. [done]
+CRITERIOS:
+- En mobile, el card del scramble se adapta al ancho y alto disponible para `2x2`, `3x3`, `4x4`, `5x5`, `6x6` y `7x7` sin clipping visual.
+- Los scrambles cortos como `2x2` no deben quedar cortados verticalmente ni con texto tapado por header/padding.
+- Los scrambles largos como `7x7` deben poder leerse completos mediante reduccion responsiva de tipografia, crecimiento controlado del card y/o scroll interno claro.
+- El ajuste aplica en la vista normal del timer cuando el scramble debe estar visible; no debe romper el ocultamiento intencional durante estados inmersivos como `running` o `inspection`.
+- El card no debe empujar al timer hasta hacerlo inutilizable en pantallas bajas; si no entra todo, debe priorizar legibilidad con scroll interno antes que overflow.
+- Agregar cobertura en `test/presentation/widgets/scramble_display_test.dart` o `timer_page_test.dart` para 2x2 en viewport chico y 7x7/NxN largo en mobile.
+-| FIX-020 ✅ | Como speedcuber en mobile, quiero que las estadisticas visibles en la pantalla del timer sean superficiales/flotantes sobre el area del timer, para tener referencia sin que ocupen demasiado espacio vertical. [done]
+CRITERIOS:
+- En mobile, las stats rapidas (`PB`, `mo3`, `ao5`, `ao12` cuando existan) dejan de ocupar una fila fija debajo del timer.
+- Las stats se muestran como informacion compacta y sutil sobre/superpuesta al area del timer, sin robar espacio principal al timer ni al scramble.
+- El bloque de stats no debe capturar gestos ni interferir con mantener presionado, soltar, iniciar o detener el timer.
+- Si no hay stats suficientes, no debe dejar espacio vacio reservado.
+- En desktop/web ancho se puede mantener el layout actual o adaptar solo si no rompe la sidebar; el objetivo principal es mobile.
+- Agregar cobertura en `test/presentation/pages/timer_page_test.dart` para verificar que en mobile las stats no ocupan fila fija, no interceptan el timer y siguen mostrando valores correctos.
 
 Play Store launch checklist
 
@@ -51,13 +101,13 @@ Railway + Web roadmap
 
 -| EPIC-WEB-001 | Como producto, necesitamos una base web compatible con navegador para poder publicar Salta Rubik en Railway sin romper la experiencia actual de Android.
 -| WEB-US-001 | Como usuario web, quiero abrir Salta Rubik desde una URL hosteada en Railway y que la app cargue correctamente en navegador, para poder usarla sin instalar la app mobile.
--| WEB-US-002 | Como usuario mobile actual, quiero que agregar soporte web no cambie la vista ni el flujo de la app Android, para no introducir regresiones en la version de Play Store.
--| WEB-US-003 | Como usuario web sin login, quiero que mis sesiones y solves queden guardados localmente en el navegador, para no perder mis tiempos al recargar la pagina.
--| WEB-US-004 | Como maintainer, quiero un proceso reproducible de build y deploy de Flutter Web hacia Railway, para poder publicar updates sin pasos manuales fragiles.
+-| WEB-US-002 ✅ | Como usuario mobile actual, quiero que agregar soporte web no cambie la vista ni el flujo de la app Android, para no introducir regresiones en la version de Play Store. [done]
+-| WEB-US-003 ✅ | Como usuario web sin login, quiero que mis sesiones y solves queden guardados localmente en el navegador, para no perder mis tiempos al recargar la pagina. [done]
+-| WEB-US-004 ✅ | Como maintainer, quiero un proceso reproducible de build y deploy de Flutter Web hacia Railway, para poder publicar updates sin pasos manuales fragiles. [done]
 
 -| EPIC-WEB-002 | Como producto, necesitamos desacoplar persistencia y plataforma para que la app pueda vivir en mobile y web con el mismo dominio sin depender solo de `sqflite`.
--| WEB-US-005 | Como desarrollador, quiero abstraer la persistencia local por plataforma, para que Android siga usando su storage actual y web pueda usar un storage compatible de navegador.
--| WEB-US-006 | Como usuario, quiero que sesiones, solves, penalties y stats mantengan la misma semantica en mobile y web, para que no existan diferencias funcionales entre plataformas.
+-| WEB-US-005 ✅ | Como desarrollador, quiero abstraer la persistencia local por plataforma, para que Android siga usando su storage actual y web pueda usar un storage compatible de navegador. [done]
+-| WEB-US-006 ✅ | Como usuario, quiero que sesiones, solves, penalties y stats mantengan la misma semantica en mobile y web, para que no existan diferencias funcionales entre plataformas. [done]
 -| WEB-US-007 | Como desarrollador, quiero contratos y tests de repositorio compartidos entre mobile y web, para detectar rapido cualquier divergencia de comportamiento.
 
 -| EPIC-WEB-003 | Como producto, necesitamos dejar lista la base de cuenta y sincronizacion para que en una etapa posterior el usuario vea en web los mismos tiempos y sesiones que en mobile.
@@ -73,23 +123,23 @@ Railway + Web roadmap
 
 Backend + API roadmap
 
--| EPIC-BE-001 | Como producto, necesitamos una base de backend desplegable en Railway con ORM y Postgres, para dejar lista la infraestructura de datos remotos sin gestionar la base a mano.
--| BE-US-001 | Como maintainer, quiero un backend desplegable en Railway con ORM y migraciones, para no administrar la base de datos a mano.
--| BE-US-002 | Como maintainer, quiero una configuracion centralizada de DB y variables de entorno, para separar credenciales y entorno del codigo.
--| BE-US-003 | Como maintainer, quiero health checks y logs minimos, para detectar rapido fallas de deploy o de conexion a la DB.
+-| EPIC-BE-001 ✅ | Como producto, necesitamos una base de backend desplegable en Railway con ORM y Postgres, para dejar lista la infraestructura de datos remotos sin gestionar la base a mano. [done]
+-| BE-US-001 ✅ | Como maintainer, quiero un backend desplegable en Railway con ORM y migraciones, para no administrar la base de datos a mano. [done]
+-| BE-US-002 ✅ | Como maintainer, quiero una configuracion centralizada de DB y variables de entorno, para separar credenciales y entorno del codigo. [done]
+-| BE-US-003 ✅ | Como maintainer, quiero health checks y logs minimos, para detectar rapido fallas de deploy o de conexion a la DB. [done]
 
 -| EPIC-BE-002 | Como producto, necesitamos una API propia versionada para sessions y solves, para que web y mobile hablen con nuestros endpoints y no con la base directo.
--| BE-US-004 | Como usuario, quiero que mis sesiones existan como recurso remoto, para poder recuperarlas desde otros dispositivos cuando llegue login/sync.
--| BE-US-005 | Como usuario, quiero que mis solves se guarden como entidades remotas, para mantener mi historial sincronizable.
+-| BE-US-004 ✅ | Como usuario, quiero que mis sesiones existan como recurso remoto, para poder recuperarlas desde otros dispositivos cuando llegue login/sync. [done]
+-| BE-US-005 ✅ | Como usuario, quiero que mis solves se guarden como entidades remotas, para mantener mi historial sincronizable. [done]
 -| BE-US-006 | Como usuario, quiero consultar stats derivadas desde backend, para que web y mobile puedan usar la misma logica.
--| BE-US-007 | Como maintainer, quiero una API versionada y documentada, para integrar Flutter sin adivinar contratos.
+-| BE-US-007 ✅ | Como maintainer, quiero una API versionada y documentada, para integrar Flutter sin adivinar contratos. [done]
 
 -| EPIC-BE-003 | Como producto, necesitamos dejar lista la base de identidad remota y sync futura, para que el usuario vea sus mismos tiempos en web y mobile cuando llegue auth.
--| BE-US-008 | Como usuario con cuenta futura, quiero una identidad remota estable, para ver mis datos en web y mobile con la misma cuenta.
+-| BE-US-008 ✅ | Como usuario con cuenta futura, quiero una identidad remota estable, para ver mis datos en web y mobile con la misma cuenta. [done]
 -| BE-US-009 | Como usuario que ya tiene datos locales, quiero un flujo de vinculacion o migracion a cuenta, para no perder historial cuando se habilite sync.
 -| BE-US-010 | Como producto, quiero reglas de sync y resolucion de conflictos, para evitar duplicados o stats inconsistentes entre local y remoto.
--| BE-US-011 | Como usuario con cuenta WCA, quiero poder vincular o iniciar sesion con mi cuenta WCA, para reutilizar mi identidad oficial sin crear otra cuenta desde cero.
--| BE-US-012 | Como producto, quiero usar los datos basicos del perfil WCA enlazado, para enriquecer cuenta, avatar, pais y futura importacion de contexto oficial sin depender de scraping.
--| BE-US-013 | Como usuario web, quiero iniciar sesion con WCA y volver seguro a la app web con una sesion propia de Salta Rubik, para no exponer secretos OAuth en el cliente.
+-| BE-US-011 ✅ | Como usuario con cuenta WCA, quiero poder vincular o iniciar sesion con mi cuenta WCA, para reutilizar mi identidad oficial sin crear otra cuenta desde cero. [done]
+-| BE-US-012 ✅ | Como producto, quiero usar los datos basicos del perfil WCA enlazado, para enriquecer cuenta, avatar, pais y futura importacion de contexto oficial sin depender de scraping. [done]
+-| BE-US-013 ✅ | Como usuario web, quiero iniciar sesion con WCA y volver seguro a la app web con una sesion propia de Salta Rubik, para no exponer secretos OAuth en el cliente. [done]
 -| BE-US-014 | Como usuario mobile, quiero iniciar sesion con WCA desde navegador y volver por deep link a la app con una sesion valida, para usar la misma identidad en el telefono.
--| BE-US-015 | Como cliente Flutter, quiero consultar `auth/me` con el token de Salta Rubik, para reconstruir la sesion sin depender directamente de la API WCA.
+-| BE-US-015 ✅ | Como cliente Flutter, quiero consultar `auth/me` con el token de Salta Rubik, para reconstruir la sesion sin depender directamente de la API WCA. [done]

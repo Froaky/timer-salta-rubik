@@ -12,7 +12,7 @@ import '../../support/test_helpers.dart';
 void main() {
   setUpAll(registerTestFallbacks);
 
-  Widget buildDisplay(SolveState solveState) {
+  Widget buildDisplay(SolveState solveState, {double width = 280}) {
     final solveBloc = MockSolveBloc();
     whenListen(
       solveBloc,
@@ -25,10 +25,10 @@ void main() {
       home: Scaffold(
         body: BlocProvider<SolveBloc>.value(
           value: solveBloc,
-          child: const Center(
+          child: Center(
             child: SizedBox(
-              width: 280,
-              child: ScrambleDisplay(),
+              width: width,
+              child: const ScrambleDisplay(),
             ),
           ),
         ),
@@ -72,5 +72,53 @@ void main() {
     expect(shortFontSize, isNotNull);
     expect(longFontSize, isNotNull);
     expect(longFontSize!, lessThan(shortFontSize!));
+  });
+
+  testWidgets('keeps 2x2 scramble visible on narrow viewports (FIX-019)',
+      (tester) async {
+    final state = SolveState.initial().copyWith(
+      status: SolveStatus.loaded,
+      currentScramble: buildScramble(
+        notation: "R U' R2 F R F' U2 R U'",
+        cubeType: '2x2',
+      ),
+    );
+
+    await tester.pumpWidget(buildDisplay(state, width: 280));
+    await tester.pumpAndSettle();
+
+    final card = tester.getRect(find.byKey(const ValueKey('main-scramble-card')));
+    expect(card.height, greaterThan(0));
+    expect(card.height, lessThan(140));
+
+    final text = find.byKey(const ValueKey('main-scramble-text'));
+    expect(text, findsOneWidget);
+  });
+
+  testWidgets('keeps long 7x7 scramble fully readable via internal scroll '
+      '(FIX-019)', (tester) async {
+    // ~100 wide moves, mimicking 7x7 length.
+    final notation = List.generate(
+      100,
+      (i) => i.isEven ? 'Rw' : '3Fw\'',
+    ).join(' ');
+
+    final state = SolveState.initial().copyWith(
+      status: SolveStatus.loaded,
+      currentScramble: buildScramble(
+        notation: notation,
+        cubeType: '7x7',
+      ),
+    );
+
+    await tester.pumpWidget(buildDisplay(state, width: 320));
+    await tester.pumpAndSettle();
+
+    final card = tester.getRect(find.byKey(const ValueKey('main-scramble-card')));
+    // Card must remain bounded so the timer keeps usable space.
+    expect(card.height, lessThanOrEqualTo(220));
+
+    final text = find.byKey(const ValueKey('main-scramble-text'));
+    expect(text, findsOneWidget);
   });
 }

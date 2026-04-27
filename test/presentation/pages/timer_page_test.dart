@@ -212,6 +212,51 @@ void main() {
     );
   });
 
+  testWidgets(
+      'keeps floating stats clear of the timer scramble preview on narrow mobile',
+      (tester) async {
+    tester.view.physicalSize = const Size(390, 760);
+    tester.view.devicePixelRatio = 1.0;
+
+    await tester.pumpWidget(
+      buildPage(
+        sessionState: SessionState.initial().copyWith(
+          status: SessionStatus.loaded,
+          sessions: [session],
+          currentSession: session,
+        ),
+        solveState: SolveState.initial().copyWith(
+          status: SolveStatus.loaded,
+          solves: solves,
+          currentScramble: scramble,
+          statistics: buildStatistics(
+            totalSolves: 12,
+            recentSolves: solves,
+            averageOf12: 11000,
+          ),
+        ),
+        timerState: TimerState.initial(),
+        enableDesktopExperienceOverride: false,
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final statsFinder = find.byKey(const ValueKey('floating-stats'));
+    final previewFinder =
+        find.byKey(const ValueKey('timer-scramble-preview-trigger'));
+
+    expect(statsFinder, findsOneWidget);
+    expect(previewFinder, findsOneWidget);
+    expect(
+      tester.getRect(statsFinder).overlaps(tester.getRect(previewFinder)),
+      isFalse,
+    );
+
+    final statsContainer = tester.widget<Container>(statsFinder);
+    final decoration = statsContainer.decoration as BoxDecoration;
+    expect(decoration.borderRadius, BorderRadius.circular(10));
+  });
+
   testWidgets('renders a compact scramble card above the timer',
       (tester) async {
     await tester.pumpWidget(

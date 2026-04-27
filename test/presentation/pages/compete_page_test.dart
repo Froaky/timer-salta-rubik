@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
+import 'package:salta_rubik/domain/entities/solve.dart';
 import 'package:salta_rubik/presentation/bloc/compete/compete_bloc.dart';
 import 'package:salta_rubik/presentation/bloc/compete/compete_state.dart';
 import 'package:salta_rubik/presentation/bloc/session/session_bloc.dart';
@@ -205,5 +206,150 @@ void main() {
 
     expect(find.byKey(const ValueKey('compete-lane-1-scramble')), findsNothing);
     expect(find.byKey(const ValueKey('compete-lane-2-scramble')), findsNothing);
+  });
+
+  testWidgets('renders subtle per-lane stats overlay (US-011)', (tester) async {
+    final lane1Solves = [
+      buildSolve(
+          id: 's1-1',
+          timeMs: 12000,
+          createdAt: DateTime(2024, 1, 1, 12, 0)),
+      buildSolve(
+          id: 's1-2',
+          timeMs: 11500,
+          createdAt: DateTime(2024, 1, 1, 12, 1)),
+      buildSolve(
+          id: 's1-3',
+          timeMs: 13000,
+          createdAt: DateTime(2024, 1, 1, 12, 2)),
+      buildSolve(
+          id: 's1-4',
+          timeMs: 12200,
+          createdAt: DateTime(2024, 1, 1, 12, 3)),
+      buildSolve(
+          id: 's1-5',
+          timeMs: 11800,
+          createdAt: DateTime(2024, 1, 1, 12, 4)),
+    ];
+    final lane2Solves = [
+      buildSolve(
+          id: 's2-1',
+          timeMs: 14000,
+          createdAt: DateTime(2024, 1, 1, 12, 0)),
+    ];
+
+    final state = buildReadyState(
+      cubeType: '3x3',
+      lane1Notation: shortScramble.notation,
+      lane2Notation: shortScramble.notation,
+    ).copyWith(
+      lane1: LaneData(solves: lane1Solves),
+      lane2: LaneData(solves: lane2Solves),
+    );
+
+    await tester.pumpWidget(
+      buildPage(
+        sessionState: buildSessionState(),
+        competeState: state,
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(
+      find.byKey(const ValueKey('compete-lane-1-stats')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const ValueKey('compete-lane-2-stats')),
+      findsOneWidget,
+    );
+    // Lane 2 only has one solve, ao5/ao12 should be placeholders (no crash).
+    expect(find.text('ao5'), findsWidgets);
+    expect(find.text('ao12'), findsWidgets);
+  });
+
+  testWidgets(
+      'comparative per-round results dialog groups by scramble (FIX-018)',
+      (tester) async {
+    final lane1Solves = [
+      buildSolve(
+        id: 'l1-r1',
+        timeMs: 12340,
+        scramble: 'R U R\' U\'',
+        createdAt: DateTime(2024, 1, 1, 12, 0),
+        lane: 1,
+      ),
+      buildSolve(
+        id: 'l1-r2',
+        timeMs: 11000,
+        scramble: 'F R U R\' U\' F\'',
+        createdAt: DateTime(2024, 1, 1, 12, 5),
+        lane: 1,
+      ),
+    ];
+    final lane2Solves = [
+      buildSolve(
+        id: 'l2-r1',
+        timeMs: 13500,
+        scramble: 'R U R\' U\'',
+        createdAt: DateTime(2024, 1, 1, 12, 0),
+        lane: 2,
+      ),
+    ];
+
+    final state = buildReadyState(
+      cubeType: '3x3',
+      lane1Notation: shortScramble.notation,
+      lane2Notation: shortScramble.notation,
+    ).copyWith(
+      status: CompeteStatus.finished,
+      lane1: LaneData(solves: lane1Solves),
+      lane2: LaneData(solves: lane2Solves),
+    );
+
+    await tester.pumpWidget(
+      buildPage(
+        sessionState: buildSessionState(),
+        competeState: state,
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    // Open the round-results dialog by tapping the central VS pill.
+    await tester.tap(find.text('VS'));
+    await tester.pumpAndSettle();
+
+    expect(
+      find.byKey(const ValueKey('compete-results-rounds')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const ValueKey('compete-results-round-0')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const ValueKey('compete-results-round-1')),
+      findsOneWidget,
+    );
+
+    // Round 0 must show both lane times paired with the same scramble.
+    final lane1Round0 = tester.widget<Text>(
+      find.byKey(const ValueKey('compete-results-round-0-lane1')),
+    );
+    final lane2Round0 = tester.widget<Text>(
+      find.byKey(const ValueKey('compete-results-round-0-lane2')),
+    );
+    final scrambleRound0 = tester.widget<Text>(
+      find.byKey(const ValueKey('compete-results-round-0-scramble')),
+    );
+    expect(lane1Round0.data, '12.34');
+    expect(lane2Round0.data, '13.50');
+    expect(scrambleRound0.data, 'R U R\' U\'');
+
+    // Round 1 only has lane 1 — lane 2 must show a placeholder, not crash.
+    final lane2Round1 = tester.widget<Text>(
+      find.byKey(const ValueKey('compete-results-round-1-lane2')),
+    );
+    expect(lane2Round1.data, '-');
   });
 }

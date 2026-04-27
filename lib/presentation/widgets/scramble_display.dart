@@ -212,18 +212,24 @@ class ScrambleDisplay extends StatelessWidget {
         : isMediumScreen
             ? 18
             : 19.5;
-    final lengthMultiplier = notation.length > 110
-        ? 0.82
-        : notation.length > 80
-            ? 0.88
-            : notation.length > 55
-                ? 0.94
-                : 1.0;
+    final lengthMultiplier = notation.length > 200
+        ? 0.7
+        : notation.length > 140
+            ? 0.78
+            : notation.length > 110
+                ? 0.84
+                : notation.length > 80
+                    ? 0.9
+                    : notation.length > 55
+                        ? 0.95
+                        : 1.0;
     final cubeMultiplier = switch (cubeType) {
       '2x2' => 0.9,
       '3x3' || '3x3oh' || '3x3bf' || '3x3fm' => 1.0,
-      '4x4' || '444bf' || '5x5' || '555bf' => 0.94,
-      '6x6' || '7x7' => 0.88,
+      '4x4' || '444bf' => 0.92,
+      '5x5' || '555bf' => 0.88,
+      '6x6' => 0.84,
+      '7x7' => 0.8,
       'clock' || 'sq1' => 0.92,
       _ => 0.95,
     };
@@ -233,14 +239,14 @@ class ScrambleDisplay extends StatelessWidget {
           fontFamily: 'RobotoMono',
           fontSize: fontSize,
           letterSpacing: letterSpacing,
-          height: 1.35,
+          height: 1.3,
           color: AppTheme.textPrimary,
           fontWeight: FontWeight.w500,
         );
 
     final padding = EdgeInsets.symmetric(
       horizontal: isSmallScreen ? 12 : 16,
-      vertical: isSmallScreen ? 10 : 12,
+      vertical: isSmallScreen ? 8 : 10,
     );
     final textWidth =
         (maxWidth - padding.horizontal - (isSmallScreen ? 16 : 32))
@@ -250,13 +256,20 @@ class ScrambleDisplay extends StatelessWidget {
       textStyle!,
       textWidth,
     );
-    final headerHeight = isSmallScreen ? 34.0 : 38.0;
-    final minHeight = switch (cubeType) {
-      '2x2' => isSmallScreen ? 86.0 : 92.0,
-      'clock' || 'sq1' => isSmallScreen ? 90.0 : 96.0,
-      _ => isSmallScreen ? 96.0 : 104.0,
+    final headerHeight = isSmallScreen ? 32.0 : 36.0;
+    // Allow the card to size down to a single text line for short scrambles
+    // like 2x2 (FIX-019) so it does not leave huge empty space.
+    final lineHeight = (textStyle.fontSize ?? 16) * (textStyle.height ?? 1.3);
+    final minHeight = (lineHeight + padding.vertical + headerHeight).clamp(
+      isSmallScreen ? 64.0 : 72.0,
+      isSmallScreen ? 110.0 : 120.0,
+    );
+    // Slightly taller cap so 6x6/7x7 scrambles get more breathing room before
+    // falling back to internal scroll, but never push the timer below usable.
+    final maxHeight = switch (cubeType) {
+      '6x6' || '7x7' => isSmallScreen ? 188.0 : 220.0,
+      _ => isSmallScreen ? 168.0 : 196.0,
     };
-    final maxHeight = isSmallScreen ? 164.0 : 188.0;
     final contentHeight = measuredTextHeight + padding.vertical + headerHeight;
     final targetHeight = contentHeight.clamp(minHeight, maxHeight);
 

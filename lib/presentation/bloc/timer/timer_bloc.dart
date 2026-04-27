@@ -20,8 +20,12 @@ class TimerBloc extends Bloc<TimerEvent, TimerState> {
   DateTime? _holdStartTime;
   DateTime? _runStartTime;
   DateTime? _inspectionStartTime;
+  DateTime? _lastStoppedAt;
   int _inspectionPenaltyMs = 0;
   bool _startedHoldFromInspection = false;
+  bool _startedHoldFromStopped = false;
+
+  static const int _stopCooldownMs = 500;
 
   TimerBloc({
     this.redThresholdMs = TimerThresholds.red,
@@ -53,6 +57,7 @@ class TimerBloc extends Bloc<TimerEvent, TimerState> {
     if (!canStart) return;
 
     _startedHoldFromInspection = state.status == TimerStatus.inspection;
+    _startedHoldFromStopped = state.status == TimerStatus.stopped;
 
     _holdStartTime = DateTime.now();
     emit(state.copyWith(
@@ -69,6 +74,7 @@ class TimerBloc extends Bloc<TimerEvent, TimerState> {
     _holdTimer = null;
 
     if (state.status == TimerStatus.armed) {
+      _startedHoldFromStopped = false;
       if (_startedHoldFromInspection) {
         _startedHoldFromInspection = false;
         add(const TimerStopInspection());
@@ -78,6 +84,16 @@ class TimerBloc extends Bloc<TimerEvent, TimerState> {
       } else {
         add(const TimerStart());
       }
+      return;
+    }
+
+    if (_startedHoldFromStopped) {
+      _startedHoldFromStopped = false;
+      emit(state.copyWith(
+        status: TimerStatus.stopped,
+        color: TimerColor.white,
+        holdDurationMs: 0,
+      ));
       return;
     }
 
@@ -126,6 +142,8 @@ class TimerBloc extends Bloc<TimerEvent, TimerState> {
     final finalTime =
         _inspectionPenaltyMs == -1 ? -1 : baseTime + _inspectionPenaltyMs;
 
+    _lastStoppedAt = stoppedAt;
+
     emit(state.copyWith(
       status: TimerStatus.stopped,
       elapsedMs: finalTime,
@@ -146,6 +164,8 @@ class TimerBloc extends Bloc<TimerEvent, TimerState> {
     _inspectionStartTime = null;
     _inspectionPenaltyMs = 0;
     _startedHoldFromInspection = false;
+    _startedHoldFromStopped = false;
+    _lastStoppedAt = null;
 
     emit(TimerState.initial());
   }
@@ -180,6 +200,14 @@ class TimerBloc extends Bloc<TimerEvent, TimerState> {
 
     if (state.status != TimerStatus.idle &&
         state.status != TimerStatus.stopped) {
+      return;
+    }
+
+    if (state.status == TimerStatus.stopped &&
+        state.tapToStartEnabled &&
+        _lastStoppedAt != null &&
+        DateTime.now().difference(_lastStoppedAt!).inMilliseconds <
+            _stopCooldownMs) {
       return;
     }
 

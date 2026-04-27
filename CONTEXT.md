@@ -75,6 +75,10 @@ Este archivo resume lo indispensable para continuar el desarrollo de este repo s
 - Widget principal: [scramble_preview.dart](C:/Users/MateoCoca/Documents/REPOS/timer-salta-rubik/lib/presentation/widgets/scramble_preview.dart)
 - Motor del cubo NxN: [cube_preview_engine.dart](C:/Users/MateoCoca/Documents/REPOS/timer-salta-rubik/lib/presentation/widgets/cube_preview_engine.dart)
 
+### Scramble generation
+- Use case: [generate_scramble.dart](C:/Users/MateoCoca/Documents/REPOS/timer-salta-rubik/lib/domain/usecases/generate_scramble.dart)
+- Tests: [generate_scramble_test.dart](C:/Users/MateoCoca/Documents/REPOS/timer-salta-rubik/test/domain/usecases/generate_scramble_test.dart)
+
 ### Dominio / persistencia solves
 - DB local: [local_database.dart](C:/Users/MateoCoca/Documents/REPOS/timer-salta-rubik/lib/data/datasources/local_database.dart)
 - Impl mobile SQLite: [local_database_sqflite.dart](C:/Users/MateoCoca/Documents/REPOS/timer-salta-rubik/lib/data/datasources/local_database_sqflite.dart)
@@ -87,12 +91,19 @@ Este archivo resume lo indispensable para continuar el desarrollo de este repo s
 
 - El timer debe iniciar al mantener presionado el tiempo requerido y soltar. No con un toque extra.
 - El timer debe detenerse exactamente al toque de stop. Nada visual o asincrono debe sumar tiempo.
+- El tiempo final en `stopped` debe quedar visible hasta que empiece efectivamente un nuevo solve; un toque breve accidental despues de detener no debe resetear la pantalla, y `Inicio rapido` necesita cooldown minimo de 500 ms post-stop.
 - Cambiar sesion o tipo de cubo debe mantener historial, estadisticas y scramble alineados.
+- En mobile, el scramble principal debe quedar siempre legible cuando corresponde mostrarlo: 2x2 no debe cortarse y 7x7/NxN largo debe ofrecer lectura completa sin overflow visual.
+- Las stats rapidas del timer en mobile deben ser superficiales/pasivas sobre el area del timer, sin reservar una fila que achique el timer y sin capturar gestos de start/stop.
+- Cuando conviven stats rapidas flotantes y el preview visual chico del scramble en el timer principal, el preview debe quedar elevado para no superponerse con las stats; el bloque de stats debe seguir entrando en ancho mobile angosto.
+- Scrambles 4x4/444bf: no emitir `Dw`, `Lw` ni `Bw`; el scramble debe empezar con bloque tipo 3x3 de movimientos externos antes de la parte 4x4 con wide moves permitidos (`Rw`, `Uw`, `Fw`).
 - En competencia:
   - el scramble se oculta mientras la ronda esta activa,
   - el siguiente scramble aparece recien al cerrar la ronda,
   - el tiempo final debe congelarse antes de cualquier refresh,
   - los empates no suman punto.
+  - la vista de resultados/historial debe comparar rondas por scramble: carril 1 a un lado, scramble al centro, carril 2 al otro, respetando `lane` 1/2 y sin mezclar rondas.
+  - cualquier referencia estadistica sobre los timers de competencia debe ser pasiva, sutil y separada por carril; no debe capturar gestos ni interferir con start/stop.
 - Penalidades soportadas: `none`, `plus2`, `dnf`.
 - `lane`: `0` single, `1-2` competencia.
 - El historial y stats deben refrescar despues de add/update/delete.
@@ -103,6 +114,8 @@ Este archivo resume lo indispensable para continuar el desarrollo de este repo s
 - `US-001` a `US-010` estan hechos en `lib/TODO.TXT`.
 - `FIX-011` a `FIX-013` estan hechos.
 - `FIX-014` y `FIX-015` estan hechos.
+- `WEB-US-002` a `WEB-US-006` estan hechos; queda sin cerrar `WEB-US-001` hasta smoke/deploy real y `WEB-US-007` por falta de contratos compartidos explicitos.
+- `EPIC-BE-001`, `BE-US-001` a `BE-US-005`, `BE-US-007`, `BE-US-008`, `BE-US-011` a `BE-US-013` y `BE-US-015` estan hechos en `lib/TODO.TXT`.
 
 ### Lo mas relevante de esos cambios
 - Competencia:
@@ -197,11 +210,16 @@ Quedan visibles estos items sin cerrar en `lib/TODO.TXT`:
 
 - ordenado/filtro de tiempos por fecha y tiempo.
 - insercion manual de tiempos.
+- `US-011`: mostrar referencia pasiva por carril en modo competencia con ultimo single, avg/ao5 y avg12, sin saturar ni capturar interacciones del timer.
+- `FIX-016`: mantener visible el tiempo final post-stop y prevenir doble toque accidental, incluyendo cooldown de 500 ms para `Inicio rapido`.
+- `FIX-017`: corregir scrambles 4x4/444bf para evitar `Dw`/`Lw`/`Bw` y arrancar con bloque tipo 3x3 antes de la parte 4x4.
+- `FIX-018`: redisenar resultados/historial de competencia como vista comparativa por scramble/ronda, con scroll desde cualquier zona y tiempos de cada carril a los lados.
+- `FIX-019`: ajustar el scramble principal en mobile para que 2x2 no se corte y 7x7/NxN largo sea legible completo con tipografia/alto/scroll responsivo.
+- `FIX-020`: mover stats rapidas del timer mobile a una capa superficial/flotante que no reserve espacio vertical ni intercepte gestos.
 - checklist de salida a Play Store (`PS-001` a `PS-010`).
-- roadmap web/Railway (`EPIC-WEB-001` a `EPIC-WEB-004` y `WEB-US-001` a `WEB-US-014`).
-- roadmap backend/API (`EPIC-BE-001` a `EPIC-BE-003` y `BE-US-001` a `BE-US-010`).
-- readiness de auth externa/WCA (`BE-US-011` y `BE-US-012`).
-- cierre del flujo auth WCA cross-platform (`BE-US-013` a `BE-US-015`).
+- web/Railway pendiente: `WEB-US-001`, `WEB-US-007`, `EPIC-WEB-003`, `WEB-US-008` a `WEB-US-010`, `EPIC-WEB-004` y `WEB-US-011` a `WEB-US-014`.
+- backend/API pendiente: `EPIC-BE-002` queda abierto por `BE-US-006`; `EPIC-BE-003` queda abierto por `BE-US-009`, `BE-US-010` y `BE-US-014`.
+- auth WCA cross-platform pendiente: deep links/app links mobile (`BE-US-014`).
 
 ## 9. Tests utiles
 
@@ -243,6 +261,7 @@ Notas:
 - Si se agrega un datasource, repository, use case o bloc nuevo, actualizar `injection_container.dart`.
 - Si se cierra un item del backlog, actualizar `lib/TODO.TXT`.
 - Hay un skill local en `.agents/skills/epic-story-writer` para convertir ideas de producto, bugs, feedback de testers o trabajo de release en epicas e historias de usuario bien cortadas para este repo.
+- Hay un brief de portfolio en `PORTFOLIO_PROJECT_BRIEF.md` pensado para pasarlo a otro agente o writer; incluye resumen corto/medio/largo, stack, arquitectura, desafios, estado real y guardrails para presentar el proyecto sin exagerar features aun no cerradas.
 - Hay skills locales para el roadmap web:
   - `.agents/skills/flutter-web-railway` para habilitar Flutter Web y deploy en Railway sin romper Android.
   - `.agents/skills/cross-platform-storage` para abstraer persistencia entre mobile y web.
@@ -271,8 +290,8 @@ Si retomaras sin contexto adicional, arrancar asi:
 
 1. desplegar el estado actual en Railway usando el `Dockerfile` de raiz.
 2. hacer smoke test real en browser: boot, crear sesion, agregar solve, recargar y verificar persistencia.
-3. si eso queda bien, decidir que items `WEB-US-001`, `WEB-US-003` y `WEB-US-004` ya pueden marcarse como hechos.
-4. despues seguir con filtro/orden del historial, insercion manual de tiempos o el proximo slice de auth/sync.
+3. si eso queda bien, marcar `WEB-US-001` como hecho; `WEB-US-003` y `WEB-US-004` ya estan cerrados por implementacion local.
+4. despues seguir con filtro/orden del historial, insercion manual de tiempos, `BE-US-006` stats backend o `BE-US-014` deep links mobile.
 
 ## 13. Context Journal
 
@@ -485,8 +504,56 @@ Entradas actuales:
   - validacion: `npm run build` en `backend`, `flutter test --no-pub test/presentation/pages/auth_page_test.dart test/widget_test.dart`
   - siguiente paso: pushear/redeployar frontend y backend, luego reloguear una vez para que el backend refresque el avatar almacenado y verificar si ya aparece la foto real
 
+- `2026-04-23`
+  - se agrego `PORTFOLIO_PROJECT_BRIEF.md` como documento de handoff para portfolio/agentes: resume el proyecto, stack, arquitectura, desafios tecnicos, estado real, claims validos y textos reutilizables para CV/portfolio/case study
+  - archivos afectados: `PORTFOLIO_PROJECT_BRIEF.md`, `CONTEXT.md`
+  - validacion: cambio documental, sin impacto funcional
+  - siguiente paso: usar ese brief como base para generar la pagina/case study del portfolio y mantenerlo alineado si cambia el alcance real del proyecto
+
 - `2026-04-21`
   - se definio la linea de producto para el backend: API propia separada, ORM para manejar esquema/migraciones y Postgres remoto, manteniendo la app Flutter local-first y sin cambios de UX mobile
   - archivos afectados: `CONTEXT.md`, backlog propuesto para `lib/TODO.TXT`
   - validacion: decision documental; no hubo cambios funcionales
   - siguiente paso: bajar `EPIC-BE-001` a stories implementables con orden de entrega y luego empezar el slice inicial de backend
+
+- `2026-04-27`
+  - se agrego `FIX-016` al backlog para que el tiempo final del timer principal no se borre por un toque accidental posterior al stop, y para exigir cooldown de 500 ms cuando `Inicio rapido` esta activado
+  - archivos afectados: `lib/TODO.TXT`, `CONTEXT.md`
+  - validacion: cambio documental; no hubo cambios funcionales
+  - siguiente paso: implementar `FIX-016` en `TimerPage`/`TimerBloc` con tests de doble toque y persistencia visual del estado `stopped`
+
+- `2026-04-27`
+  - se agrego `FIX-017` al backlog para corregir scrambles 4x4/444bf: evitar `Dw`, `Lw` y `Bw`, arrancar con bloque tipo 3x3 y dejar la parte wide limitada a `Rw`, `Uw` y `Fw`
+  - archivos afectados: `lib/TODO.TXT`, `CONTEXT.md`
+  - validacion: cambio documental; no hubo cambios funcionales
+  - siguiente paso: implementar `FIX-017` en `GenerateScramble` y actualizar `generate_scramble_test.dart` para cubrir formato, movimientos prohibidos y estructura por bloques
+
+- `2026-04-27`
+  - se agrego `FIX-018` al backlog para redisenar los resultados/historial de competencia como vista comparativa por scramble/ronda, con carril 1 y carril 2 a los lados y scroll desde cualquier zona del contenido
+  - archivos afectados: `lib/TODO.TXT`, `CONTEXT.md`
+  - validacion: cambio documental; no hubo cambios funcionales
+  - siguiente paso: implementar `FIX-018` en `CompetePage`, agrupando `LaneData.solves` por scramble/ronda y agregando tests en `compete_page_test.dart`
+
+- `2026-04-27`
+  - se agrego `US-011` al backlog para mostrar en modo competencia una referencia pasiva por carril con ultimo single, avg/ao5 y avg12 cerca/sobre el timer, en formato chico y no interactuable
+  - archivos afectados: `lib/TODO.TXT`, `CONTEXT.md`
+  - validacion: cambio documental; no hubo cambios funcionales
+  - siguiente paso: implementar `US-011` en `CompetePage` usando `Statistics.fromSolves` por cada `LaneData.solves`, cuidando que el overlay no intercepte gestos de start/stop
+
+- `2026-04-27`
+  - se agregaron `FIX-019` y `FIX-020` al backlog para mejorar mobile: scramble principal siempre legible/adaptativo y stats rapidas como capa superficial sobre el timer sin ocupar alto fijo
+  - archivos afectados: `lib/TODO.TXT`, `CONTEXT.md`
+  - validacion: cambio documental; no hubo cambios funcionales
+  - siguiente paso: implementar `FIX-019` en `ScrambleDisplay`/tests de mobile y `FIX-020` en `TimerPage`, cuidando que el overlay de stats no intercepte gestos del timer
+
+- `2026-04-27`
+  - se marcaron como hechos los items de backlog que ya tenian implementacion local verificable: web/storage/deploy path (`WEB-US-002` a `WEB-US-006`) y backend/API/auth WCA web (`EPIC-BE-001`, `BE-US-001` a `BE-US-005`, `BE-US-007`, `BE-US-008`, `BE-US-011` a `BE-US-013`, `BE-US-015`)
+  - archivos afectados: `lib/TODO.TXT`, `CONTEXT.md`
+  - validacion: revision documental contra archivos existentes; no se corrio test porque no hubo cambios funcionales
+  - siguiente paso: no marcar `WEB-US-001` hasta tener smoke/deploy real; cerrar `BE-US-006` con stats backend y `BE-US-014` con deep links mobile cuando se implementen
+
+- `2026-04-27`
+  - se ajusto la UI mobile del timer principal para que el preview visual chico del scramble suba cuando hay stats rapidas flotantes, evitando que se pisen; las stats dejaron el formato pill y ahora usan rectangulo redondeado responsivo
+  - archivos afectados: `lib/presentation/pages/timer_page.dart`, `lib/presentation/widgets/timer/timer_display.dart`, `test/presentation/pages/timer_page_test.dart`, `CONTEXT.md`
+  - validacion: `dart format lib/presentation/pages/timer_page.dart lib/presentation/widgets/timer/timer_display.dart test/presentation/pages/timer_page_test.dart`; `flutter test --no-pub test/presentation/pages/timer_page_test.dart` pasando; `flutter analyze --no-pub` sigue fallando por warnings/info previos; `flutter test --no-pub` sigue fallando por tests de inspeccion en `timer_bloc_test.dart`
+  - siguiente paso: resolver aparte los fallos actuales de `TimerBloc` inspection/cooldown antes de confiar en suite completa limpia

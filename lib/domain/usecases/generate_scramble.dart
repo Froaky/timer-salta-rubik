@@ -210,29 +210,44 @@ class GenerateScramble implements UseCaseSync<Scramble, String> {
     return false;
   }
 
-  /// Genera scramble para 4x4x4 siguiendo estándares WCA oficiales
-  /// Notación WCA: R, U, F, L, D, B (outer) y Rw, Uw, Fw, Lw, Dw, Bw (wide de 2 capas)
-  /// Mínimo 2 movimientos para resolver (WCA 4b3d)
+  /// Genera scramble para 4x4x4 siguiendo el estilo de scrambles oficiales/referidos.
+  /// El bloque inicial es de tipo 3x3 (solo movimientos exteriores) y luego se
+  /// incorporan los wides Rw, Uw, Fw. Se evitan los wides Dw, Lw y Bw porque
+  /// dejan de aparecer en los scrambles oficiales de 4x4.
   Scramble _generate4x4Scramble() {
     final random = Random();
     final outerFaces = ['R', 'U', 'F', 'L', 'D', 'B'];
-    final wideFaces = ['Rw', 'Uw', 'Fw', 'Lw', 'Dw', 'Bw'];
-    final allFaces = [...outerFaces, ...wideFaces];
+    final wideFaces = ['Rw', 'Uw', 'Fw'];
     final modifiers = ['', '\'', '2'];
     final moves = <String>[];
 
     String? lastFace;
     String? secondLastFace;
 
-    // WCA suele usar 40 movimientos para 4x4
-    final moveCount = 40;
+    // WCA suele usar 40 movimientos para 4x4. Los primeros movimientos forman
+    // un bloque tipo 3x3, los restantes mezclan outer + wides permitidos.
+    const moveCount = 40;
+    const prefix3x3Length = 8;
 
-    for (int i = 0; i < moveCount; i++) {
+    for (int i = 0; i < prefix3x3Length; i++) {
       String face;
-
-      // Evitar movimientos consecutivos en la misma cara o caras opuestas
       do {
-        face = allFaces[random.nextInt(allFaces.length)];
+        face = outerFaces[random.nextInt(outerFaces.length)];
+      } while (_isInvalidMoveNxN(face, lastFace, secondLastFace));
+
+      final modifier = modifiers[random.nextInt(modifiers.length)];
+      moves.add('$face$modifier');
+
+      secondLastFace = lastFace;
+      lastFace = face;
+    }
+
+    final mixedFaces = [...outerFaces, ...wideFaces];
+
+    for (int i = prefix3x3Length; i < moveCount; i++) {
+      String face;
+      do {
+        face = mixedFaces[random.nextInt(mixedFaces.length)];
       } while (_isInvalidMoveNxN(face, lastFace, secondLastFace));
 
       final modifier = modifiers[random.nextInt(modifiers.length)];
