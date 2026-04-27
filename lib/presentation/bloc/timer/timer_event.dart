@@ -56,3 +56,11 @@ class TimerStopInspection extends TimerEvent {
 class TimerToggleCompeteMode extends TimerEvent {
   const TimerToggleCompeteMode();
 }
+
+class TimerToggleTapToStart extends TimerEvent {
+  const TimerToggleTapToStart();
+}
+
+class TimerStartImmediate extends TimerEvent {
+  const TimerStartImmediate();
+}

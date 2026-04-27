@@ -57,20 +57,22 @@ class GenerateScramble implements UseCaseSync<Scramble, String> {
       if (solution != null && solution.algorithm.moves.isNotEmpty) {
         // Invertir la solución para obtener el scramble
         final scrambleMoves = _invertMoves(solution.algorithm.moves);
-        final scrambleNotation = scrambleMoves.join(' ');
+
+        // Si el scramble tiene menos de 20 movimientos, usar fallback aleatorio
+        if (scrambleMoves.length < 20) {
+          return _generateFallbackScramble('3x3');
+        }
 
         return Scramble(
-          notation: scrambleNotation,
+          notation: scrambleMoves.join(' '),
           cubeType: '3x3',
           moves: scrambleMoves,
           generatedAt: DateTime.now(),
         );
       } else {
-        // Si no se encuentra solución, usar fallback
         return _generateFallbackScramble('3x3');
       }
     } catch (e) {
-      // Fallback a scramble básico si hay error
       return _generateFallbackScramble('3x3');
     }
   }
@@ -446,8 +448,8 @@ class GenerateScramble implements UseCaseSync<Scramble, String> {
     String? lastFace;
     String? secondLastFace;
 
-    // Generar entre 18-25 movimientos para 3x3x3 (estándar WCA ~20)
-    final moveCount = 18 + random.nextInt(8);
+    // Generar entre 20-25 movimientos para 3x3x3 (mínimo WCA 20)
+    final moveCount = 20 + random.nextInt(6);
 
     for (int i = 0; i < moveCount; i++) {
       String face;
@@ -466,28 +468,12 @@ class GenerateScramble implements UseCaseSync<Scramble, String> {
     return moves.join(' ');
   }
 
-  /// Scramble de respaldo en caso de error
+  /// Scramble de respaldo: genera aleatoriamente 20-25 movimientos válidos
   Scramble _generateFallbackScramble(String cubeType) {
-    final moves = [
-      'R',
-      'U',
-      'R\'',
-      'U\'',
-      'F',
-      'R',
-      'F\'',
-      'U2',
-      'R2',
-      'U\'',
-      'R',
-      'U',
-      'R\'',
-      'U\'',
-      'R'
-    ];
-
+    final notation = _generateRandomScrambleNotation();
+    final moves = notation.split(' ');
     return Scramble(
-      notation: moves.join(' '),
+      notation: notation,
       cubeType: cubeType,
       moves: moves,
       generatedAt: DateTime.now(),

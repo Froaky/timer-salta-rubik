@@ -6,6 +6,7 @@ import 'settings_page.dart';
 
 import '../../domain/entities/scramble.dart';
 import '../../domain/entities/solve.dart';
+import '../../domain/entities/statistics.dart';
 import '../../domain/usecases/clear_auth_session.dart';
 import '../../injection_container.dart';
 
@@ -307,6 +308,13 @@ class _TimerPageState extends State<TimerPage> {
                   child: _buildTimerWithControls(isImmersive: isImmersive),
                 ),
               ),
+              if (!isImmersive)
+                BlocBuilder<SolveBloc, SolveState>(
+                  builder: (context, solveState) => _buildInlineStats(
+                    context,
+                    solveState.statistics,
+                  ),
+                ),
             ],
           );
         },
@@ -487,19 +495,23 @@ class _TimerPageState extends State<TimerPage> {
     final timerBloc = context.read<TimerBloc>();
     final timerState = timerBloc.state;
 
-    if (timerState.status == TimerStatus.idle ||
-        timerState.status == TimerStatus.stopped) {
-      timerBloc.add(TimerStartHold());
-      return;
-    }
-
     if (timerState.status == TimerStatus.running) {
       _stopRunningTimer(timerBloc, timerState);
       return;
     }
 
+    if (timerState.status == TimerStatus.idle ||
+        timerState.status == TimerStatus.stopped) {
+      if (timerState.tapToStartEnabled) {
+        timerBloc.add(const TimerStartImmediate());
+      } else {
+        timerBloc.add(const TimerStartHold());
+      }
+      return;
+    }
+
     if (timerState.status == TimerStatus.inspection) {
-      timerBloc.add(TimerStopHold());
+      timerBloc.add(const TimerStopHold());
     }
   }
 
@@ -574,9 +586,18 @@ class _TimerPageState extends State<TimerPage> {
         }
         _spacebarPressed = true;
 
+        if (timerState.status == TimerStatus.inspection) {
+          // Esperar el release para iniciar el timer desde inspección
+          return KeyEventResult.handled;
+        }
+
         if (timerState.status == TimerStatus.idle ||
             timerState.status == TimerStatus.stopped) {
-          timerBloc.add(TimerStartHold());
+          if (timerState.tapToStartEnabled) {
+            timerBloc.add(const TimerStartImmediate());
+          } else {
+            timerBloc.add(const TimerStartHold());
+          }
           return KeyEventResult.handled;
         }
       }
@@ -589,9 +610,14 @@ class _TimerPageState extends State<TimerPage> {
 
     if (event is KeyUpEvent && event.logicalKey == LogicalKeyboardKey.space) {
       _spacebarPressed = false;
+      if (timerState.tapToStartEnabled) {
+        // En modo inicio rápido, el release de space no hace nada especial
+        return KeyEventResult.handled;
+      }
       if (timerState.status == TimerStatus.holdPending ||
-          timerState.status == TimerStatus.armed) {
-        timerBloc.add(TimerStopHold());
+          timerState.status == TimerStatus.armed ||
+          timerState.status == TimerStatus.inspection) {
+        timerBloc.add(const TimerStopHold());
         return KeyEventResult.handled;
       }
     }
@@ -861,6 +887,64 @@ class _TimerPageState extends State<TimerPage> {
     context.read<SolveBloc>().add(AddSolveEvent(solve));
   }
 
+  Widget _buildInlineStats(BuildContext context, Statistics? stats) {
+    if (stats == null || stats.totalSolves == 0) {
+      return const SizedBox.shrink();
+    }
+
+    final items = <_StatItem>[];
+
+    if (stats.personalBest != null) {
+      items.add(_StatItem('PB', Statistics.formatTime(stats.personalBest)));
+    }
+    if (stats.meanOf3 != null) {
+      items.add(_StatItem('mo3', Statistics.formatTime(stats.meanOf3)));
+    }
+    if (stats.averageOf5 != null) {
+      items.add(_StatItem('ao5', Statistics.formatTime(stats.averageOf5)));
+    }
+    if (stats.averageOf12 != null) {
+      items.add(_StatItem('ao12', Statistics.formatTime(stats.averageOf12)));
+    }
+
+    if (items.isEmpty) return const SizedBox.shrink();
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+        children: items
+            .map((item) => _buildStatChip(context, item.label, item.value))
+            .toList(),
+      ),
+    );
+  }
+
+  Widget _buildStatChip(BuildContext context, String label, String value) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(
+          label,
+          style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                color: AppTheme.textSecondary,
+                letterSpacing: 0.8,
+                fontWeight: FontWeight.w600,
+              ),
+        ),
+        const SizedBox(height: 2),
+        Text(
+          value,
+          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                color: AppTheme.textPrimary,
+                fontFamily: 'RobotoMono',
+                fontWeight: FontWeight.w600,
+              ),
+        ),
+      ],
+    );
+  }
+
   void _showMenu() {
     showModalBottomSheet(
       context: context,
@@ -943,6 +1027,12 @@ class _TimerPageState extends State<TimerPage> {
       },
     );
   }
+}
+
+class _StatItem {
+  final String label;
+  final String value;
+  const _StatItem(this.label, this.value);
 }
 
 class _DesktopInfoCard extends StatelessWidget {

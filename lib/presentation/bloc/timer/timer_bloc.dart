@@ -41,6 +41,8 @@ class TimerBloc extends Bloc<TimerEvent, TimerState> {
     on<TimerStartInspection>(_onStartInspection);
     on<TimerStopInspection>(_onStopInspection);
     on<TimerToggleCompeteMode>(_onToggleCompeteMode);
+    on<TimerToggleTapToStart>(_onToggleTapToStart);
+    on<TimerStartImmediate>(_onStartImmediate);
   }
 
   void _onStartHold(TimerStartHold event, Emitter<TimerState> emit) {
@@ -158,6 +160,30 @@ class TimerBloc extends Bloc<TimerEvent, TimerState> {
   void _onToggleCompeteMode(
       TimerToggleCompeteMode event, Emitter<TimerState> emit) {
     emit(state.copyWith(competeMode: !state.competeMode));
+  }
+
+  void _onToggleTapToStart(
+      TimerToggleTapToStart event, Emitter<TimerState> emit) {
+    emit(state.copyWith(tapToStartEnabled: !state.tapToStartEnabled));
+  }
+
+  void _onStartImmediate(
+      TimerStartImmediate event, Emitter<TimerState> emit) {
+    if (state.status != TimerStatus.idle &&
+        state.status != TimerStatus.stopped) {
+      return;
+    }
+
+    _runStartTime = DateTime.now();
+    emit(state.copyWith(
+      status: TimerStatus.running,
+      color: TimerColor.white,
+      elapsedMs: 0,
+      startTime: _runStartTime,
+    ));
+
+    _startRunTimer();
+    _triggerHapticFeedback();
   }
 
   void _onStartInspection(

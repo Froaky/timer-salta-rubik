@@ -49,6 +49,15 @@ class SettingsPage extends StatelessWidget {
                   context.read<TimerBloc>().add(const TimerToggleCompeteMode());
                 },
               ),
+              SwitchListTile(
+                title: const Text('Inicio rápido'),
+                subtitle: const Text(
+                    'Iniciar el timer con un solo toque sin necesidad de mantener presionado'),
+                value: state.tapToStartEnabled,
+                onChanged: (value) {
+                  context.read<TimerBloc>().add(const TimerToggleTapToStart());
+                },
+              ),
             ],
           );
         },

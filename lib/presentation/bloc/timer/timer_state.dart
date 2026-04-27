@@ -26,6 +26,7 @@ class TimerState extends Equatable {
   final bool hideTimerEnabled;
   final int inspectionRemainingMs;
   final bool competeMode;
+  final bool tapToStartEnabled;
 
   const TimerState({
     required this.status,
@@ -37,6 +38,7 @@ class TimerState extends Equatable {
     this.hideTimerEnabled = false,
     this.inspectionRemainingMs = 15000,
     this.competeMode = false,
+    this.tapToStartEnabled = false,
   });
 
   factory TimerState.initial() {
@@ -49,6 +51,7 @@ class TimerState extends Equatable {
       hideTimerEnabled: false,
       inspectionRemainingMs: 15000,
       competeMode: false,
+      tapToStartEnabled: false,
     );
   }
 
@@ -62,6 +65,7 @@ class TimerState extends Equatable {
     bool? hideTimerEnabled,
     int? inspectionRemainingMs,
     bool? competeMode,
+    bool? tapToStartEnabled,
   }) {
     return TimerState(
       status: status ?? this.status,
@@ -74,6 +78,7 @@ class TimerState extends Equatable {
       inspectionRemainingMs:
           inspectionRemainingMs ?? this.inspectionRemainingMs,
       competeMode: competeMode ?? this.competeMode,
+      tapToStartEnabled: tapToStartEnabled ?? this.tapToStartEnabled,
     );
   }
 
@@ -126,5 +131,6 @@ class TimerState extends Equatable {
         hideTimerEnabled,
         inspectionRemainingMs,
         competeMode,
+        tapToStartEnabled,
       ];
 }
