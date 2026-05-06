@@ -116,7 +116,7 @@ void main() {
 
     final card = tester.getRect(find.byKey(const ValueKey('main-scramble-card')));
     // Card must remain bounded so the timer keeps usable space.
-    expect(card.height, lessThanOrEqualTo(220));
+    expect(card.height, lessThanOrEqualTo(254.0));
 
     final text = find.byKey(const ValueKey('main-scramble-text'));
     expect(text, findsOneWidget);

@@ -45,7 +45,8 @@ class ScramblePreview extends StatelessWidget {
   static bool supports(String cubeType) =>
       _cubeSizeByType.containsKey(cubeType) ||
       cubeType == 'clock' ||
-      cubeType == 'pyraminx';
+      cubeType == 'pyraminx' ||
+      cubeType == 'skewb';
 
   @override
   Widget build(BuildContext context) {
@@ -114,6 +115,15 @@ class ScramblePreview extends StatelessWidget {
     if (scramble.cubeType == 'pyraminx') {
       final state = _PyraminxPreviewEngine.apply(scramble.notation);
       return _PyraminxPreview(
+        state: state,
+        width: width,
+        height: height,
+      );
+    }
+
+    if (scramble.cubeType == 'skewb') {
+      final state = _SkewbPreviewEngine.apply(scramble.notation);
+      return _SkewbPreview(
         state: state,
         width: width,
         height: height,
@@ -535,91 +545,173 @@ class _ClockState {
   final List<int> back;
 }
 
+/// Pyraminx preview engine based on WCA TNoodle official reference.
+///
+/// Face layout and sticker indices per face (viewed from outside):
+/// ```
+///      ____  ____  ____
+///     \    /\    /\    /
+///      \0 /1 \2 /4 \3 /     tips: 0, 3, 6
+///       \/____\/____\/      edges: 1, 5, 8
+///        \    /\    /       centers: 2, 4, 7
+///         \8 /7 \5 /
+///          \/____\/
+///           \    /
+///            \6 /
+///             \/
+/// ```
+///
+/// Faces: F(0)=Green, D(1)=Yellow, L(2)=Red, R(3)=Blue
+/// Axes:  U=0, L=1, R=2, B=3
 class _PyraminxPreviewEngine {
+  /// 4 faces × 9 stickers. Index: F=0, D=1, L=2, R=3.
+  static const _faceColors = [
+    CubePreviewColor.green, // F
+    CubePreviewColor.yellow, // D
+    CubePreviewColor.red, // L
+    CubePreviewColor.blue, // R
+  ];
+
   static _PyraminxState apply(String notation) {
-    final faces = {
-      'U': List<CubePreviewColor>.filled(9, CubePreviewColor.blue),
-      'L': List<CubePreviewColor>.filled(9, CubePreviewColor.red),
-      'R': List<CubePreviewColor>.filled(9, CubePreviewColor.green),
-      'B': List<CubePreviewColor>.filled(9, CubePreviewColor.yellow),
-    };
+    // image[face][sticker] — starts solved
+    final image = List.generate(
+      4,
+      (face) => List<int>.filled(9, face),
+    );
 
     for (final token in notation.split(RegExp(r'\s+'))) {
       if (token.isEmpty) continue;
-      final parsed = _PyraminxMove.parse(token);
+      final parsed = _parsePyraminxToken(token);
       if (parsed == null) continue;
 
-      final turns = parsed.clockwise ? 1 : 2;
-      for (var i = 0; i < turns; i++) {
-        _turnFace(faces, parsed.face);
+      final axis = parsed.$1;
+      final tipOnly = parsed.$2;
+      final dir = parsed.$3;
+
+      for (var i = 0; i < dir; i++) {
+        if (tipOnly) {
+          _turnTip(axis, image);
+        } else {
+          _turn(axis, image);
+        }
       }
     }
 
     return _PyraminxState(
-      up: faces['U']!,
-      left: faces['L']!,
-      right: faces['R']!,
-      bottom: faces['B']!,
+      front: _toColors(image[0]),
+      down: _toColors(image[1]),
+      left: _toColors(image[2]),
+      right: _toColors(image[3]),
     );
   }
 
-  static void _turnFace(
-    Map<String, List<CubePreviewColor>> faces,
-    String face,
-  ) {
-    final current = faces[face]!;
-    faces[face] = _rotateTriangle(current);
+  static List<CubePreviewColor> _toColors(List<int> face) {
+    return face.map((i) => _faceColors[i]).toList(growable: false);
   }
 
-  static List<CubePreviewColor> _rotateTriangle(List<CubePreviewColor> face) {
-    return [
-      face[2],
-      face[5],
-      face[8],
-      face[1],
-      face[4],
-      face[7],
-      face[0],
-      face[3],
-      face[6],
-    ];
-  }
-}
-
-class _PyraminxMove {
-  const _PyraminxMove({
-    required this.face,
-    required this.clockwise,
-  });
-
-  final String face;
-  final bool clockwise;
-
-  static _PyraminxMove? parse(String token) {
-    final match = RegExp(r"^([RLUBrlub])('?)+?$").firstMatch(token);
+  /// Parse a pyraminx notation token into (axis, tipOnly, direction).
+  static (int, bool, int)? _parsePyraminxToken(String token) {
+    final match = RegExp(r"^([ULRBulrb])('?)$").firstMatch(token);
     if (match == null) return null;
 
-    return _PyraminxMove(
-      face: match.group(1)!.toUpperCase(),
-      clockwise: !token.endsWith("'"),
-    );
+    final letter = match.group(1)!;
+    final isPrime = match.group(2) == "'";
+    final tipOnly = letter == letter.toLowerCase();
+    final upper = letter.toUpperCase();
+
+    int axis;
+    switch (upper) {
+      case 'U': axis = 0; break;
+      case 'L': axis = 1; break;
+      case 'R': axis = 2; break;
+      case 'B': axis = 3; break;
+      default: return null;
+    }
+
+    return (axis, tipOnly, isPrime ? 2 : 1);
+  }
+
+  /// Pyraminx Moves based on standard orientation: Yellow Down, Green Front.
+  /// Faces: 0=Front(G), 1=Down(Y), 2=Left(R), 3=Right(B).
+  static void _turn(int axis, List<List<int>> image) {
+    switch (axis) {
+      case 0: // U move (CW): Swap(F, R, L) around U corner
+        _swap3(image, 0, 8, 3, 4, 2, 0); // Tip
+        _swap3(image, 0, 3, 3, 1, 2, 1); // Center A
+        _swap3(image, 0, 6, 3, 6, 2, 3); // Center B
+        _swap3(image, 0, 7, 3, 5, 2, 2); // Edge
+        break;
+      case 1: // L move (CW): Swap(F, L, D) around L corner
+        _swap3(image, 0, 4, 2, 4, 1, 0); // Tip
+        _swap3(image, 0, 1, 2, 1, 1, 2); // Center A
+        _swap3(image, 0, 6, 2, 6, 1, 5); // Center B
+        _swap3(image, 0, 5, 2, 5, 1, 1); // Edge
+        break;
+      case 2: // R move (CW): Swap(F, D, R) around R corner
+        _swap3(image, 0, 0, 1, 4, 3, 0); // Tip
+        _swap3(image, 0, 1, 1, 2, 3, 1); // Center A
+        _swap3(image, 0, 3, 1, 7, 3, 6); // Center B
+        _swap3(image, 0, 2, 1, 3, 3, 2); // Edge
+        break;
+      case 3: // B move (CW): Swap(D, L, R) around B corner
+        _swap3(image, 1, 8, 2, 8, 3, 8); // Tip
+        _swap3(image, 1, 5, 2, 6, 3, 3); // Center A
+        _swap3(image, 1, 7, 2, 3, 3, 6); // Center B
+        _swap3(image, 1, 6, 2, 7, 3, 5); // Edge
+        break;
+    }
+    _turnTip(axis, image);
+  }
+
+  static void _turnTip(int axis, List<List<int>> image) {
+    switch (axis) {
+      case 0: _swap3(image, 0, 8, 3, 4, 2, 0); break;
+      case 1: _swap3(image, 0, 4, 2, 4, 1, 0); break;
+      case 2: _swap3(image, 0, 0, 1, 4, 3, 0); break;
+      case 3: _swap3(image, 1, 8, 2, 8, 3, 8); break;
+    }
+  }
+
+
+
+  /// 3-cycle swap: a → b → c → a
+  static void _swap3(
+    List<List<int>> image,
+    int f1,
+    int s1,
+    int f2,
+    int s2,
+    int f3,
+    int s3,
+  ) {
+    final temp = image[f1][s1];
+    image[f1][s1] = image[f2][s2];
+    image[f2][s2] = image[f3][s3];
+    image[f3][s3] = temp;
   }
 }
 
 class _PyraminxState {
   const _PyraminxState({
-    required this.up,
+    required this.front,
+    required this.down,
     required this.left,
     required this.right,
-    required this.bottom,
   });
 
-  final List<CubePreviewColor> up;
+  final List<CubePreviewColor> front;
+  final List<CubePreviewColor> down;
   final List<CubePreviewColor> left;
   final List<CubePreviewColor> right;
-  final List<CubePreviewColor> bottom;
 }
 
+/// Draws the pyraminx net matching the TNoodle/csTimer layout:
+///
+/// ```
+///   L (↓)     R (↓)
+///      F (↑)
+///      D (↓)
+/// ```
 class _PyraminxPreview extends StatelessWidget {
   const _PyraminxPreview({
     required this.state,
@@ -633,140 +725,380 @@ class _PyraminxPreview extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final gap = math.max(6.0, width * 0.03);
-    final triWidth = math.min((width - gap * 2) / 3, height / 2);
-    final triHeight = triWidth * 0.88;
-    final centerX = width / 2;
-
-    return Stack(
-      children: [
-        Positioned(
-          left: centerX - triWidth / 2,
-          top: 0,
-          child: _PyraminxFace(
-            stickers: state.up,
-            width: triWidth,
-            height: triHeight,
-            upsideDown: true,
-          ),
-        ),
-        Positioned(
-          left: centerX - triWidth - gap / 2,
-          top: triHeight * 0.72,
-          child: _PyraminxFace(
-            stickers: state.left,
-            width: triWidth,
-            height: triHeight,
-          ),
-        ),
-        Positioned(
-          left: centerX + gap / 2,
-          top: triHeight * 0.72,
-          child: _PyraminxFace(
-            stickers: state.right,
-            width: triWidth,
-            height: triHeight,
-          ),
-        ),
-        Positioned(
-          left: centerX - triWidth / 2,
-          top: triHeight * 1.58,
-          child: _PyraminxFace(
-            stickers: state.bottom,
-            width: triWidth,
-            height: triHeight,
-          ),
-        ),
-      ],
+    return CustomPaint(
+      size: Size(width, height),
+      painter: _PyraminxNetPainter(state: state),
     );
   }
 }
 
-class _PyraminxFace extends StatelessWidget {
-  const _PyraminxFace({
-    required this.stickers,
+/// Renders the full pyraminx net using CustomPainter for pixel-perfect layout.
+///
+/// Sticker order within each face triangle (TNoodle convention):
+/// ```
+///      ____  ____  ____
+///     \    /\    /\    /
+///      \0 /1 \2 /4 \3 /
+///       \/____\/____\/
+///        \    /\    /
+///         \8 /7 \5 /
+///          \/____\/
+///           \    /
+///            \6 /
+///             \/
+/// ```
+///
+/// For an upward-pointing face the tip (sticker 0) is at the top.
+/// For a downward-pointing face (L, R, D) the tip (sticker 0) is at the bottom
+/// when rendered inverted, but we keep the same sticker order and just flip
+/// the triangle geometry.
+class _PyraminxNetPainter extends CustomPainter {
+  const _PyraminxNetPainter({required this.state});
+
+  final _PyraminxState state;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    const gap = 2.0;
+    final triSide = math.min(
+      (size.width - gap * 2) / 2.0,
+      (size.height - gap * 2) / 2.0,
+    );
+    final triH = triSide * _sqrt3over2;
+
+    final ox = (size.width - triSide * 2) / 2;
+    final oy = (size.height - triH * 2) / 2;
+
+    // Face 2 (Left): Top UP
+    _drawFace(canvas, state.left, ox + triSide / 2, oy, triSide, triH, true);
+    
+    // Face 1 (Down): Center DOWN
+    _drawFace(canvas, state.down, ox + triSide / 2, oy + triH, triSide, triH, false);
+
+    // Face 3 (Right): Bottom-Left UP
+    _drawFace(canvas, state.right, ox, oy + triH, triSide, triH, true);
+
+    // Face 0 (Front): Bottom-Right UP
+    _drawFace(canvas, state.front, ox + triSide, oy + triH, triSide, triH, true);
+  }
+
+
+  static const _sqrt3over2 = 0.8660254037844386; // sqrt(3)/2
+
+  /// Draw one pyraminx face as a triangle subdivided into 9 stickers.
+  void _drawFace(
+    Canvas canvas,
+    List<CubePreviewColor> stickers,
+    double x,
+    double y,
+    double side,
+    double h,
+    bool pointUp,
+  ) {
+    // Compute the 3 vertices of the big triangle
+    late final List<Offset> verts;
+    if (pointUp) {
+      verts = [
+        Offset(x + side / 2, y), // top
+        Offset(x, y + h), // bottom-left
+        Offset(x + side, y + h), // bottom-right
+      ];
+    } else {
+      verts = [
+        Offset(x, y), // top-left
+        Offset(x + side, y), // top-right
+        Offset(x + side / 2, y + h), // bottom
+      ];
+    }
+
+    final paths = <Path>[];
+    final unit = side / 3;
+    final hUnit = h / 3;
+
+    if (pointUp) {
+      // Row 0: 1 triangle
+      paths.add(_tri(x + side / 2, y, unit, hUnit, true));
+      // Row 1: 3 triangles
+      paths.add(_tri(x + unit, y + hUnit, unit, hUnit, true));
+      paths.add(_tri(x + unit * 1.5, y + hUnit, unit, hUnit, false));
+      paths.add(_tri(x + unit * 2, y + hUnit, unit, hUnit, true));
+      // Row 2: 5 triangles
+      paths.add(_tri(x + unit * 0.5, y + hUnit * 2, unit, hUnit, true));
+      paths.add(_tri(x + unit, y + hUnit * 2, unit, hUnit, false));
+      paths.add(_tri(x + unit * 1.5, y + hUnit * 2, unit, hUnit, true));
+      paths.add(_tri(x + unit * 2, y + hUnit * 2, unit, hUnit, false));
+      paths.add(_tri(x + unit * 2.5, y + hUnit * 2, unit, hUnit, true));
+    } else {
+      // Row 0: 5 triangles
+      paths.add(_tri(x, y, unit, hUnit, false));
+      paths.add(_tri(x + unit * 0.5, y, unit, hUnit, true));
+      paths.add(_tri(x + unit, y, unit, hUnit, false));
+      paths.add(_tri(x + unit * 1.5, y, unit, hUnit, true));
+      paths.add(_tri(x + unit * 2, y, unit, hUnit, false));
+      // Row 1: 3 triangles
+      paths.add(_tri(x + unit * 0.5, y + hUnit, unit, hUnit, false));
+      paths.add(_tri(x + unit, y + hUnit, unit, hUnit, true));
+      paths.add(_tri(x + unit * 1.5, y + hUnit, unit, hUnit, false));
+      // Row 2: 1 triangle
+      paths.add(_tri(x + unit, y + hUnit * 2, unit, hUnit, false));
+    }
+
+
+    final fillPaint = Paint()..style = PaintingStyle.fill;
+    final strokePaint = Paint()
+      ..style = PaintingStyle.stroke
+      ..color = Colors.black.withValues(alpha: 0.35)
+      ..strokeWidth = math.max(0.6, side * 0.01)
+      ..strokeJoin = StrokeJoin.round;
+
+    final faceOutlinePaint = Paint()
+      ..style = PaintingStyle.stroke
+      ..color = Colors.black.withValues(alpha: 0.8)
+      ..strokeWidth = math.max(1.0, side * 0.015)
+      ..strokeJoin = StrokeJoin.round;
+
+    for (var i = 0; i < paths.length && i < stickers.length; i++) {
+      fillPaint.color = stickers[i].color;
+      canvas.drawPath(paths[i], fillPaint);
+      canvas.drawPath(paths[i], strokePaint);
+    }
+
+    // Draw the bold outline for the whole face
+    final outlinePath = Path()
+      ..moveTo(verts[0].dx, verts[0].dy)
+      ..lineTo(verts[1].dx, verts[1].dy)
+      ..lineTo(verts[2].dx, verts[2].dy)
+      ..close();
+    canvas.drawPath(outlinePath, faceOutlinePaint);
+  }
+
+  Path _tri(double x, double y, double side, double h, bool up) {
+    if (up) {
+      return Path()
+        ..moveTo(x, y)
+        ..lineTo(x - side / 2, y + h)
+        ..lineTo(x + side / 2, y + h)
+        ..close();
+    } else {
+      return Path()
+        ..moveTo(x, y)
+        ..lineTo(x + side, y)
+        ..lineTo(x + side / 2, y + h)
+        ..close();
+    }
+  }
+
+
+  @override
+  bool shouldRepaint(covariant _PyraminxNetPainter oldDelegate) {
+    return oldDelegate.state != state;
+  }
+}
+
+// --- Skewb Preview Engine & Rendering ---
+
+class _SkewbState {
+  const _SkewbState({required this.faces});
+  final List<List<CubePreviewColor>> faces;
+}
+
+class _SkewbPreviewEngine {
+  static _SkewbState apply(String notation) {
+    // Initial state: 6 faces, each with 5 stickers
+    // Layout: 0:Center, 1:Top, 2:Right, 3:Bottom, 4:Left
+    final List<List<CubePreviewColor>> faces = [
+      List.filled(5, CubePreviewColor.white),  // 0: U
+      List.filled(5, CubePreviewColor.yellow), // 1: D
+      List.filled(5, CubePreviewColor.orange), // 2: L
+      List.filled(5, CubePreviewColor.red),    // 3: R
+      List.filled(5, CubePreviewColor.green),  // 4: F
+      List.filled(5, CubePreviewColor.blue),   // 5: B
+    ];
+
+    for (final token in notation.split(RegExp(r'\s+'))) {
+      if (token.isEmpty) continue;
+      final isPrime = token.endsWith("'");
+      final move = token.replaceAll("'", "");
+      final count = isPrime ? 2 : 1; 
+
+      for (var i = 0; i < count; i++) {
+        switch (move) {
+          case 'U': _rotateU(faces); break;
+          case 'R': _rotateR(faces); break;
+          case 'L': _rotateL(faces); break;
+          case 'B': _rotateB(faces); break;
+        }
+      }
+    }
+
+    return _SkewbState(faces: faces);
+  }
+
+  // WCA Skewb Move Permutations
+  // Move X rotates the piece at corner X and the 3 adjacent centers.
+  
+  static void _rotateU(List<List<CubePreviewColor>> f) {
+    // Centers: U(0), R(3), F(4)
+    _swap3(f, 0, 0, 3, 0, 4, 0);
+    // Corners:
+    // UFR rotates in place
+    _swap3(f, 0, 4, 3, 1, 4, 2);
+    // UFL -> UBR -> DFR
+    _swap3(f, 0, 3, 0, 2, 4, 4); // U-corners
+    _swap3(f, 4, 1, 5, 1, 3, 3); // Front/Back/Right
+    _swap3(f, 2, 2, 3, 2, 1, 2); // Left/Right/Down
+  }
+
+  static void _rotateR(List<List<CubePreviewColor>> f) {
+    // Centers: D(1), R(3), F(4)
+    _swap3(f, 1, 0, 3, 0, 4, 0);
+    // DFR rotates in place
+    _swap3(f, 1, 2, 4, 4, 3, 3);
+    // UFR -> DBR -> DFL
+    _swap3(f, 0, 4, 3, 4, 1, 1); // U/R/D
+    _swap3(f, 3, 1, 5, 3, 2, 4); // R/B/L
+    _swap3(f, 4, 2, 1, 4, 4, 3); // F/D/F
+  }
+
+  static void _rotateL(List<List<CubePreviewColor>> f) {
+    // Centers: D(1), F(4), L(2)
+    _swap3(f, 1, 0, 4, 0, 2, 0);
+    // DFL rotates in place
+    _swap3(f, 1, 1, 2, 4, 4, 3);
+    // UFL -> DFR -> DBL
+    _swap3(f, 0, 3, 1, 2, 1, 3); // U/D/D
+    _swap3(f, 4, 1, 3, 3, 5, 4); // F/R/B
+    _swap3(f, 2, 2, 4, 4, 2, 3); // L/F/L
+  }
+
+  static void _rotateB(List<List<CubePreviewColor>> f) {
+    // Centers: D(1), B(5), R(3)
+    _swap3(f, 1, 0, 5, 0, 3, 0);
+    // DBR rotates in place
+    _swap3(f, 1, 4, 3, 4, 5, 3);
+    // UBR -> DBL -> DFR
+    _swap3(f, 0, 2, 1, 3, 1, 2); // U/D/D
+    _swap3(f, 5, 1, 2, 3, 4, 4); // B/L/F
+    _swap3(f, 3, 2, 5, 4, 3, 3); // R/B/R
+  }
+
+  static void _swap3(List<List<CubePreviewColor>> f, int f1, int s1, int f2, int s2, int f3, int s3) {
+    final temp = f[f1][s1];
+    f[f1][s1] = f[f3][s3];
+    f[f3][s3] = f[f2][s2];
+    f[f2][s2] = temp;
+  }
+}
+
+class _SkewbPreview extends StatelessWidget {
+  const _SkewbPreview({
+    required this.state,
     required this.width,
     required this.height,
-    this.upsideDown = false,
   });
 
-  final List<CubePreviewColor> stickers;
+  final _SkewbState state;
   final double width;
   final double height;
-  final bool upsideDown;
 
   @override
   Widget build(BuildContext context) {
     return CustomPaint(
       size: Size(width, height),
-      painter: _PyraminxFacePainter(
-        stickers: stickers,
-        upsideDown: upsideDown,
-      ),
+      painter: _SkewbNetPainter(state: state),
     );
   }
 }
 
-class _PyraminxFacePainter extends CustomPainter {
-  const _PyraminxFacePainter({
-    required this.stickers,
-    required this.upsideDown,
-  });
-
-  final List<CubePreviewColor> stickers;
-  final bool upsideDown;
+class _SkewbNetPainter extends CustomPainter {
+  const _SkewbNetPainter({required this.state});
+  final _SkewbState state;
 
   @override
   void paint(Canvas canvas, Size size) {
-    final rows = [
-      [0],
-      [1, 2],
-      [3, 4, 5],
-      [6, 7, 8],
-    ];
-    var stickerIndex = 0;
+    // Exact Isometric Perspective (csTimer Style)
+    final s = math.min(size.width / 4.4, size.height / 3.4);
+    final ox = size.width / 2;
+    final oy = size.height / 2;
 
-    for (var row = 0; row < rows.length; row++) {
-      final count = rows[row].length;
-      final y = size.height * (row / 4);
-      final rowWidth = size.width * ((row + 1) / 4);
-      final left = (size.width - rowWidth) / 2;
+    final c30 = math.cos(math.pi / 6); // 0.866
+    final s30 = math.sin(math.pi / 6); // 0.5 (2*s30 = 1.0)
 
-      for (var col = 0; col < count; col++) {
-        final segWidth = rowWidth / count;
-        final x = left + col * segWidth;
+    // Layout: U, L, R meet at (ox, oy)
+    // 0:U (Top-style), 1:D (Top-style), 2:L (Left-style), 3:R (Right-style), 4:F (Right-style), 5:B (Left-style)
+    
+    // Core 3 faces meeting at center
+    _drawIso(canvas, state.faces[0], ox, oy, s, c30, s30, 0); // U (Top)
+    _drawIso(canvas, state.faces[2], ox, oy, s, c30, s30, 1); // L (Left)
+    _drawIso(canvas, state.faces[3], ox, oy, s, c30, s30, 2); // R (Right)
+    
+    // Extensions
+    _drawIso(canvas, state.faces[5], ox - s * c30, oy - s * s30, s, c30, s30, 1); // B (Attached to L/U)
+    _drawIso(canvas, state.faces[4], ox + s * c30, oy - s * s30, s, c30, s30, 2); // F (Attached to R/U)
+    _drawIso(canvas, state.faces[1], ox, oy + 2 * s, s, c30, s30, 0);             // D (Attached below L/R)
+  }
 
-        final path = Path();
-        if (upsideDown) {
-          path.moveTo(x, y);
-          path.lineTo(x + segWidth, y);
-          path.lineTo(x + segWidth / 2, y + size.height / 4);
-        } else {
-          path.moveTo(x + segWidth / 2, y);
-          path.lineTo(x, y + size.height / 4);
-          path.lineTo(x + segWidth, y + size.height / 4);
-        }
-        path.close();
-
-        canvas.drawPath(
-          path,
-          Paint()..color = stickers[stickerIndex].color,
-        );
-        canvas.drawPath(
-          path,
-          Paint()
-            ..color = Colors.black.withValues(alpha: 0.35)
-            ..style = PaintingStyle.stroke
-            ..strokeWidth = math.max(0.6, size.width * 0.008),
-        );
-        stickerIndex++;
-      }
+  void _drawIso(Canvas canvas, List<CubePreviewColor> stickers, double cx, double cy, double s, double c30, double s30, int type) {
+    late final List<Offset> v;
+    if (type == 0) { // Top-style (U, D)
+      v = [
+        Offset(cx, cy),
+        Offset(cx + s * c30, cy - s * s30),
+        Offset(cx, cy - 2 * s * s30),
+        Offset(cx - s * c30, cy - s * s30),
+      ];
+    } else if (type == 1) { // Left-style (L, B)
+      v = [
+        Offset(cx, cy),
+        Offset(cx - s * c30, cy - s * s30),
+        Offset(cx - s * c30, cy + s - s * s30),
+        Offset(cx, cy + s),
+      ];
+    } else { // Right-style (R, F)
+      v = [
+        Offset(cx, cy),
+        Offset(cx, cy + s),
+        Offset(cx + s * c30, cy + s - s * s30),
+        Offset(cx + s * c30, cy - s * s30),
+      ];
     }
+
+    // Midpoints for sticker subdivision
+    final m01 = Offset((v[0].dx + v[1].dx) / 2, (v[0].dy + v[1].dy) / 2);
+    final m12 = Offset((v[1].dx + v[2].dx) / 2, (v[1].dy + v[2].dy) / 2);
+    final m23 = Offset((v[2].dx + v[3].dx) / 2, (v[2].dy + v[3].dy) / 2);
+    final m30 = Offset((v[3].dx + v[0].dx) / 2, (v[3].dy + v[0].dy) / 2);
+
+    final fillPaint = Paint()..style = PaintingStyle.fill;
+    final strokePaint = Paint()
+      ..style = PaintingStyle.stroke
+      ..color = Colors.black.withValues(alpha: 0.3)
+      ..strokeWidth = 0.5;
+
+    // Center Sticker
+    _drawPath(canvas, Path()..moveTo(m01.dx, m01.dy)..lineTo(m12.dx, m12.dy)..lineTo(m23.dx, m23.dy)..lineTo(m30.dx, m30.dy)..close(), stickers[0], fillPaint, strokePaint);
+    // Corner Stickers
+    _drawPath(canvas, Path()..moveTo(v[1].dx, v[1].dy)..lineTo(m01.dx, m01.dy)..lineTo(m12.dx, m12.dy)..close(), stickers[1], fillPaint, strokePaint);
+    _drawPath(canvas, Path()..moveTo(v[2].dx, v[2].dy)..lineTo(m12.dx, m12.dy)..lineTo(m23.dx, m23.dy)..close(), stickers[2], fillPaint, strokePaint);
+    _drawPath(canvas, Path()..moveTo(v[3].dx, v[3].dy)..lineTo(m23.dx, m23.dy)..lineTo(m30.dx, m30.dy)..close(), stickers[3], fillPaint, strokePaint);
+    _drawPath(canvas, Path()..moveTo(v[0].dx, v[0].dy)..lineTo(m30.dx, m30.dy)..lineTo(m01.dx, m01.dy)..close(), stickers[4], fillPaint, strokePaint);
+
+    // Bold Face Outline
+    canvas.drawPath(
+      Path()..moveTo(v[0].dx, v[0].dy)..lineTo(v[1].dx, v[1].dy)..lineTo(v[2].dx, v[2].dy)..lineTo(v[3].dx, v[3].dy)..close(),
+      Paint()
+        ..style = PaintingStyle.stroke
+        ..color = Colors.black.withValues(alpha: 0.8)
+        ..strokeWidth = 1.2,
+    );
+  }
+
+  void _drawPath(Canvas canvas, Path path, CubePreviewColor color, Paint fill, Paint stroke) {
+    fill.color = color.color;
+    canvas.drawPath(path, fill);
+    canvas.drawPath(path, stroke);
   }
 
   @override
-  bool shouldRepaint(covariant _PyraminxFacePainter oldDelegate) {
-    return oldDelegate.stickers != stickers ||
-        oldDelegate.upsideDown != upsideDown;
-  }
+  bool shouldRepaint(covariant _SkewbNetPainter oldDelegate) => oldDelegate.state != state;
 }

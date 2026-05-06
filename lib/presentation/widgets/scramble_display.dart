@@ -75,120 +75,43 @@ class ScrambleDisplay extends StatelessWidget {
                       color: AppTheme.textMuted.withValues(alpha: 0.14),
                     ),
                   ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      Container(
-                        padding: EdgeInsets.fromLTRB(
-                          isSmallScreen ? 10 : 12,
-                          8,
-                          isSmallScreen ? 10 : 12,
-                          6,
-                        ),
-                        decoration: BoxDecoration(
-                          border: Border(
-                            bottom: BorderSide(
-                              color: AppTheme.textMuted.withValues(alpha: 0.14),
-                            ),
-                          ),
-                        ),
-                        child: Row(
-                          children: [
-                            Expanded(
-                              child: Text(
-                                'SCRAMBLE',
-                                style: Theme.of(context)
-                                    .textTheme
-                                    .labelSmall
-                                    ?.copyWith(
-                                      color: AppTheme.textSecondary,
-                                      fontWeight: FontWeight.w700,
-                                      letterSpacing: 1.6,
-                                    ),
+                  child: Padding(
+                    padding: metrics.padding,
+                    child: SingleChildScrollView(
+                      physics: metrics.needsScroll
+                          ? const ClampingScrollPhysics()
+                          : const NeverScrollableScrollPhysics(),
+                      child: Center(
+                        child: GestureDetector(
+                          onTap: () {
+                            Clipboard.setData(
+                              ClipboardData(
+                                text: currentScramble.notation,
                               ),
-                            ),
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 8,
-                                vertical: 3,
-                              ),
-                              decoration: BoxDecoration(
-                                color: AppTheme.accentColor.withValues(
-                                  alpha: 0.14,
-                                ),
-                                borderRadius: BorderRadius.circular(6),
-                              ),
-                              child: Text(
-                                currentScramble.cubeType.toUpperCase(),
-                                style: Theme.of(context)
-                                    .textTheme
-                                    .labelSmall
-                                    ?.copyWith(
-                                      color: AppTheme.textAccent,
-                                      fontWeight: FontWeight.w700,
-                                      letterSpacing: 0.7,
-                                    ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      Container(
-                        height: 2,
-                        margin: EdgeInsets.symmetric(
-                          horizontal: isSmallScreen ? 10 : 12,
-                        ),
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            colors: [
-                              AppTheme.accentColor.withValues(alpha: 0.0),
-                              AppTheme.accentColor.withValues(alpha: 0.95),
-                              AppTheme.accentColor.withValues(alpha: 0.0),
-                            ],
-                          ),
-                        ),
-                      ),
-                      Expanded(
-                        child: Padding(
-                          padding: metrics.padding,
-                          child: SingleChildScrollView(
-                            physics: metrics.needsScroll
-                                ? const ClampingScrollPhysics()
-                                : const NeverScrollableScrollPhysics(),
-                            child: Center(
-                              child: GestureDetector(
-                                onTap: () {
-                                  Clipboard.setData(
-                                    ClipboardData(
-                                      text: currentScramble.notation,
-                                    ),
-                                  );
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(
-                                      content: const Text('Scramble copiado!'),
-                                      duration: const Duration(seconds: 2),
-                                      backgroundColor: AppTheme.cardColor,
-                                      behavior: SnackBarBehavior.floating,
-                                      shape: RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.circular(12),
-                                      ),
-                                    ),
-                                  );
-                                },
-                                child: SelectableText(
-                                  currentScramble.notation,
-                                  key: const ValueKey('main-scramble-text'),
-                                  style: metrics.textStyle,
-                                  textAlign: TextAlign.center,
-                                  minLines: 1,
-                                  maxLines: null,
+                            );
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: const Text('Scramble copiado!'),
+                                duration: const Duration(seconds: 2),
+                                backgroundColor: AppTheme.cardColor,
+                                behavior: SnackBarBehavior.floating,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
                                 ),
                               ),
-                            ),
+                            );
+                          },
+                          child: SelectableText(
+                            currentScramble.notation,
+                            key: const ValueKey('main-scramble-text'),
+                            style: metrics.textStyle,
+                            textAlign: TextAlign.center,
+                            minLines: 1,
+                            maxLines: null,
                           ),
                         ),
                       ),
-                    ],
+                    ),
                   ),
                 ),
               ),
@@ -208,10 +131,10 @@ class ScrambleDisplay extends StatelessWidget {
     required bool isMediumScreen,
   }) {
     final baseFontSize = isSmallScreen
-        ? 16.5
+        ? 17.5
         : isMediumScreen
-            ? 18
-            : 19.5;
+            ? 19.0
+            : 21.0;
     final lengthMultiplier = notation.length > 200
         ? 0.7
         : notation.length > 140
@@ -230,47 +153,46 @@ class ScrambleDisplay extends StatelessWidget {
       '5x5' || '555bf' => 0.88,
       '6x6' => 0.84,
       '7x7' => 0.8,
-      'clock' || 'sq1' => 0.92,
-      _ => 0.95,
+      'clock' || 'sq1' || 'pyraminx' => 0.95,
+      _ => 1.0,
     };
     final fontSize = baseFontSize * lengthMultiplier * cubeMultiplier;
-    final letterSpacing = isSmallScreen ? 0.25 : 0.5;
+    final letterSpacing = isSmallScreen ? 0.2 : 0.4;
     final textStyle = Theme.of(context).textTheme.titleLarge?.copyWith(
-          fontFamily: 'RobotoMono',
+          fontFamily: 'monospace', // Generic fallback to ensure consistency
           fontSize: fontSize,
           letterSpacing: letterSpacing,
-          height: 1.3,
+          height: 1.35,
           color: AppTheme.textPrimary,
-          fontWeight: FontWeight.w500,
+          fontWeight: FontWeight.w600,
         );
 
     final padding = EdgeInsets.symmetric(
-      horizontal: isSmallScreen ? 12 : 16,
-      vertical: isSmallScreen ? 8 : 10,
+      horizontal: isSmallScreen ? 14 : 18,
+      vertical: isSmallScreen ? 14 : 18,
     );
     final textWidth =
-        (maxWidth - padding.horizontal - (isSmallScreen ? 16 : 32))
-            .clamp(120.0, 720.0);
+        (maxWidth - padding.horizontal - (isSmallScreen ? 20 : 36))
+            .clamp(100.0, 1000.0);
     final measuredTextHeight = _measureTextHeight(
       notation,
       textStyle!,
       textWidth,
     );
-    final headerHeight = isSmallScreen ? 32.0 : 36.0;
-    // Allow the card to size down to a single text line for short scrambles
-    // like 2x2 (FIX-019) so it does not leave huge empty space.
-    final lineHeight = (textStyle.fontSize ?? 16) * (textStyle.height ?? 1.3);
-    final minHeight = (lineHeight + padding.vertical + headerHeight).clamp(
-      isSmallScreen ? 64.0 : 72.0,
-      isSmallScreen ? 110.0 : 120.0,
-    );
-    // Slightly taller cap so 6x6/7x7 scrambles get more breathing room before
-    // falling back to internal scroll, but never push the timer below usable.
+    
+    const headerHeight = 0.0;
+    final minHeight = isSmallScreen ? 74.0 : 84.0;
+    
+    // Significantly increased maxHeight to allow more lines to be visible
+    // without scrolling on mobile (FIX-020).
     final maxHeight = switch (cubeType) {
-      '6x6' || '7x7' => isSmallScreen ? 188.0 : 220.0,
-      _ => isSmallScreen ? 168.0 : 196.0,
+      '6x6' || '7x7' || 'megaminx' => isSmallScreen ? 240.0 : 300.0,
+      _ => isSmallScreen ? 200.0 : 240.0,
     };
-    final contentHeight = measuredTextHeight + padding.vertical + headerHeight;
+    
+    // Add a larger buffer (12px) to the measured height to prevent any clipping
+    // due to line-height or font rendering differences.
+    final contentHeight = measuredTextHeight + padding.vertical + 12.0;
     final targetHeight = contentHeight.clamp(minHeight, maxHeight);
 
     return _ScrambleDisplayMetrics(
