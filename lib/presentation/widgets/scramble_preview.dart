@@ -423,16 +423,54 @@ class _PyraminxNetPainter extends CustomPainter {
     for (var i = 0; i < 9; i++) {
       final paint = Paint()..color = _getColor(stickers[i]);
       canvas.drawPath(paths[i], paint);
-      canvas.drawPath(paths[i], Paint()..color = Colors.black..style = PaintingStyle.stroke..strokeWidth = 0.5);
+      canvas.drawPath(
+        paths[i],
+        Paint()
+          ..color = Colors.black.withValues(alpha: 0.7)
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 1.2
+          ..strokeJoin = StrokeJoin.round,
+      );
     }
   }
 
   Path _tri(double x, double y, double s, double h, bool up) {
+    final List<Offset> v;
+    final Offset centroid;
+
     if (up) {
-      return Path()..moveTo(x + s / 2, y)..lineTo(x, y + h)..lineTo(x + s, y + h)..close();
+      v = [
+        Offset(x + s / 2, y),
+        Offset(x, y + h),
+        Offset(x + s, y + h),
+      ];
+      centroid = Offset(x + s / 2, y + 2 * h / 3);
     } else {
-      return Path()..moveTo(x, y)..lineTo(x + s, y)..lineTo(x + s / 2, y + h)..close();
+      v = [
+        Offset(x, y),
+        Offset(x + s, y),
+        Offset(x + s / 2, y + h),
+      ];
+      centroid = Offset(x + s / 2, y + h / 3);
     }
+
+    // Shrink factor to create gaps between stickers
+    const shrink = 0.90;
+
+    return Path()
+      ..moveTo(
+        centroid.dx + (v[0].dx - centroid.dx) * shrink,
+        centroid.dy + (v[0].dy - centroid.dy) * shrink,
+      )
+      ..lineTo(
+        centroid.dx + (v[1].dx - centroid.dx) * shrink,
+        centroid.dy + (v[1].dy - centroid.dy) * shrink,
+      )
+      ..lineTo(
+        centroid.dx + (v[2].dx - centroid.dx) * shrink,
+        centroid.dy + (v[2].dy - centroid.dy) * shrink,
+      )
+      ..close();
   }
 
   Color _getColor(CubePreviewColor c) {

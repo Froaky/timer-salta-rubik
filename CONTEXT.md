@@ -516,3 +516,8 @@ Entradas actuales:
   - archivos afectados: `lib/presentation/widgets/scramble_preview.dart`, `CONTEXT.md`, `task.md`
   - validacion: `flutter analyze` pasando sin errores de compilación en `timer_page.dart` y `scramble_preview.dart`
   - siguiente paso: intentar nuevamente el deploy build web --release en Railway
+
+- `2026-05-06`
+  - se agregaron espacios (gaps) y bordes redondeados a los stickers de Pyraminx para mejorar la diferenciación visual
+  - archivos afectados: `lib/presentation/widgets/scramble_preview.dart`, `CONTEXT.md`
+  - validacion: el análisis de Flutter pasa y la lógica de dibujo fue actualizada para encoger los triángulos hacia su centroide
