@@ -510,3 +510,9 @@ Entradas actuales:
   - archivos afectados: `lib/domain/usecases/generate_scramble.dart`, `lib/presentation/widgets/scramble_preview.dart`, `CONTEXT.md`
   - validacion: lógica de permutaciones reescrita y layout del net actualizado a "triángulo grande" (3 UP, 1 DOWN)
   - siguiente paso: verificar visualmente con el usuario si la mezcla coincide exactamente con timers oficiales
+
+- `2026-05-06`
+  - se corrigieron errores de compilación en `ScramblePreview` que bloqueaban el deploy web en Railway
+  - archivos afectados: `lib/presentation/widgets/scramble_preview.dart`, `CONTEXT.md`, `task.md`
+  - validacion: `flutter analyze` pasando sin errores de compilación en `timer_page.dart` y `scramble_preview.dart`
+  - siguiente paso: intentar nuevamente el deploy build web --release en Railway

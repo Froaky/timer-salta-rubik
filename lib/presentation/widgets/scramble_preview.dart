@@ -6,42 +6,80 @@ import 'package:salta_rubik/domain/entities/scramble.dart';
 /// A widget that displays a 2D isometric preview of a scrambled cube or puzzle.
 class ScramblePreview extends StatelessWidget {
   final Scramble scramble;
+  final double? width;
+  final double? height;
+  final bool showLabel;
+  final EdgeInsetsGeometry? padding;
+  final Color? backgroundColor;
+  final Key? containerKey;
+  final Key? svgKey;
 
   const ScramblePreview({
     super.key,
     required this.scramble,
+    this.width,
+    this.height,
+    this.showLabel = true,
+    this.padding,
+    this.backgroundColor,
+    this.containerKey,
+    this.svgKey,
   });
+
+  static bool supports(String cubeType) {
+    return [
+      '3x3',
+      '2x2',
+      '4x4',
+      '5x5',
+      '6x6',
+      '7x7',
+      'pyraminx',
+      'clock',
+      'skewb',
+      'megaminx'
+    ].contains(cubeType);
+  }
 
   @override
   Widget build(BuildContext context) {
     final cubeType = scramble.cubeType;
 
     return Container(
-      key: const ValueKey('scramble-preview'),
-      padding: const EdgeInsets.all(16),
+      key: containerKey ?? const ValueKey('scramble-preview'),
+      padding: padding ?? const EdgeInsets.all(16),
+      color: backgroundColor,
       child: LayoutBuilder(
         builder: (context, constraints) {
-          final size = math.min(constraints.maxWidth, constraints.maxHeight);
+          final size = math.min(
+            width ?? constraints.maxWidth,
+            height ?? (constraints.maxHeight == double.infinity ? constraints.maxWidth : constraints.maxHeight),
+          );
 
-          if (cubeType == '3x3' || cubeType == '2x2' || cubeType == '4x4' || cubeType == '5x5' || cubeType == '6x6' || cubeType == '7x7') {
+          if (cubeType == '3x3' ||
+              cubeType == '2x2' ||
+              cubeType == '4x4' ||
+              cubeType == '5x5' ||
+              cubeType == '6x6' ||
+              cubeType == '7x7') {
             final engine = _CubePreviewEngine.apply(scramble.notation);
-            return _CubePreview(
+            return _Cube(
               state: engine,
-              width: size,
-              height: size,
+              width: width ?? size,
+              height: height ?? size,
             );
           } else if (cubeType == 'pyraminx') {
             final state = _PyraminxPreviewEngine.apply(scramble.notation);
             return _PyraminxPreview(
               state: state,
-              width: size,
-              height: size,
+              width: width ?? size,
+              height: height ?? size,
             );
           } else if (cubeType == 'clock') {
             return _ClockPreview(
               notation: scramble.notation,
-              width: size,
-              height: size,
+              width: width ?? size,
+              height: height ?? size,
             );
           }
 
@@ -49,6 +87,27 @@ class ScramblePreview extends StatelessWidget {
           return const SizedBox.shrink();
         },
       ),
+    );
+  }
+}
+
+class _Cube extends StatelessWidget {
+  final _CubePreviewState state;
+  final double width;
+  final double height;
+
+  const _Cube({
+    required this.state,
+    required this.width,
+    required this.height,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return _CubePreview(
+      state: state,
+      width: width,
+      height: height,
     );
   }
 }
