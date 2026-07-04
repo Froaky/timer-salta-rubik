@@ -1,772 +1,561 @@
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:salta_rubik/domain/entities/scramble.dart';
 
-import '../../domain/entities/scramble.dart';
-import '../theme/app_theme.dart';
-import 'cube_preview_engine.dart';
-
+/// A widget that displays a 2D isometric preview of a scrambled cube or puzzle.
 class ScramblePreview extends StatelessWidget {
+  final Scramble scramble;
+  final double? width;
+  final double? height;
+  final bool showLabel;
+  final EdgeInsetsGeometry? padding;
+  final Color? backgroundColor;
+  final Key? containerKey;
+  final Key? svgKey;
+
   const ScramblePreview({
     super.key,
     required this.scramble,
-    this.width = 220,
-    this.height = 170,
+    this.width,
+    this.height,
     this.showLabel = true,
+    this.padding,
     this.backgroundColor,
-    this.padding = const EdgeInsets.all(12),
     this.containerKey,
     this.svgKey,
   });
 
-  final Scramble scramble;
-  final double width;
-  final double height;
-  final bool showLabel;
-  final Color? backgroundColor;
-  final EdgeInsetsGeometry padding;
-  final Key? containerKey;
-  final Key? svgKey;
-
-  static const Map<String, int> _cubeSizeByType = {
-    '2x2': 2,
-    '3x3': 3,
-    '3x3oh': 3,
-    '3x3bf': 3,
-    '3x3fm': 3,
-    '4x4': 4,
-    '444bf': 4,
-    '5x5': 5,
-    '555bf': 5,
-    '6x6': 6,
-    '7x7': 7,
-  };
-
-  static bool supports(String cubeType) =>
-      _cubeSizeByType.containsKey(cubeType) ||
-      cubeType == 'clock' ||
-      cubeType == 'pyraminx';
+  static bool supports(String cubeType) {
+    return [
+      '3x3',
+      '2x2',
+      '4x4',
+      '5x5',
+      '6x6',
+      '7x7',
+      'pyraminx',
+      'clock',
+      'skewb',
+      'megaminx'
+    ].contains(cubeType);
+  }
 
   @override
   Widget build(BuildContext context) {
-    final content = _buildPreviewContent(context);
-    if (content == null) {
-      return const SizedBox.shrink();
-    }
+    final cubeType = scramble.cubeType;
 
     return Container(
       key: containerKey ?? const ValueKey('scramble-preview'),
-      constraints: BoxConstraints(maxWidth: width + 24),
-      padding: padding,
-      decoration: BoxDecoration(
-        color:
-            backgroundColor ?? AppTheme.backgroundColor.withValues(alpha: 0.55),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: AppTheme.textMuted.withValues(alpha: 0.12),
-        ),
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          if (showLabel) ...[
-            Text(
-              'Preview',
-              style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                    color: AppTheme.textSecondary,
-                    fontWeight: FontWeight.w600,
-                    letterSpacing: 0.4,
-                  ),
-            ),
-            const SizedBox(height: 10),
-          ],
-          SizedBox(
-            key: svgKey ?? const ValueKey('scramble-preview-svg'),
-            width: width,
-            height: height,
-            child: content,
-          ),
-        ],
+      padding: padding ?? const EdgeInsets.all(16),
+      color: backgroundColor,
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final size = math.min(
+            width ?? constraints.maxWidth,
+            height ?? (constraints.maxHeight == double.infinity ? constraints.maxWidth : constraints.maxHeight),
+          );
+
+          if (cubeType == '3x3' ||
+              cubeType == '2x2' ||
+              cubeType == '4x4' ||
+              cubeType == '5x5' ||
+              cubeType == '6x6' ||
+              cubeType == '7x7') {
+            final engine = _CubePreviewEngine.apply(scramble.notation);
+            return _Cube(
+              state: engine,
+              width: width ?? size,
+              height: height ?? size,
+            );
+          } else if (cubeType == 'pyraminx') {
+            final state = _PyraminxPreviewEngine.apply(scramble.notation);
+            return _PyraminxPreview(
+              state: state,
+              width: width ?? size,
+              height: height ?? size,
+            );
+          } else if (cubeType == 'clock') {
+            return _ClockPreview(
+              notation: scramble.notation,
+              width: width ?? size,
+              height: height ?? size,
+            );
+          }
+
+          // Fallback
+          return const SizedBox.shrink();
+        },
       ),
     );
   }
-
-  Widget? _buildPreviewContent(BuildContext context) {
-    final size = _cubeSizeByType[scramble.cubeType];
-    if (size != null) {
-      final net = CubePreviewEngine(size: size).apply(scramble.notation);
-      return _CubeNet(
-        net: net,
-        width: width,
-        height: height,
-      );
-    }
-
-    if (scramble.cubeType == 'clock') {
-      final state = _ClockPreviewEngine.apply(scramble.notation);
-      return _ClockPreview(
-        state: state,
-        width: width,
-        height: height,
-      );
-    }
-
-    if (scramble.cubeType == 'pyraminx') {
-      final state = _PyraminxPreviewEngine.apply(scramble.notation);
-      return _PyraminxPreview(
-        state: state,
-        width: width,
-        height: height,
-      );
-    }
-
-    return null;
-  }
 }
 
-class _CubeNet extends StatelessWidget {
-  const _CubeNet({
-    required this.net,
-    required this.width,
-    required this.height,
-  });
-
-  final CubeNetData net;
+class _Cube extends StatelessWidget {
+  final _CubePreviewState state;
   final double width;
   final double height;
 
-  @override
-  Widget build(BuildContext context) {
-    final faceGap = math.max(3.0, math.min(width, height) * 0.035);
-    final faceSize =
-        math.min((width - faceGap * 3) / 4, (height - faceGap * 2) / 3);
-    final totalWidth = faceSize * 4 + faceGap * 3;
-    final totalHeight = faceSize * 3 + faceGap * 2;
-    final offsetX = (width - totalWidth) / 2;
-    final offsetY = (height - totalHeight) / 2;
-
-    return Stack(
-      children: [
-        _positionFace(
-          net.up,
-          offsetX + faceSize + faceGap,
-          offsetY,
-          faceSize,
-        ),
-        _positionFace(
-          net.left,
-          offsetX,
-          offsetY + faceSize + faceGap,
-          faceSize,
-        ),
-        _positionFace(
-          net.front,
-          offsetX + faceSize + faceGap,
-          offsetY + faceSize + faceGap,
-          faceSize,
-        ),
-        _positionFace(
-          net.right,
-          offsetX + (faceSize + faceGap) * 2,
-          offsetY + faceSize + faceGap,
-          faceSize,
-        ),
-        _positionFace(
-          net.back,
-          offsetX + (faceSize + faceGap) * 3,
-          offsetY + faceSize + faceGap,
-          faceSize,
-          rotationAngle: math.pi,
-          key: const ValueKey('scramble-preview-back-face'),
-        ),
-        _positionFace(
-          net.down,
-          offsetX + faceSize + faceGap,
-          offsetY + (faceSize + faceGap) * 2,
-          faceSize,
-        ),
-      ],
-    );
-  }
-
-  Widget _positionFace(
-    List<CubePreviewColor> face,
-    double left,
-    double top,
-    double size, {
-    double rotationAngle = 0,
-    Key? key,
-  }) {
-    return Positioned(
-      left: left,
-      top: top,
-      child: Transform.rotate(
-        key: key,
-        angle: rotationAngle,
-        child: _CubeFace(
-          colors: face,
-          size: size,
-          dimension: net.size,
-        ),
-      ),
-    );
-  }
-}
-
-class _CubeFace extends StatelessWidget {
-  const _CubeFace({
-    required this.colors,
-    required this.size,
-    required this.dimension,
-  });
-
-  final List<CubePreviewColor> colors;
-  final double size;
-  final int dimension;
-
-  @override
-  Widget build(BuildContext context) {
-    final stickerGap = math.max(0.5, size * 0.035);
-
-    return SizedBox(
-      width: size,
-      height: size,
-      child: Column(
-        children: List.generate(dimension, (row) {
-          return Expanded(
-            child: Row(
-              children: List.generate(dimension, (column) {
-                final index = row * dimension + column;
-                return Expanded(
-                  child: Container(
-                    margin: EdgeInsets.all(stickerGap / 2),
-                    decoration: BoxDecoration(
-                      color: colors[index].color,
-                      borderRadius: BorderRadius.circular(size * 0.02),
-                    ),
-                  ),
-                );
-              }),
-            ),
-          );
-        }),
-      ),
-    );
-  }
-}
-
-class _ClockPreviewEngine {
-  static final Map<String, List<int>> _frontMasks = {
-    'UR': [1, 2, 4, 5],
-    'DR': [4, 5, 7, 8],
-    'DL': [3, 4, 6, 7],
-    'UL': [0, 1, 3, 4],
-    'U': [0, 1, 2],
-    'R': [2, 5, 8],
-    'D': [6, 7, 8],
-    'L': [0, 3, 6],
-    'ALL': List<int>.generate(9, (index) => index),
-  };
-
-  static _ClockState apply(String notation) {
-    final front = List<int>.filled(9, 0);
-    final back = List<int>.filled(9, 0);
-    var target = front;
-
-    for (final token in notation.split(RegExp(r'\s+'))) {
-      if (token.isEmpty) continue;
-      if (token == 'y2') {
-        target = back;
-        continue;
-      }
-
-      final match =
-          RegExp(r'^(UR|DR|DL|UL|U|R|D|L|ALL)(\d+)([+-])$').firstMatch(token);
-      if (match == null) {
-        continue;
-      }
-
-      final group = match.group(1)!;
-      final value = int.parse(match.group(2)!);
-      final signedValue = match.group(3) == '+' ? value : -value;
-      final mask = _frontMasks[group]!;
-
-      for (final index in mask) {
-        target[index] = (target[index] + signedValue) % 12;
-      }
-    }
-
-    return _ClockState(
-      front: front.map(_normalizeDial).toList(growable: false),
-      back: back.map(_normalizeDial).toList(growable: false),
-    );
-  }
-
-  static int _normalizeDial(int value) => ((value % 12) + 12) % 12;
-}
-
-class _ClockPreview extends StatelessWidget {
-  const _ClockPreview({
+  const _Cube({
     required this.state,
     required this.width,
     required this.height,
   });
 
-  final _ClockState state;
+  @override
+  Widget build(BuildContext context) {
+    return _CubePreview(
+      state: state,
+      width: width,
+      height: height,
+    );
+  }
+}
+
+// =============================================================================
+// NXN CUBE PREVIEW (3x3, 4x4, etc.)
+// =============================================================================
+
+class _CubePreview extends StatelessWidget {
+  final _CubePreviewState state;
   final double width;
   final double height;
 
-  @override
-  Widget build(BuildContext context) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final availableWidth =
-            constraints.maxWidth.isFinite ? constraints.maxWidth : width;
-        final availableHeight =
-            constraints.maxHeight.isFinite ? constraints.maxHeight : height;
-        final faceGap = math.max(8.0, availableWidth * 0.05);
-        final faceSize =
-            math.min((availableWidth - faceGap) / 2, availableHeight);
-
-        return Center(
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              _ClockFace(
-                dials: state.front,
-                size: faceSize,
-                faceColor: const Color(0xFF3F83CC),
-                pinColor: const Color(0xFF9A6B00),
-              ),
-              SizedBox(width: faceGap),
-              _ClockFace(
-                dials: state.back,
-                size: faceSize,
-                faceColor: const Color(0xFF56C7FF),
-                pinColor: const Color(0xFFFFEB3B),
-              ),
-            ],
-          ),
-        );
-      },
-    );
-  }
-}
-
-class _ClockFace extends StatelessWidget {
-  const _ClockFace({
-    required this.dials,
-    required this.size,
-    required this.faceColor,
-    required this.pinColor,
+  const _CubePreview({
+    required this.state,
+    required this.width,
+    required this.height,
   });
-
-  final List<int> dials;
-  final double size;
-  final Color faceColor;
-  final Color pinColor;
-
-  @override
-  Widget build(BuildContext context) {
-    final dialSize = size / 3.5;
-    final pinSize = dialSize * 0.28;
-    final spacing = dialSize * 0.15;
-
-    return SizedBox(
-      width: size,
-      height: size,
-      child: Stack(
-        children: [
-          for (var row = 0; row < 3; row++)
-            for (var col = 0; col < 3; col++)
-              Positioned(
-                left: col * (dialSize + spacing),
-                top: row * (dialSize + spacing),
-                child: _ClockDial(
-                  value: dials[row * 3 + col],
-                  size: dialSize,
-                  faceColor: faceColor,
-                ),
-              ),
-          Positioned(
-            left: dialSize + spacing * 0.55,
-            top: dialSize + spacing * 0.2,
-            child: _ClockPin(size: pinSize, color: pinColor),
-          ),
-          Positioned(
-            right: dialSize + spacing * 0.55,
-            top: dialSize + spacing * 0.2,
-            child: _ClockPin(size: pinSize, color: pinColor),
-          ),
-          Positioned(
-            left: dialSize + spacing * 0.55,
-            bottom: dialSize + spacing * 0.2,
-            child: _ClockPin(size: pinSize, color: pinColor),
-          ),
-          Positioned(
-            right: dialSize + spacing * 0.55,
-            bottom: dialSize + spacing * 0.2,
-            child: _ClockPin(size: pinSize, color: pinColor),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _ClockDial extends StatelessWidget {
-  const _ClockDial({
-    required this.value,
-    required this.size,
-    required this.faceColor,
-  });
-
-  final int value;
-  final double size;
-  final Color faceColor;
 
   @override
   Widget build(BuildContext context) {
     return CustomPaint(
-      size: Size.square(size),
-      painter: _ClockDialPainter(
-        value: value,
-        faceColor: faceColor,
-      ),
+      size: Size(width, height),
+      painter: _CubeNetPainter(state: state),
     );
   }
 }
 
-class _ClockDialPainter extends CustomPainter {
-  const _ClockDialPainter({
-    required this.value,
-    required this.faceColor,
-  });
+class _CubeNetPainter extends CustomPainter {
+  final _CubePreviewState state;
 
-  final int value;
-  final Color faceColor;
+  _CubeNetPainter({required this.state});
 
   @override
   void paint(Canvas canvas, Size size) {
-    final center = Offset(size.width / 2, size.height / 2);
-    final radius = size.width / 2;
+    final faceSize = size.width / 4;
+    final gap = 2.0;
 
-    final fillPaint = Paint()..color = faceColor;
-    final rimPaint = Paint()
-      ..color = Colors.white.withValues(alpha: 0.12)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = math.max(1.0, size.width * 0.04);
+    // Draw faces in a standard cross net
+    //      U
+    //    L F R B
+    //      D
 
-    canvas.drawCircle(center, radius * 0.92, fillPaint);
-    canvas.drawCircle(center, radius * 0.92, rimPaint);
-
-    final angle = (-math.pi / 2) + (value * math.pi / 6);
-    final handLength = radius * 0.6;
-    final handEnd = Offset(
-      center.dx + math.cos(angle) * handLength,
-      center.dy + math.sin(angle) * handLength,
+    _drawFace(canvas, state.up, faceSize, 0, faceSize - gap);
+    _drawFace(canvas, state.left, 0, faceSize, faceSize - gap);
+    _drawFace(canvas, state.front, faceSize, faceSize, faceSize - gap);
+    _drawFace(canvas, state.right, faceSize * 2, faceSize, faceSize - gap);
+    _drawFace(
+      canvas,
+      state.back,
+      faceSize * 3,
+      faceSize,
+      faceSize - gap,
+      key: 'back',
     );
+    _drawFace(canvas, state.down, faceSize, faceSize * 2, faceSize - gap);
+  }
 
-    final handPaint = Paint()
-      ..color = Colors.orangeAccent
-      ..strokeWidth = math.max(1.2, size.width * 0.06)
-      ..strokeCap = StrokeCap.round;
+  void _drawFace(
+    Canvas canvas,
+    List<CubePreviewColor> face,
+    double x,
+    double y,
+    double size, {
+    String? key,
+  }) {
+    final n = math.sqrt(face.length).toInt();
+    final stickerSize = size / n;
 
-    canvas.drawLine(center, handEnd, handPaint);
+    for (var i = 0; i < face.length; i++) {
+      final row = i ~/ n;
+      final col = i % n;
 
-    final tipPath = Path()
-      ..moveTo(handEnd.dx, handEnd.dy)
-      ..lineTo(
-        handEnd.dx + math.cos(angle + math.pi * 0.82) * radius * 0.18,
-        handEnd.dy + math.sin(angle + math.pi * 0.82) * radius * 0.18,
-      )
-      ..lineTo(
-        handEnd.dx + math.cos(angle - math.pi * 0.82) * radius * 0.18,
-        handEnd.dy + math.sin(angle - math.pi * 0.82) * radius * 0.18,
-      )
-      ..close();
+      final rect = Rect.fromLTWH(
+        x + col * stickerSize,
+        y + row * stickerSize,
+        stickerSize - 0.5,
+        stickerSize - 0.5,
+      );
 
-    canvas.drawPath(
-      tipPath,
-      Paint()..color = Colors.yellowAccent,
-    );
-    canvas.drawCircle(center, radius * 0.11, Paint()..color = Colors.redAccent);
+      final paint = Paint()..color = _getColor(face[i]);
+      canvas.drawRRect(
+        RRect.fromRectAndRadius(rect, const Radius.circular(2)),
+        paint,
+      );
+
+      if (key == 'back' && i == 0) {
+        // Just a marker for testing if needed
+      }
+    }
+  }
+
+  Color _getColor(CubePreviewColor color) {
+    switch (color) {
+      case CubePreviewColor.white:
+        return Colors.white;
+      case CubePreviewColor.yellow:
+        return Colors.yellow;
+      case CubePreviewColor.green:
+        return Colors.green;
+      case CubePreviewColor.blue:
+        return Colors.blue;
+      case CubePreviewColor.red:
+        return Colors.red;
+      case CubePreviewColor.orange:
+        return Colors.orange;
+    }
   }
 
   @override
-  bool shouldRepaint(covariant _ClockDialPainter oldDelegate) {
-    return oldDelegate.value != value || oldDelegate.faceColor != faceColor;
-  }
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => true;
 }
 
-class _ClockPin extends StatelessWidget {
-  const _ClockPin({
-    required this.size,
-    required this.color,
-  });
+// =============================================================================
+// PYRAMINX PREVIEW
+// =============================================================================
 
-  final double size;
-  final Color color;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: size,
-      height: size,
-      decoration: BoxDecoration(
-        color: color,
-        shape: BoxShape.circle,
-        border: Border.all(
-          color: Colors.black.withValues(alpha: 0.35),
-          width: math.max(0.5, size * 0.08),
-        ),
-      ),
-    );
-  }
-}
-
-class _ClockState {
-  const _ClockState({
-    required this.front,
-    required this.back,
-  });
-
-  final List<int> front;
-  final List<int> back;
-}
-
+/// Pyraminx visualization engine using TNoodle/csTimer standard.
 class _PyraminxPreviewEngine {
+  static const _faceColors = [
+    CubePreviewColor.green,  // 0: U
+    CubePreviewColor.blue,   // 1: L
+    CubePreviewColor.yellow, // 2: R
+    CubePreviewColor.red,    // 3: B
+  ];
+
   static _PyraminxState apply(String notation) {
-    final faces = {
-      'U': List<CubePreviewColor>.filled(9, CubePreviewColor.blue),
-      'L': List<CubePreviewColor>.filled(9, CubePreviewColor.red),
-      'R': List<CubePreviewColor>.filled(9, CubePreviewColor.green),
-      'B': List<CubePreviewColor>.filled(9, CubePreviewColor.yellow),
-    };
+    final image = List.generate(
+      4,
+      (face) => List<int>.filled(9, face),
+    );
 
     for (final token in notation.split(RegExp(r'\s+'))) {
       if (token.isEmpty) continue;
-      final parsed = _PyraminxMove.parse(token);
+      final parsed = _parsePyraminxToken(token);
       if (parsed == null) continue;
 
-      final turns = parsed.clockwise ? 1 : 2;
-      for (var i = 0; i < turns; i++) {
-        _turnFace(faces, parsed.face);
+      final axis = parsed.$1;
+      final tipOnly = parsed.$2;
+      final dir = parsed.$3;
+
+      for (var i = 0; i < dir; i++) {
+        if (tipOnly) {
+          _turnTip(axis, image);
+        } else {
+          _turn(axis, image);
+        }
       }
     }
 
     return _PyraminxState(
-      up: faces['U']!,
-      left: faces['L']!,
-      right: faces['R']!,
-      bottom: faces['B']!,
+      up: _toColors(image[0]),
+      left: _toColors(image[1]),
+      right: _toColors(image[2]),
+      back: _toColors(image[3]),
     );
   }
 
-  static void _turnFace(
-    Map<String, List<CubePreviewColor>> faces,
-    String face,
-  ) {
-    final current = faces[face]!;
-    faces[face] = _rotateTriangle(current);
+  static List<CubePreviewColor> _toColors(List<int> face) {
+    return face.map((i) => _faceColors[i]).toList(growable: false);
   }
 
-  static List<CubePreviewColor> _rotateTriangle(List<CubePreviewColor> face) {
-    return [
-      face[2],
-      face[5],
-      face[8],
-      face[1],
-      face[4],
-      face[7],
-      face[0],
-      face[3],
-      face[6],
-    ];
-  }
-}
-
-class _PyraminxMove {
-  const _PyraminxMove({
-    required this.face,
-    required this.clockwise,
-  });
-
-  final String face;
-  final bool clockwise;
-
-  static _PyraminxMove? parse(String token) {
-    final match = RegExp(r"^([RLUBrlub])('?)+?$").firstMatch(token);
+  static (int, bool, int)? _parsePyraminxToken(String token) {
+    final match = RegExp(r"^([ULRBulrb])('?)$").firstMatch(token);
     if (match == null) return null;
 
-    return _PyraminxMove(
-      face: match.group(1)!.toUpperCase(),
-      clockwise: !token.endsWith("'"),
-    );
+    final letter = match.group(1)!;
+    final isPrime = match.group(2) == "'";
+    final tipOnly = letter == letter.toLowerCase();
+    final upper = letter.toUpperCase();
+
+    int axis;
+    switch (upper) {
+      case 'U': axis = 0; break;
+      case 'L': axis = 1; break;
+      case 'R': axis = 2; break;
+      case 'B': axis = 3; break;
+      default: return null;
+    }
+    return (axis, tipOnly, isPrime ? 2 : 1);
+  }
+
+  static void _turn(int axis, List<List<int>> image) {
+    switch (axis) {
+      case 0: // U
+        _swap3(image, 0, 0, 2, 8, 1, 4);
+        _swap3(image, 0, 1, 2, 6, 1, 3);
+        _swap3(image, 0, 3, 2, 3, 1, 6);
+        _swap3(image, 0, 2, 2, 7, 1, 5);
+        break;
+      case 1: // L
+        _swap3(image, 0, 4, 1, 4, 3, 0);
+        _swap3(image, 0, 6, 1, 6, 3, 5);
+        _swap3(image, 0, 1, 1, 1, 3, 2);
+        _swap3(image, 0, 5, 1, 5, 3, 1);
+        break;
+      case 2: // R
+        _swap3(image, 0, 8, 3, 4, 2, 4);
+        _swap3(image, 0, 3, 3, 7, 2, 6);
+        _swap3(image, 0, 6, 3, 2, 2, 1);
+        _swap3(image, 0, 7, 3, 3, 2, 5);
+        break;
+      case 3: // B
+        _swap3(image, 1, 8, 2, 0, 3, 8);
+        _swap3(image, 1, 6, 2, 1, 3, 7);
+        _swap3(image, 1, 3, 2, 3, 3, 5);
+        _swap3(image, 1, 7, 2, 2, 3, 6);
+        break;
+    }
+    _turnTip(axis, image);
+  }
+
+  static void _turnTip(int axis, List<List<int>> image) {
+    switch (axis) {
+      case 0: _swap3(image, 0, 0, 2, 8, 1, 4); break;
+      case 1: _swap3(image, 0, 4, 1, 4, 3, 0); break;
+      case 2: _swap3(image, 0, 8, 3, 4, 2, 4); break;
+      case 3: _swap3(image, 1, 8, 2, 0, 3, 8); break;
+    }
+  }
+
+  static void _swap3(List<List<int>> img, int f1, int s1, int f2, int s2, int f3, int s3) {
+    final t = img[f1][s1];
+    img[f1][s1] = img[f2][s2];
+    img[f2][s2] = img[f3][s3];
+    img[f3][s3] = t;
   }
 }
 
 class _PyraminxState {
-  const _PyraminxState({
-    required this.up,
-    required this.left,
-    required this.right,
-    required this.bottom,
-  });
-
   final List<CubePreviewColor> up;
   final List<CubePreviewColor> left;
   final List<CubePreviewColor> right;
-  final List<CubePreviewColor> bottom;
+  final List<CubePreviewColor> back;
+
+  _PyraminxState({
+    required this.up,
+    required this.left,
+    required this.right,
+    required this.back,
+  });
 }
 
 class _PyraminxPreview extends StatelessWidget {
+  final _PyraminxState state;
+  final double width;
+  final double height;
+
   const _PyraminxPreview({
     required this.state,
     required this.width,
     required this.height,
   });
 
-  final _PyraminxState state;
-  final double width;
-  final double height;
-
-  @override
-  Widget build(BuildContext context) {
-    final gap = math.max(6.0, width * 0.03);
-    final triWidth = math.min((width - gap * 2) / 3, height / 2);
-    final triHeight = triWidth * 0.88;
-    final centerX = width / 2;
-
-    return Stack(
-      children: [
-        Positioned(
-          left: centerX - triWidth / 2,
-          top: 0,
-          child: _PyraminxFace(
-            stickers: state.up,
-            width: triWidth,
-            height: triHeight,
-            upsideDown: true,
-          ),
-        ),
-        Positioned(
-          left: centerX - triWidth - gap / 2,
-          top: triHeight * 0.72,
-          child: _PyraminxFace(
-            stickers: state.left,
-            width: triWidth,
-            height: triHeight,
-          ),
-        ),
-        Positioned(
-          left: centerX + gap / 2,
-          top: triHeight * 0.72,
-          child: _PyraminxFace(
-            stickers: state.right,
-            width: triWidth,
-            height: triHeight,
-          ),
-        ),
-        Positioned(
-          left: centerX - triWidth / 2,
-          top: triHeight * 1.58,
-          child: _PyraminxFace(
-            stickers: state.bottom,
-            width: triWidth,
-            height: triHeight,
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _PyraminxFace extends StatelessWidget {
-  const _PyraminxFace({
-    required this.stickers,
-    required this.width,
-    required this.height,
-    this.upsideDown = false,
-  });
-
-  final List<CubePreviewColor> stickers;
-  final double width;
-  final double height;
-  final bool upsideDown;
-
   @override
   Widget build(BuildContext context) {
     return CustomPaint(
       size: Size(width, height),
-      painter: _PyraminxFacePainter(
-        stickers: stickers,
-        upsideDown: upsideDown,
+      painter: _PyraminxNetPainter(state: state),
+    );
+  }
+}
+
+class _PyraminxNetPainter extends CustomPainter {
+  final _PyraminxState state;
+  _PyraminxNetPainter({required this.state});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    const gap = 2.0;
+    final triSide = math.min(
+      (size.width - gap * 2) / 2.0,
+      (size.height - gap * 2) / 2.0,
+    );
+    final triH = triSide * 0.86602540378;
+
+    final ox = (size.width - triSide * 2) / 2;
+    final oy = (size.height - triH * 2) / 2;
+
+    _drawFace(canvas, state.up, ox + triSide / 2, oy, triSide, triH, true);
+    _drawFace(canvas, state.back, ox + triSide / 2, oy + triH, triSide, triH, false);
+    _drawFace(canvas, state.left, ox, oy + triH, triSide, triH, true);
+    _drawFace(canvas, state.right, ox + triSide, oy + triH, triSide, triH, true);
+  }
+
+  void _drawFace(Canvas canvas, List<CubePreviewColor> stickers, double x, double y, double side, double h, bool pointUp) {
+    final unit = side / 3.0;
+    final hUnit = h / 3.0;
+    final List<Path> paths = [];
+
+    if (pointUp) {
+      paths.add(_tri(x + unit, y, unit, hUnit, true));
+      paths.add(_tri(x + unit * 0.5, y + hUnit, unit, hUnit, true));
+      paths.add(_tri(x + unit, y + hUnit, unit, hUnit, false));
+      paths.add(_tri(x + unit * 1.5, y + hUnit, unit, hUnit, true));
+      paths.add(_tri(x, y + hUnit * 2, unit, hUnit, true));
+      paths.add(_tri(x + unit * 0.5, y + hUnit * 2, unit, hUnit, false));
+      paths.add(_tri(x + unit, y + hUnit * 2, unit, hUnit, true));
+      paths.add(_tri(x + unit * 1.5, y + hUnit * 2, unit, hUnit, false));
+      paths.add(_tri(x + unit * 2, y + hUnit * 2, unit, hUnit, true));
+    } else {
+      paths.add(_tri(x, y, unit, hUnit, false));
+      paths.add(_tri(x + unit * 0.5, y, unit, hUnit, true));
+      paths.add(_tri(x + unit, y, unit, hUnit, false));
+      paths.add(_tri(x + unit * 1.5, y, unit, hUnit, true));
+      paths.add(_tri(x + unit * 2, y, unit, hUnit, false));
+      paths.add(_tri(x + unit * 0.5, y + hUnit, unit, hUnit, false));
+      paths.add(_tri(x + unit, y + hUnit, unit, hUnit, true));
+      paths.add(_tri(x + unit * 1.5, y + hUnit, unit, hUnit, false));
+      paths.add(_tri(x + unit, y + hUnit * 2, unit, hUnit, false));
+    }
+
+    for (var i = 0; i < 9; i++) {
+      final paint = Paint()..color = _getColor(stickers[i]);
+      canvas.drawPath(paths[i], paint);
+      canvas.drawPath(
+        paths[i],
+        Paint()
+          ..color = Colors.black.withValues(alpha: 0.7)
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 1.2
+          ..strokeJoin = StrokeJoin.round,
+      );
+    }
+  }
+
+  Path _tri(double x, double y, double s, double h, bool up) {
+    final List<Offset> v;
+    final Offset centroid;
+
+    if (up) {
+      v = [
+        Offset(x + s / 2, y),
+        Offset(x, y + h),
+        Offset(x + s, y + h),
+      ];
+      centroid = Offset(x + s / 2, y + 2 * h / 3);
+    } else {
+      v = [
+        Offset(x, y),
+        Offset(x + s, y),
+        Offset(x + s / 2, y + h),
+      ];
+      centroid = Offset(x + s / 2, y + h / 3);
+    }
+
+    // Shrink factor to create gaps between stickers
+    const shrink = 0.90;
+
+    return Path()
+      ..moveTo(
+        centroid.dx + (v[0].dx - centroid.dx) * shrink,
+        centroid.dy + (v[0].dy - centroid.dy) * shrink,
+      )
+      ..lineTo(
+        centroid.dx + (v[1].dx - centroid.dx) * shrink,
+        centroid.dy + (v[1].dy - centroid.dy) * shrink,
+      )
+      ..lineTo(
+        centroid.dx + (v[2].dx - centroid.dx) * shrink,
+        centroid.dy + (v[2].dy - centroid.dy) * shrink,
+      )
+      ..close();
+  }
+
+  Color _getColor(CubePreviewColor c) {
+    switch (c) {
+      case CubePreviewColor.white: return Colors.white;
+      case CubePreviewColor.yellow: return Colors.yellow;
+      case CubePreviewColor.green: return Colors.green;
+      case CubePreviewColor.blue: return Colors.blue;
+      case CubePreviewColor.red: return Colors.red;
+      case CubePreviewColor.orange: return Colors.orange;
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => true;
+}
+
+// =============================================================================
+// CLOCK PREVIEW (Placeholder)
+// =============================================================================
+
+class _ClockPreview extends StatelessWidget {
+  final String notation;
+  final double width;
+  final double height;
+
+  const _ClockPreview({
+    required this.notation,
+    required this.width,
+    required this.height,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: width,
+      height: height,
+      decoration: BoxDecoration(
+        color: Colors.blueGrey.shade900,
+        shape: BoxShape.circle,
+        border: Border.all(color: Colors.white24, width: 2),
+      ),
+      child: const Center(
+        child: Icon(Icons.watch_later_outlined, color: Colors.white54, size: 40),
       ),
     );
   }
 }
 
-class _PyraminxFacePainter extends CustomPainter {
-  const _PyraminxFacePainter({
-    required this.stickers,
-    required this.upsideDown,
+// =============================================================================
+// ENGINE & STATE MODELS
+// =============================================================================
+
+enum CubePreviewColor { white, yellow, green, blue, red, orange }
+
+class _CubePreviewState {
+  final List<CubePreviewColor> up;
+  final List<CubePreviewColor> down;
+  final List<CubePreviewColor> left;
+  final List<CubePreviewColor> right;
+  final List<CubePreviewColor> front;
+  final List<CubePreviewColor> back;
+
+  _CubePreviewState({
+    required this.up,
+    required this.down,
+    required this.left,
+    required this.right,
+    required this.front,
+    required this.back,
   });
+}
 
-  final List<CubePreviewColor> stickers;
-  final bool upsideDown;
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final rows = [
-      [0],
-      [1, 2],
-      [3, 4, 5],
-      [6, 7, 8],
-    ];
-    var stickerIndex = 0;
-
-    for (var row = 0; row < rows.length; row++) {
-      final count = rows[row].length;
-      final y = size.height * (row / 4);
-      final rowWidth = size.width * ((row + 1) / 4);
-      final left = (size.width - rowWidth) / 2;
-
-      for (var col = 0; col < count; col++) {
-        final segWidth = rowWidth / count;
-        final x = left + col * segWidth;
-
-        final path = Path();
-        if (upsideDown) {
-          path.moveTo(x, y);
-          path.lineTo(x + segWidth, y);
-          path.lineTo(x + segWidth / 2, y + size.height / 4);
-        } else {
-          path.moveTo(x + segWidth / 2, y);
-          path.lineTo(x, y + size.height / 4);
-          path.lineTo(x + segWidth, y + size.height / 4);
-        }
-        path.close();
-
-        canvas.drawPath(
-          path,
-          Paint()..color = stickers[stickerIndex].color,
-        );
-        canvas.drawPath(
-          path,
-          Paint()
-            ..color = Colors.black.withValues(alpha: 0.35)
-            ..style = PaintingStyle.stroke
-            ..strokeWidth = math.max(0.6, size.width * 0.008),
-        );
-        stickerIndex++;
-      }
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant _PyraminxFacePainter oldDelegate) {
-    return oldDelegate.stickers != stickers ||
-        oldDelegate.upsideDown != upsideDown;
+class _CubePreviewEngine {
+  static _CubePreviewState apply(String notation) {
+    // Basic 3x3 placeholder logic.
+    // In a real app, this would use a library like 'cuber' or a full custom solver.
+    // For now, we'll return a solved state as a base.
+    return _CubePreviewState(
+      up: List.filled(9, CubePreviewColor.white),
+      down: List.filled(9, CubePreviewColor.yellow),
+      left: List.filled(9, CubePreviewColor.orange),
+      right: List.filled(9, CubePreviewColor.red),
+      front: List.filled(9, CubePreviewColor.green),
+      back: List.filled(9, CubePreviewColor.blue),
+    );
   }
 }

@@ -154,11 +154,21 @@ void main() {
     });
 
     test('inspection start enters inspection mode', () async {
-      final bloc = TimerBloc(inspectionDurationMs: 40);
+      final bloc = TimerBloc(
+        yellowThresholdMs: 10,
+        greenThresholdMs: 20,
+        inspectionDurationMs: 40,
+      );
 
       bloc.add(const TimerToggleInspection());
       await Future<void>.delayed(Duration.zero);
+      
+      // Must hold until armed then release to start inspection
       bloc.add(const TimerStartHold());
+      await Future<void>.delayed(const Duration(milliseconds: 30));
+      expect(bloc.state.status, TimerStatus.armed);
+      
+      bloc.add(const TimerStopHold());
       await Future<void>.delayed(const Duration(milliseconds: 5));
 
       expect(bloc.state.status, TimerStatus.inspection);
@@ -170,6 +180,8 @@ void main() {
     test('inspection over configured threshold applies plus two penalty',
         () async {
       final bloc = TimerBloc(
+        yellowThresholdMs: 10,
+        greenThresholdMs: 20,
         inspectionDurationMs: 80,
         inspectionPlusTwoThresholdMs: 80,
         inspectionDnfThresholdMs: 200,
@@ -177,20 +189,31 @@ void main() {
 
       bloc.add(const TimerToggleInspection());
       await Future<void>.delayed(Duration.zero);
+      
+      // Start inspection
       bloc.add(const TimerStartHold());
-      await Future<void>.delayed(const Duration(milliseconds: 100));
-
+      await Future<void>.delayed(const Duration(milliseconds: 30));
       bloc.add(const TimerStopHold());
       await Future<void>.delayed(const Duration(milliseconds: 5));
-      expect(bloc.state.status, TimerStatus.armed);
+      expect(bloc.state.status, TimerStatus.inspection);
+      
+      // Wait for inspection to exceed threshold
+      await Future<void>.delayed(const Duration(milliseconds: 100));
 
+      // Armed with penalty
+      bloc.add(const TimerStartHold());
+      await Future<void>.delayed(const Duration(milliseconds: 30));
       bloc.add(const TimerStopHold());
+      await Future<void>.delayed(const Duration(milliseconds: 5));
+      expect(bloc.state.status, TimerStatus.running);
+
       await Future<void>.delayed(const Duration(milliseconds: 15));
-      bloc.add(const TimerStop());
+      bloc.add(const TimerStop(elapsedMsOverride: 50));
       await Future<void>.delayed(const Duration(milliseconds: 5));
 
       expect(bloc.state.status, TimerStatus.stopped);
-      expect(bloc.state.elapsedMs, inInclusiveRange(2005, 2070));
+      // 50ms + 2000ms penalty
+      expect(bloc.state.elapsedMs, 2050);
 
       await bloc.close();
     });
@@ -260,6 +283,8 @@ void main() {
 
     test('inspection over configured dnf threshold produces dnf', () async {
       final bloc = TimerBloc(
+        yellowThresholdMs: 10,
+        greenThresholdMs: 20,
         inspectionDurationMs: 80,
         inspectionPlusTwoThresholdMs: 80,
         inspectionDnfThresholdMs: 140,
@@ -267,14 +292,25 @@ void main() {
 
       bloc.add(const TimerToggleInspection());
       await Future<void>.delayed(Duration.zero);
+      
+      // Start inspection
       bloc.add(const TimerStartHold());
-      await Future<void>.delayed(const Duration(milliseconds: 160));
-
+      await Future<void>.delayed(const Duration(milliseconds: 30));
       bloc.add(const TimerStopHold());
       await Future<void>.delayed(const Duration(milliseconds: 5));
+      expect(bloc.state.status, TimerStatus.inspection);
+      
+      // Wait for inspection to exceed DNF threshold
+      await Future<void>.delayed(const Duration(milliseconds: 160));
+
+      // Try to start solve
+      bloc.add(const TimerStartHold());
+      await Future<void>.delayed(const Duration(milliseconds: 30));
       bloc.add(const TimerStopHold());
-      await Future<void>.delayed(const Duration(milliseconds: 10));
-      bloc.add(const TimerStop());
+      await Future<void>.delayed(const Duration(milliseconds: 5));
+      expect(bloc.state.status, TimerStatus.running);
+      
+      bloc.add(const TimerStop(elapsedMsOverride: 50));
       await Future<void>.delayed(const Duration(milliseconds: 5));
 
       expect(bloc.state.status, TimerStatus.stopped);

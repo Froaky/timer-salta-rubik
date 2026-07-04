@@ -573,7 +573,7 @@ class GenerateScramble implements UseCaseSync<Scramble, String> {
     String? secondLastFace;
 
     // Generar entre 8-12 movimientos principales para asegurar complejidad
-    final mainMoves = 8 + random.nextInt(5);
+    const mainMoves = 11;
 
     for (int i = 0; i < mainMoves; i++) {
       String face;

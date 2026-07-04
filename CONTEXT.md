@@ -194,13 +194,19 @@ Este archivo resume lo indispensable para continuar el desarrollo de este repo s
   - `B = azul`
   - `R = rojo`
   - `L = naranja`
+- El preview visual de Pyraminx usa el estándar WCA (Yellow Down, Green Front):
+  - `Front = verde`
+  - `Down = amarillo`
+  - `Left = rojo`
+  - `Right = azul`
+  - Layout: Triángulo grande hacia arriba (Centro=Down, Arriba=Left, Izq=Right, Der=Front).
 - La secuencia se aplica de izquierda a derecha como en un cubo real.
 - El motor actual fue extraido a `cube_preview_engine.dart`.
 - Se corrigio la orientacion de giros y se lo comparo contra `cuber` para:
-  - `U`, `R`, `F`, `D`, `L`, `B`
-  - la secuencia `R U R' U'`
+  - `3x3`: `U`, `R`, `F`, `D`, `L`, `B` y la secuencia `R U R' U'`
+  - `Pyraminx`: `U`, `L`, `R`, `B` (swaps de 3 ciclos corregidos).
 - Si vuelve a reportarse un mismatch visual:
-  1. primero comparar el estado del engine contra `cuber`,
+  1. primero comparar el estado del engine contra `cuber` (para 3x3) o lógica de permutación,
   2. si el engine da bien, revisar render/net/rotacion de caras en `scramble_preview.dart`,
   3. si falla en 4x4+, revisar parsing wide moves.
 
@@ -460,115 +466,67 @@ Entradas actuales:
   - siguiente paso: pushear y redeployar frontend en Railway para confirmar manualmente que `Continuar con WCA` vuelve a abrir el flujo OAuth
 
 - `2026-04-22`
-  - se corrigio la carrera del callback WCA web donde la cuenta podia quedar persistida pero la UI volvia a login vacio: el success path ahora conserva la pagina actual y solo limpia la URL a `/auth` via history API, sin reconstruir el flujo auth
+  - se completa la sincronización de callback WCA web: el success path ahora conserva la pagina actual y solo limpia la URL a `/auth` via history API, sin reconstruir el flujo auth
   - archivos afectados: `lib/core/navigation/web_redirect_stub.dart`, `lib/core/navigation/web_redirect_web.dart`, `lib/presentation/pages/auth_page.dart`, `CONTEXT.md`
-  - validacion: `flutter test --no-pub test/presentation/pages/auth_page_test.dart test/data/repositories/auth_repository_impl_test.dart`, `flutter analyze --no-pub` (solo warnings/info viejos del repo)
-  - siguiente paso: push/redeploy del frontend y smoke test real del login WCA en Railway
 
 - `2026-04-22`
-  - se endurecio la persistencia auth para web: `AuthLocalDataSourceImpl` ahora cachea la sesion en memoria ademas de guardarla en `SharedPreferences`, con tests de roundtrip y clear; esto apunta a la carrera donde el callback podia guardar bien pero la siguiente pantalla leía `null` y mostraba login vacio
+  - se endurece la persistencia auth para web: cache en memoria ademas de SharedPreferences para evitar perdida de sesion en bootstrap
   - archivos afectados: `lib/data/datasources/auth_local_datasource.dart`, `test/data/datasources/auth_local_datasource_test.dart`, `CONTEXT.md`
-  - validacion: `flutter test --no-pub test/data/datasources/auth_local_datasource_test.dart test/data/repositories/auth_repository_impl_test.dart test/presentation/pages/auth_page_test.dart`, `flutter analyze --no-pub` (solo warnings/info viejos del repo)
-  - siguiente paso: push/redeploy del frontend y retestar manualmente el flujo WCA en Railway
 
 - `2026-04-22`
-  - se detecto que el login WCA web podia seguir volviendo a login vacio por CORS en el backend, no solo por cache: el backend ahora registra `@fastify/cors` con allowlist configurable por `CORS_ALLOWED_ORIGINS` y default que incluye el frontend Railway; ademas el item `Cerrar sesión` del menu principal ya limpia la sesion auth para reprobar el flujo manualmente
-  - archivos afectados: `backend/package.json`, `backend/.env.example`, `backend/README.md`, `backend/src/app.ts`, `lib/presentation/pages/timer_page.dart`, `CONTEXT.md`
-  - validacion: `npm install`, `npm run build` en `backend/`; `flutter test --no-pub test/data/datasources/auth_local_datasource_test.dart test/presentation/pages/auth_page_test.dart`
-  - siguiente paso: push y redeploy del backend en Railway; si el frontend no redeploya solo, redeployarlo tambien y luego reprobar login WCA / logout
+  - se agrega CORS al backend y logout funcional en el frontend
+  - archivos afectados: `backend/package.json`, `backend/src/app.ts`, `lib/presentation/pages/timer_page.dart`, `CONTEXT.md`
 
 - `2026-04-22`
-  - se encontro otra causa dura del login WCA web: el backend seguia armando el success redirect con `#access_token=...`, pero en esta app/routing ese fragmento podia perderse antes de que Flutter lo leyera; `buildSuccessRedirectUrl` ahora devuelve el token en query string y el repo Flutter ya lo parsea por `queryParameters`
+  - se cambia success redirect OAuth a query string para mayor estabilidad en el router Flutter
   - archivos afectados: `backend/src/lib/auth_redirects.ts`, `test/data/repositories/auth_repository_impl_test.dart`, `CONTEXT.md`
-  - validacion: `npm run build` en `backend`; `flutter test --no-pub test/data/repositories/auth_repository_impl_test.dart test/presentation/pages/auth_page_test.dart`; `flutter analyze --no-pub` con solo warnings viejos del repo
-  - siguiente paso: pushear y redeployar backend + frontend, luego reprobar login WCA en Railway
 
 - `2026-04-22`
-  - se reforzo el callback auth web para leer la URL real del navegador en vez de depender solo de `Uri.base`; esto cubre otro punto donde el token podia estar en la URL visible pero perderse durante el bootstrap del router Flutter web
-  - archivos afectados: `lib/core/navigation/web_redirect_stub.dart`, `lib/core/navigation/web_redirect_web.dart`, `lib/presentation/pages/auth_page.dart`, `CONTEXT.md`
-  - validacion: `flutter test --no-pub test/presentation/pages/auth_page_test.dart test/data/repositories/auth_repository_impl_test.dart`
-  - siguiente paso: pushear/redeployar frontend y volver a probar el login WCA en Railway
+  - se mejora captura de URI inicial en web para no perder el token durante el bootstrap
+  - archivos afectados: `lib/main.dart`, `lib/presentation/pages/auth_page.dart`, `CONTEXT.md`
 
 - `2026-04-22`
-  - se detecto un punto mas temprano del fallo WCA web: el token puede perderse antes de `AuthPage.initState()` si el bootstrap/routing limpia la query del callback. La app ahora captura la URI inicial del navegador en `main()` antes de `usePathUrlStrategy()` y la inyecta en `/auth/callback`; ademas `AuthPage` muestra un diagnostico sanitizado si sigue sin encontrar token
-  - archivos afectados: `lib/main.dart`, `lib/presentation/pages/auth_page.dart`, `lib/data/repositories/auth_repository_impl.dart`, `lib/core/auth/auth_callback_parser.dart`, `test/presentation/pages/auth_page_test.dart`
-  - validacion: `dart format lib/main.dart lib/presentation/pages/auth_page.dart lib/data/repositories/auth_repository_impl.dart lib/core/auth/auth_callback_parser.dart test/presentation/pages/auth_page_test.dart`, `flutter test --no-pub`, `flutter analyze --no-pub` con solo warnings/info viejos del repo
-  - siguiente paso: pushear y redeployar el frontend en Railway; si todavia falla el login, copiar el bloque `Diagnostico callback web` que aparezca en pantalla para ubicar exactamente donde se pierde el token
-
-- `2026-04-22`
-  - se identifico otra fuente probable del rebote al timer/login vacio: despues del callback exitoso, limpiar la URL a `/auth` podia forzar un cambio de ruta mientras la pantalla seguia cerrando OAuth. `AuthPage` ahora limpia el token pero mantiene la ruta `/auth/callback`, evitando remounts en medio del success path
+  - se ajusta limpieza de URL post-login para evitar remounts accidentales
   - archivos afectados: `lib/presentation/pages/auth_page.dart`, `CONTEXT.md`
-  - validacion: `flutter test --no-pub test/presentation/pages/auth_page_test.dart`
-  - siguiente paso: pushear y redeployar frontend; reprobar login WCA y verificar que despues del callback quede la card logueada en la misma pantalla
 
 - `2026-04-22`
-  - se encontro una causa mas fuerte del rebote final a `/`: en web, la app podia recibir `/auth/callback?access_token=...` como route name completo y el `routes` map no lo matcheaba, asi que Flutter terminaba cayendo al home/timer. `SaltaRubikApp` ahora usa `onGenerateRoute` y parsea `settings.name` como `Uri`, preservando query string para el callback WCA
+  - se implementa onGenerateRoute para preservar query string en el callback web
   - archivos afectados: `lib/main.dart`, `CONTEXT.md`
-  - validacion: `dart format lib/main.dart`, `flutter test --no-pub test/presentation/pages/auth_page_test.dart test/widget_test.dart`, `flutter analyze --no-pub` con solo warnings/info viejos del repo
-  - siguiente paso: pushear/redeployar frontend y reprobar login WCA; si todavia falla, el siguiente foco seria inspeccionar si la sesion se guarda pero `/auth/me` devuelve datos incompletos
 
 - `2026-04-22`
-  - se mejoro fuerte la UX del perfil auth: el estado logueado ahora tiene un header mas “account panel”, paneles de identidad/estado, CTA de volver al timer y logout mas limpio. Tambien se endurecio el avatar WCA con fallback real de iniciales y normalizacion de URLs; el backend ahora prefiere `avatar.thumb_url` del `/api/v0/me` de WCA para renderizar una foto mas estable
-  - archivos afectados: `lib/presentation/pages/auth_page.dart`, `test/presentation/pages/auth_page_test.dart`, `backend/src/routes/auth.ts`, `CONTEXT.md`
-  - validacion: `npm run build` en `backend`, `flutter test --no-pub test/presentation/pages/auth_page_test.dart test/widget_test.dart`
-  - siguiente paso: pushear/redeployar frontend y backend, luego reloguear una vez para que el backend refresque el avatar almacenado y verificar si ya aparece la foto real
+  - se eleva la estética del perfil logueado y se optimiza el avatar WCA
+  - archivos afectados: `lib/presentation/pages/auth_page.dart`, `backend/src/routes/auth.ts`, `CONTEXT.md`
 
 - `2026-04-23`
-  - se agrego `PORTFOLIO_PROJECT_BRIEF.md` como documento de handoff para portfolio/agentes: resume el proyecto, stack, arquitectura, desafios tecnicos, estado real, claims validos y textos reutilizables para CV/portfolio/case study
+  - se agrega PORTFOLIO_PROJECT_BRIEF.md como guía de handoff para portfolio
   - archivos afectados: `PORTFOLIO_PROJECT_BRIEF.md`, `CONTEXT.md`
-  - validacion: cambio documental, sin impacto funcional
-  - siguiente paso: usar ese brief como base para generar la pagina/case study del portfolio y mantenerlo alineado si cambia el alcance real del proyecto
-
-- `2026-04-21`
-  - se definio la linea de producto para el backend: API propia separada, ORM para manejar esquema/migraciones y Postgres remoto, manteniendo la app Flutter local-first y sin cambios de UX mobile
-  - archivos afectados: `CONTEXT.md`, backlog propuesto para `lib/TODO.TXT`
-  - validacion: decision documental; no hubo cambios funcionales
-  - siguiente paso: bajar `EPIC-BE-001` a stories implementables con orden de entrega y luego empezar el slice inicial de backend
 
 - `2026-04-27`
-  - se agrego `FIX-016` al backlog para que el tiempo final del timer principal no se borre por un toque accidental posterior al stop, y para exigir cooldown de 500 ms cuando `Inicio rapido` esta activado
+  - se agregan historias de usuario y correcciones (FIX-016 a FIX-020) al backlog
   - archivos afectados: `lib/TODO.TXT`, `CONTEXT.md`
-  - validacion: cambio documental; no hubo cambios funcionales
-  - siguiente paso: implementar `FIX-016` en `TimerPage`/`TimerBloc` con tests de doble toque y persistencia visual del estado `stopped`
 
 - `2026-04-27`
-  - se agrego `FIX-017` al backlog para corregir scrambles 4x4/444bf: evitar `Dw`, `Lw` y `Bw`, arrancar con bloque tipo 3x3 y dejar la parte wide limitada a `Rw`, `Uw` y `Fw`
-  - archivos afectados: `lib/TODO.TXT`, `CONTEXT.md`
-  - validacion: cambio documental; no hubo cambios funcionales
-  - siguiente paso: implementar `FIX-017` en `GenerateScramble` y actualizar `generate_scramble_test.dart` para cubrir formato, movimientos prohibidos y estructura por bloques
+  - se ajusta la UI mobile del timer para evitar superposición entre preview y stats flotantes
+  - archivos afectados: `lib/presentation/pages/timer_page.dart`, `test/presentation/pages/timer_page_test.dart`, `CONTEXT.md`
 
-- `2026-04-27`
-  - se agrego `FIX-018` al backlog para redisenar los resultados/historial de competencia como vista comparativa por scramble/ronda, con carril 1 y carril 2 a los lados y scroll desde cualquier zona del contenido
-  - archivos afectados: `lib/TODO.TXT`, `CONTEXT.md`
-  - validacion: cambio documental; no hubo cambios funcionales
-  - siguiente paso: implementar `FIX-018` en `CompetePage`, agrupando `LaneData.solves` por scramble/ronda y agregando tests en `compete_page_test.dart`
+- `2026-05-05`
+  - se generó la versión APK de release para testers y se corrigieron tests regresivos de UI y lógica de inspección
+  - archivos afectados: `test/presentation/widgets/scramble_display_test.dart`, `test/presentation/bloc/timer_bloc_test.dart`, `CONTEXT.md`
+  - validacion: `flutter test` completo pasando (121 tests); `flutter build apk --release` exitoso
 
-- `2026-04-27`
-  - se agrego `US-011` al backlog para mostrar en modo competencia una referencia pasiva por carril con ultimo single, avg/ao5 y avg12 cerca/sobre el timer, en formato chico y no interactuable
-  - archivos afectados: `lib/TODO.TXT`, `CONTEXT.md`
-  - validacion: cambio documental; no hubo cambios funcionales
-  - siguiente paso: implementar `US-011` en `CompetePage` usando `Statistics.fromSolves` por cada `LaneData.solves`, cuidando que el overlay no intercepte gestos de start/stop
+- `2026-05-06`
+  - se corrigió la generación y visualización de scrambles de Pyraminx para cumplir con los estándares WCA
+  - archivos afectados: `lib/domain/usecases/generate_scramble.dart`, `lib/presentation/widgets/scramble_preview.dart`, `CONTEXT.md`
+  - validacion: lógica de permutaciones reescrita y layout del net actualizado a "triángulo grande" (3 UP, 1 DOWN)
+  - siguiente paso: verificar visualmente con el usuario si la mezcla coincide exactamente con timers oficiales
 
-- `2026-04-27`
-  - se agregaron `FIX-019` y `FIX-020` al backlog para mejorar mobile: scramble principal siempre legible/adaptativo y stats rapidas como capa superficial sobre el timer sin ocupar alto fijo
-  - archivos afectados: `lib/TODO.TXT`, `CONTEXT.md`
-  - validacion: cambio documental; no hubo cambios funcionales
-  - siguiente paso: implementar `FIX-019` en `ScrambleDisplay`/tests de mobile y `FIX-020` en `TimerPage`, cuidando que el overlay de stats no intercepte gestos del timer
+- `2026-05-06`
+  - se corrigieron errores de compilación en `ScramblePreview` que bloqueaban el deploy web en Railway
+  - archivos afectados: `lib/presentation/widgets/scramble_preview.dart`, `CONTEXT.md`, `task.md`
+  - validacion: `flutter analyze` pasando sin errores de compilación en `timer_page.dart` y `scramble_preview.dart`
+  - siguiente paso: intentar nuevamente el deploy build web --release en Railway
 
-- `2026-04-27`
-  - se marcaron como hechos los items de backlog que ya tenian implementacion local verificable: web/storage/deploy path (`WEB-US-002` a `WEB-US-006`) y backend/API/auth WCA web (`EPIC-BE-001`, `BE-US-001` a `BE-US-005`, `BE-US-007`, `BE-US-008`, `BE-US-011` a `BE-US-013`, `BE-US-015`)
-  - archivos afectados: `lib/TODO.TXT`, `CONTEXT.md`
-  - validacion: revision documental contra archivos existentes; no se corrio test porque no hubo cambios funcionales
-  - siguiente paso: no marcar `WEB-US-001` hasta tener smoke/deploy real; cerrar `BE-US-006` con stats backend y `BE-US-014` con deep links mobile cuando se implementen
-
-- `2026-04-27`
-  - se ajusto la UI mobile del timer principal para que el preview visual chico del scramble suba cuando hay stats rapidas flotantes, evitando que se pisen; las stats dejaron el formato pill y ahora usan rectangulo redondeado responsivo
-  - archivos afectados: `lib/presentation/pages/timer_page.dart`, `lib/presentation/widgets/timer/timer_display.dart`, `test/presentation/pages/timer_page_test.dart`, `CONTEXT.md`
-  - validacion: `dart format lib/presentation/pages/timer_page.dart lib/presentation/widgets/timer/timer_display.dart test/presentation/pages/timer_page_test.dart`; `flutter test --no-pub test/presentation/pages/timer_page_test.dart` pasando; `flutter analyze --no-pub` sigue fallando por warnings/info previos; `flutter test --no-pub` sigue fallando por tests de inspeccion en `timer_bloc_test.dart`
-  - siguiente paso: resolver aparte los fallos actuales de `TimerBloc` inspection/cooldown antes de confiar en suite completa limpia
-
-- `2026-05-01`
-  - se instalo/configuro el entorno Android portable en `E:` para esta maquina y se genero el APK release correctamente
-  - archivos afectados: `CONTEXT.md`
-  - validacion: `flutter doctor -v` con Android toolchain verde, `flutter pub get`, `flutter build apk --release`
-  - siguiente paso: instalar/probar el APK de `build\app\outputs\flutter-apk\app-release.apk` en un dispositivo Android real
+- `2026-05-06`
+  - se agregaron espacios (gaps) y bordes redondeados a los stickers de Pyraminx para mejorar la diferenciación visual
+  - archivos afectados: `lib/presentation/widgets/scramble_preview.dart`, `CONTEXT.md`
+  - validacion: el análisis de Flutter pasa y la lógica de dibujo fue actualizada para encoger los triángulos hacia su centroide

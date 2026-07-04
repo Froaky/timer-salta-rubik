@@ -76,6 +76,7 @@ CRITERIOS:
 - El card no debe empujar al timer hasta hacerlo inutilizable en pantallas bajas; si no entra todo, debe priorizar legibilidad con scroll interno antes que overflow.
 - Agregar cobertura en `test/presentation/widgets/scramble_display_test.dart` o `timer_page_test.dart` para 2x2 en viewport chico y 7x7/NxN largo en mobile.
 -| FIX-020 ✅ | Como speedcuber en mobile, quiero que las estadisticas visibles en la pantalla del timer sean superficiales/flotantes sobre el area del timer, para tener referencia sin que ocupen demasiado espacio vertical. [done]
+-| FIX-021 ✅ | Como speedcuber de Pyraminx, quiero que la generación de scrambles y la visualización 2D sigan los estándares WCA (Yellow Down, Green Front) y coincidan exactamente con la imagen de la mezcla, para practicar con referencias visuales confiables. [done]
 CRITERIOS:
 - En mobile, las stats rapidas (`PB`, `mo3`, `ao5`, `ao12` cuando existan) dejan de ocupar una fila fija debajo del timer.
 - Las stats se muestran como informacion compacta y sutil sobre/superpuesta al area del timer, sin robar espacio principal al timer ni al scramble.
