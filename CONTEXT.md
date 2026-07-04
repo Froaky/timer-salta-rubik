@@ -284,7 +284,16 @@ Notas:
 - Si se trabaja en web, preservar las mismas semanticas de timer, sesiones, penalties, scramble y stats entre plataformas.
 - En este entorno Windows, `dart pub get` funciona mejor que `flutter pub get` si Developer Mode no esta habilitado; `flutter pub get` puede frenarse por symlinks de plugins.
 
-## 12. Siguiente arranque recomendado
+## 12. Notas de entorno local
+
+- En esta maquina (`2026-05-01`) el build Android quedo configurado sin Android Studio, usando herramientas portables en `E:`.
+- Android SDK: `E:\Android\Sdk`.
+- JDK 17: `E:\Java\jdk-17`.
+- Flutter quedo configurado con `flutter config --android-sdk E:\Android\Sdk` y `flutter config --jdk-dir E:\Java\jdk-17`.
+- `flutter doctor -v` ya marca verde `Android toolchain - develop for Android devices (Android SDK version 35.0.0)`.
+- El APK release se genero correctamente en `build\app\outputs\flutter-apk\app-release.apk`.
+
+## 13. Siguiente arranque recomendado
 
 Si retomaras sin contexto adicional, arrancar asi:
 
@@ -293,7 +302,7 @@ Si retomaras sin contexto adicional, arrancar asi:
 3. si eso queda bien, marcar `WEB-US-001` como hecho; `WEB-US-003` y `WEB-US-004` ya estan cerrados por implementacion local.
 4. despues seguir con filtro/orden del historial, insercion manual de tiempos, `BE-US-006` stats backend o `BE-US-014` deep links mobile.
 
-## 13. Context Journal
+## 14. Context Journal
 
 Usar este bloque para dejar handoff corto y acumulativo. Formato sugerido:
 
@@ -557,3 +566,9 @@ Entradas actuales:
   - archivos afectados: `lib/presentation/pages/timer_page.dart`, `lib/presentation/widgets/timer/timer_display.dart`, `test/presentation/pages/timer_page_test.dart`, `CONTEXT.md`
   - validacion: `dart format lib/presentation/pages/timer_page.dart lib/presentation/widgets/timer/timer_display.dart test/presentation/pages/timer_page_test.dart`; `flutter test --no-pub test/presentation/pages/timer_page_test.dart` pasando; `flutter analyze --no-pub` sigue fallando por warnings/info previos; `flutter test --no-pub` sigue fallando por tests de inspeccion en `timer_bloc_test.dart`
   - siguiente paso: resolver aparte los fallos actuales de `TimerBloc` inspection/cooldown antes de confiar en suite completa limpia
+
+- `2026-05-01`
+  - se instalo/configuro el entorno Android portable en `E:` para esta maquina y se genero el APK release correctamente
+  - archivos afectados: `CONTEXT.md`
+  - validacion: `flutter doctor -v` con Android toolchain verde, `flutter pub get`, `flutter build apk --release`
+  - siguiente paso: instalar/probar el APK de `build\app\outputs\flutter-apk\app-release.apk` en un dispositivo Android real
