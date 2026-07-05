@@ -14,13 +14,49 @@ void main() {
       expect(scramble.notation, isNotEmpty);
     });
 
-    test('generates constrained 2x2 scrambles', () {
-      final scramble = usecase('2x2');
+    test('generates random-state 2x2 scrambles (RUF, optimal <= 11)', () {
       final movePattern = RegExp(r"^(R|U|F)(2|'|)?$");
+      var maxLen = 0;
 
-      expect(scramble.cubeType, '2x2');
-      expect(scramble.moves.length, inInclusiveRange(9, 10));
-      expect(scramble.moves.every(movePattern.hasMatch), isTrue);
+      for (var i = 0; i < 25; i++) {
+        final scramble = usecase('2x2');
+
+        expect(scramble.cubeType, '2x2');
+        expect(scramble.moves, isNotEmpty);
+        // El número de Dios del 2x2 es 11 (HTM): una solución óptima nunca lo
+        // supera, así que el scramble (su inversa) tampoco.
+        expect(scramble.moves.length, lessThanOrEqualTo(11));
+        expect(scramble.moves.every(movePattern.hasMatch), isTrue,
+            reason: scramble.notation);
+
+        // Al derivarse de un camino más corto, jamás hay dos giros seguidos en
+        // la misma cara (se habrían cancelado).
+        for (var m = 1; m < scramble.moves.length; m++) {
+          expect(scramble.moves[m - 1][0] == scramble.moves[m][0], isFalse,
+              reason: 'caras consecutivas iguales en ${scramble.notation}');
+        }
+
+        if (scramble.moves.length > maxLen) maxLen = scramble.moves.length;
+      }
+
+      // Un generador random-state necesita muchos movimientos con frecuencia;
+      // el heurístico anterior jamás podría garantizar esta distribución.
+      expect(maxLen, greaterThanOrEqualTo(6));
+    });
+
+    test('generates random-state 3x3 scrambles (HTM notation)', () {
+      final movePattern = RegExp(r"^[UDLRFB](2|')?$");
+
+      for (var i = 0; i < 15; i++) {
+        final scramble = usecase('3x3');
+
+        expect(scramble.cubeType, '3x3');
+        expect(scramble.moves, isNotEmpty);
+        expect(scramble.moves.every(movePattern.hasMatch), isTrue,
+            reason: scramble.notation);
+        // Un estado uniforme resuelto por dos fases queda en un rango sensato.
+        expect(scramble.moves.length, inInclusiveRange(16, 30));
+      }
     });
 
     test('generates official style 4x4 scrambles', () {
@@ -74,6 +110,42 @@ void main() {
       expect(scramble.cubeType, '6x6');
       expect(scramble.moves.length, 80);
       expect(scramble.moves.every(movePattern.hasMatch), isTrue);
+    });
+
+    test('generates random-state pyraminx scrambles (layer <= 11 + tips)', () {
+      final layerPattern = RegExp(r"^[ULRB]'?$");
+      final tipPattern = RegExp(r"^[ulrb]'?$");
+
+      for (var i = 0; i < 20; i++) {
+        final scramble = usecase('pyraminx');
+
+        expect(scramble.cubeType, 'pyraminx');
+        expect(scramble.moves, isNotEmpty);
+        expect(
+          scramble.moves
+              .every((m) => layerPattern.hasMatch(m) || tipPattern.hasMatch(m)),
+          isTrue,
+          reason: scramble.notation,
+        );
+
+        final tipCount = scramble.moves.where(tipPattern.hasMatch).length;
+        expect(tipCount, lessThanOrEqualTo(4));
+        expect(scramble.moves.length - tipCount, lessThanOrEqualTo(11));
+      }
+    });
+
+    test('generates random-state skewb scrambles (R/U/L/B, optimal <= 11)', () {
+      final movePattern = RegExp(r"^[RULB]'?$");
+
+      for (var i = 0; i < 20; i++) {
+        final scramble = usecase('skewb');
+
+        expect(scramble.cubeType, 'skewb');
+        expect(scramble.moves, isNotEmpty);
+        expect(scramble.moves.length, lessThanOrEqualTo(11));
+        expect(scramble.moves.every(movePattern.hasMatch), isTrue,
+            reason: scramble.notation);
+      }
     });
 
     test('generates megaminx scrambles in seven-line format', () {

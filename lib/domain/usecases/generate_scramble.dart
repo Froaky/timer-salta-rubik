@@ -5,6 +5,10 @@ import 'package:cuber/cuber.dart' as cuber;
 import '../../core/usecases/usecase.dart';
 import '../entities/scramble.dart';
 import '../puzzles/square1_simulator.dart';
+import '../scramble/pyraminx_scrambler.dart';
+import '../scramble/random_cube_state.dart';
+import '../scramble/skewb_scrambler.dart';
+import '../scramble/two_by_two_scrambler.dart';
 
 /// Generador de scrambles usando el paquete cuber que implementa
 /// el algoritmo de Kociemba y sigue estándares WCA más robustos
@@ -48,170 +52,51 @@ class GenerateScramble implements UseCaseSync<Scramble, String> {
     }
   }
 
-  /// Genera scramble para 3x3 usando algoritmo de Kociemba (WCA standard)
-  /// Proceso: 1) Generar estado aleatorio, 2) Resolver con Kociemba, 3) Invertir solución
+  /// Genera scramble para 3x3 con calidad *random-state* equivalente a TNoodle.
+  ///
+  /// Proceso: 1) sortear un estado del cubo uniformemente aleatorio y válido
+  /// (ver [randomThreeByThreeState]), 2) resolverlo con Kociemba, 3) invertir la
+  /// solución. Reintenta con estados nuevos si el solver no converge; sólo cae
+  /// al scramble de respaldo (movimientos al azar) en el caso extremo.
   Scramble _generate3x3Scramble() {
+    final random = Random();
     try {
-      // Generar un cubo con estado aleatorio usando cuber
-      final randomCube = cuber.Cube.scrambled();
+      for (var attempt = 0; attempt < 3; attempt++) {
+        final randomCube = randomThreeByThreeState(random);
+        final solution = randomCube.solve(
+            maxDepth: 25, timeout: const Duration(seconds: 10));
 
-      // Resolver el cubo usando algoritmo de Kociemba
-      final solution =
-          randomCube.solve(maxDepth: 25, timeout: Duration(seconds: 5));
-
-      if (solution != null && solution.algorithm.moves.isNotEmpty) {
-        // Invertir la solución para obtener el scramble
-        final scrambleMoves = _invertMoves(solution.algorithm.moves);
-
-        // Si el scramble tiene menos de 20 movimientos, usar fallback aleatorio
-        if (scrambleMoves.length < 20) {
-          return _generateFallbackScramble('3x3');
+        if (solution != null && solution.algorithm.moves.isNotEmpty) {
+          // Invertir la solución óptima para obtener el scramble.
+          final scrambleMoves = _invertMoves(solution.algorithm.moves);
+          return Scramble(
+            notation: scrambleMoves.join(' '),
+            cubeType: '3x3',
+            moves: scrambleMoves,
+            generatedAt: DateTime.now(),
+          );
         }
-
-        return Scramble(
-          notation: scrambleMoves.join(' '),
-          cubeType: '3x3',
-          moves: scrambleMoves,
-          generatedAt: DateTime.now(),
-        );
-      } else {
-        return _generateFallbackScramble('3x3');
       }
+      return _generateFallbackScramble('3x3');
     } catch (e) {
       return _generateFallbackScramble('3x3');
     }
   }
 
-  /// Genera scramble para 2x2x2 con algoritmo optimizado
-  /// - Entre 9-10 movimientos exactamente
-  /// - Prioriza mezcla de U, F, R con variantes
-  /// - Evita patrones repetitivos tipo "R U R U'"
-  /// - Mayor aleatoriedad y desorden
+  /// Genera scramble para 2x2x2 con calidad equivalente a TNoodle.
+  ///
+  /// Usa un generador *random-state*: sortea un estado del cubo uniformemente
+  /// al azar (entre los 3.674.160 posibles) y emite la inversa de su solución
+  /// óptima como scramble. Solo usa las caras R, U, F (notación WCA), fijando
+  /// la esquina DBL como referencia. Ver [TwoByTwoScrambler].
   Scramble _generate2x2Scramble() {
-    final random = Random();
-    final faces = ['R', 'U', 'F'];
-    final moves = <String>[];
-
-    String? lastFace;
-    String? secondLastFace;
-    String? thirdLastFace;
-
-    // Generar exactamente entre 9-10 movimientos
-    final moveCount = 9 + random.nextInt(2);
-
-    for (int i = 0; i < moveCount; i++) {
-      String face;
-      String modifier;
-      int attempts = 0;
-
-      // Selección inteligente de cara con mayor aleatoriedad
-      do {
-        face = faces[random.nextInt(faces.length)];
-        attempts++;
-
-        // Si hay muchos intentos, forzar cambio de cara
-        if (attempts > 15) {
-          final availableFaces = faces.where((f) => f != lastFace).toList();
-          if (availableFaces.isNotEmpty) {
-            face = availableFaces[random.nextInt(availableFaces.length)];
-            break;
-          }
-        }
-      } while (_isInvalidMove2x2(
-          face, lastFace, secondLastFace, thirdLastFace, moves, i));
-
-      // Selección de modificador con lógica para evitar patrones
-      modifier = _selectSmartModifier(
-          face, lastFace, secondLastFace, moves, i, random);
-
-      moves.add('$face$modifier');
-
-      // Actualizar historial
-      thirdLastFace = secondLastFace;
-      secondLastFace = lastFace;
-      lastFace = face;
-    }
-
+    final moves = TwoByTwoScrambler.instance.generateScramble(Random());
     return Scramble(
       notation: moves.join(' '),
       cubeType: '2x2',
       moves: moves,
       generatedAt: DateTime.now(),
     );
-  }
-
-  /// Selecciona modificador inteligentemente para evitar patrones repetitivos
-  String _selectSmartModifier(
-      String face,
-      String? lastFace,
-      String? secondLastFace,
-      List<String> moves,
-      int currentIndex,
-      Random random) {
-    final modifiers = ['', '\'', '2'];
-
-    // Si es el primer movimiento, completamente aleatorio
-    if (currentIndex == 0) {
-      return modifiers[random.nextInt(3)];
-    }
-
-    // Obtener el modificador anterior del mismo tipo de cara
-    String? lastModifier;
-    if (currentIndex > 0) {
-      final lastMove = moves[currentIndex - 1];
-      if (lastMove.startsWith(face)) {
-        lastModifier = lastMove.substring(1);
-      }
-    }
-
-    // Evitar patrones como "R U R U'" o similares
-    if (lastFace == face && currentIndex >= 3) {
-      final prevPrevMove = currentIndex >= 2 ? moves[currentIndex - 2] : '';
-      final prevMove = moves[currentIndex - 1];
-
-      // Si tenemos patrón potencial, elegir modificador que lo rompa
-      if (prevPrevMove.startsWith(face) && prevMove.startsWith(face)) {
-        // Forzar un modificador diferente al último
-        final availableModifiers =
-            modifiers.where((m) => m != lastModifier).toList();
-        return availableModifiers[random.nextInt(availableModifiers.length)];
-      }
-    }
-
-    // Distribución ponderada para más aleatoriedad
-    final rand = random.nextDouble();
-    if (rand < 0.4) return ''; // 40% sin modificador
-    if (rand < 0.7) return '\''; // 30% prima
-    return '2'; // 30% doble
-  }
-
-  /// Validación mejorada para 2x2 con mayor restricción de patrones
-  bool _isInvalidMove2x2(String face, String? lastFace, String? secondLastFace,
-      String? thirdLastFace, List<String> moves, int currentIndex) {
-    // No repetir la misma cara consecutivamente
-    if (face == lastFace) return true;
-
-    // Evitar patrones de alternancia muy comunes (R U R U, etc.)
-    if (currentIndex >= 3 &&
-        lastFace != null &&
-        secondLastFace != null &&
-        thirdLastFace != null) {
-      // Detectar patrones como R-U-R-U o F-R-F-R
-      if ((face == thirdLastFace && lastFace == secondLastFace) ||
-          (face == secondLastFace && lastFace == thirdLastFace)) {
-        return true;
-      }
-    }
-
-    // Evitar que una cara domine demasiado (máximo 40% de los movimientos)
-    if (currentIndex > 6) {
-      final faceCount = moves.where((move) => move.startsWith(face)).length;
-      if (faceCount > (currentIndex * 0.4).ceil()) {
-        return true;
-      }
-    }
-
-    return false;
   }
 
   /// Genera scramble para 4x4x4 siguiendo el estilo de scrambles oficiales/referidos.
@@ -489,51 +374,14 @@ class GenerateScramble implements UseCaseSync<Scramble, String> {
     return false;
   }
 
-  /// Genera scramble para Pyraminx siguiendo estándares WCA oficiales
-  /// Orientación: YELLOW abajo, GREEN al frente
-  /// Mínimo 6 movimientos para resolver (WCA 4b3f)
-  /// Notación: R, L, U, B (mayúsculas = capa + tip, minúsculas = solo tip)
+  /// Genera scramble para Pyraminx con calidad equivalente a TNoodle.
+  ///
+  /// Usa un generador *random-state* (ver [PyraminxScrambler]): sortea el
+  /// estado del cuerpo uniformemente entre los 933.120 posibles, emite la
+  /// inversa de su solución óptima y agrega puntas aleatorias. Orientación
+  /// WCA: amarillo abajo, verde al frente.
   Scramble _generatePyraminxScramble() {
-    final random = Random();
-    final faces = ['R', 'L', 'U', 'B'];
-    final modifiers = ['', '\''];
-    final tips = ['r', 'l', 'u', 'b'];
-    final moves = <String>[];
-
-    String? lastFace;
-    String? secondLastFace;
-
-    // Generar entre 8-12 movimientos principales para asegurar complejidad
-    const mainMoves = 11;
-
-    for (int i = 0; i < mainMoves; i++) {
-      String face;
-
-      // Evitar movimientos consecutivos en la misma cara
-      do {
-        face = faces[random.nextInt(faces.length)];
-      } while (_isInvalidMove(face, lastFace, secondLastFace));
-
-      final modifier = modifiers[random.nextInt(modifiers.length)];
-      moves.add('$face$modifier');
-
-      secondLastFace = lastFace;
-      lastFace = face;
-    }
-
-    // Agregar movimientos de tips aleatorios (máximo uno de cada tipo)
-    // Mezclar los tips para seleccionar aleatoriamente cuáles usar
-    final shuffledTips = [...tips]..shuffle(random);
-
-    // Seleccionar entre 0-4 tips para usar (puede ser ninguno o todos)
-    final tipsToUse = shuffledTips.take(random.nextInt(5));
-
-    // Agregar cada tip seleccionado con un modificador aleatorio
-    for (final tip in tipsToUse) {
-      final modifier = modifiers[random.nextInt(modifiers.length)];
-      moves.add('$tip$modifier');
-    }
-
+    final moves = PyraminxScrambler.instance.generateScramble(Random());
     return Scramble(
       notation: moves.join(' '),
       cubeType: 'pyraminx',
@@ -542,37 +390,13 @@ class GenerateScramble implements UseCaseSync<Scramble, String> {
     );
   }
 
-  /// Genera scramble para Skewb siguiendo estándares WCA oficiales
-  /// Orientación: WHITE arriba, GREEN izquierda, RED derecha
-  /// Mínimo 7 movimientos para resolver (WCA 4b3c)
-  /// Notación: R, U, L, B (solo estas 4 caras cubren todos los estados)
+  /// Genera scramble para Skewb con calidad equivalente a TNoodle.
+  ///
+  /// Usa un generador *random-state* (ver [SkewbScrambler]): sortea un estado
+  /// uniforme entre los 3.149.280 posibles y emite la inversa de su solución
+  /// óptima. Notación WCA: R, U, L, B.
   Scramble _generateSkewbScramble() {
-    final random = Random();
-    final faces = ['R', 'U', 'L', 'B'];
-    final modifiers = ['', '\''];
-    final moves = <String>[];
-
-    String? lastFace;
-    String? secondLastFace;
-
-    // Generar entre 7-9 movimientos según ejemplos WCA
-    final moveCount = 7 + random.nextInt(3);
-
-    for (int i = 0; i < moveCount; i++) {
-      String face;
-
-      // Evitar movimientos consecutivos en la misma cara
-      do {
-        face = faces[random.nextInt(faces.length)];
-      } while (_isInvalidMove(face, lastFace, secondLastFace));
-
-      final modifier = modifiers[random.nextInt(modifiers.length)];
-      moves.add('$face$modifier');
-
-      secondLastFace = lastFace;
-      lastFace = face;
-    }
-
+    final moves = SkewbScrambler.instance.generateScramble(Random());
     return Scramble(
       notation: moves.join(' '),
       cubeType: 'skewb',
