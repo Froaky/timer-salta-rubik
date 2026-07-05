@@ -162,12 +162,12 @@ void main() {
 
       bloc.add(const TimerToggleInspection());
       await Future<void>.delayed(Duration.zero);
-      
+
       // Must hold until armed then release to start inspection
       bloc.add(const TimerStartHold());
       await Future<void>.delayed(const Duration(milliseconds: 30));
       expect(bloc.state.status, TimerStatus.armed);
-      
+
       bloc.add(const TimerStopHold());
       await Future<void>.delayed(const Duration(milliseconds: 5));
 
@@ -189,14 +189,14 @@ void main() {
 
       bloc.add(const TimerToggleInspection());
       await Future<void>.delayed(Duration.zero);
-      
+
       // Start inspection
       bloc.add(const TimerStartHold());
       await Future<void>.delayed(const Duration(milliseconds: 30));
       bloc.add(const TimerStopHold());
       await Future<void>.delayed(const Duration(milliseconds: 5));
       expect(bloc.state.status, TimerStatus.inspection);
-      
+
       // Wait for inspection to exceed threshold
       await Future<void>.delayed(const Duration(milliseconds: 100));
 
@@ -292,14 +292,14 @@ void main() {
 
       bloc.add(const TimerToggleInspection());
       await Future<void>.delayed(Duration.zero);
-      
+
       // Start inspection
       bloc.add(const TimerStartHold());
       await Future<void>.delayed(const Duration(milliseconds: 30));
       bloc.add(const TimerStopHold());
       await Future<void>.delayed(const Duration(milliseconds: 5));
       expect(bloc.state.status, TimerStatus.inspection);
-      
+
       // Wait for inspection to exceed DNF threshold
       await Future<void>.delayed(const Duration(milliseconds: 160));
 
@@ -309,7 +309,7 @@ void main() {
       bloc.add(const TimerStopHold());
       await Future<void>.delayed(const Duration(milliseconds: 5));
       expect(bloc.state.status, TimerStatus.running);
-      
+
       bloc.add(const TimerStop(elapsedMsOverride: 50));
       await Future<void>.delayed(const Duration(milliseconds: 5));
 

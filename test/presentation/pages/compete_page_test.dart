@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
-import 'package:salta_rubik/domain/entities/solve.dart';
 import 'package:salta_rubik/presentation/bloc/compete/compete_bloc.dart';
 import 'package:salta_rubik/presentation/bloc/compete/compete_state.dart';
 import 'package:salta_rubik/presentation/bloc/session/session_bloc.dart';
@@ -211,31 +210,19 @@ void main() {
   testWidgets('renders subtle per-lane stats overlay (US-011)', (tester) async {
     final lane1Solves = [
       buildSolve(
-          id: 's1-1',
-          timeMs: 12000,
-          createdAt: DateTime(2024, 1, 1, 12, 0)),
+          id: 's1-1', timeMs: 12000, createdAt: DateTime(2024, 1, 1, 12, 0)),
       buildSolve(
-          id: 's1-2',
-          timeMs: 11500,
-          createdAt: DateTime(2024, 1, 1, 12, 1)),
+          id: 's1-2', timeMs: 11500, createdAt: DateTime(2024, 1, 1, 12, 1)),
       buildSolve(
-          id: 's1-3',
-          timeMs: 13000,
-          createdAt: DateTime(2024, 1, 1, 12, 2)),
+          id: 's1-3', timeMs: 13000, createdAt: DateTime(2024, 1, 1, 12, 2)),
       buildSolve(
-          id: 's1-4',
-          timeMs: 12200,
-          createdAt: DateTime(2024, 1, 1, 12, 3)),
+          id: 's1-4', timeMs: 12200, createdAt: DateTime(2024, 1, 1, 12, 3)),
       buildSolve(
-          id: 's1-5',
-          timeMs: 11800,
-          createdAt: DateTime(2024, 1, 1, 12, 4)),
+          id: 's1-5', timeMs: 11800, createdAt: DateTime(2024, 1, 1, 12, 4)),
     ];
     final lane2Solves = [
       buildSolve(
-          id: 's2-1',
-          timeMs: 14000,
-          createdAt: DateTime(2024, 1, 1, 12, 0)),
+          id: 's2-1', timeMs: 14000, createdAt: DateTime(2024, 1, 1, 12, 0)),
     ];
 
     final state = buildReadyState(
@@ -351,5 +338,148 @@ void main() {
       find.byKey(const ValueKey('compete-results-round-1-lane2')),
     );
     expect(lane2Round1.data, '-');
+  });
+
+  group('active round lockdown', () {
+    CompeteState buildInProgressState() {
+      return buildReadyState(
+        cubeType: '3x3',
+        lane1Notation: shortScramble.notation,
+        lane2Notation: shortScramble.notation,
+      ).copyWith(status: CompeteStatus.inProgress);
+    }
+
+    Widget buildNavApp({required CompeteState competeState}) {
+      final sessionState = buildSessionState();
+      when(() => sessionBloc.state).thenReturn(sessionState);
+      when(
+        () => sessionBloc.stream,
+      ).thenAnswer((_) => const Stream<SessionState>.empty());
+      when(() => competeBloc.state).thenReturn(competeState);
+      when(
+        () => competeBloc.stream,
+      ).thenAnswer((_) => const Stream<CompeteState>.empty());
+      when(() => sessionBloc.add(any())).thenReturn(null);
+      when(() => competeBloc.add(any())).thenReturn(null);
+
+      return MultiBlocProvider(
+        providers: [
+          BlocProvider<SessionBloc>.value(value: sessionBloc),
+          BlocProvider<CompeteBloc>.value(value: competeBloc),
+        ],
+        child: MaterialApp(
+          theme: AppTheme.darkTheme,
+          home: Builder(
+            builder: (context) => Scaffold(
+              body: Center(
+                child: ElevatedButton(
+                  key: const ValueKey('open-compete'),
+                  onPressed: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => const CompetePage(),
+                      ),
+                    );
+                  },
+                  child: const Text('open'),
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+    }
+
+    testWidgets('blocks leaving the page while a round is in progress',
+        (tester) async {
+      await tester.pumpWidget(
+        buildNavApp(competeState: buildInProgressState()),
+      );
+      await tester.tap(find.byKey(const ValueKey('open-compete')));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Competencia'), findsOneWidget);
+
+      await tester.pageBack();
+      await tester.pumpAndSettle();
+
+      expect(find.text('Competencia'), findsOneWidget);
+    });
+
+    testWidgets('allows leaving the page right after a round finishes',
+        (tester) async {
+      await tester.pumpWidget(
+        buildNavApp(
+          competeState: buildReadyState(
+            cubeType: '3x3',
+            lane1Notation: shortScramble.notation,
+            lane2Notation: shortScramble.notation,
+          ).copyWith(status: CompeteStatus.finished),
+        ),
+      );
+      await tester.tap(find.byKey(const ValueKey('open-compete')));
+      await tester.pumpAndSettle();
+
+      await tester.pageBack();
+      await tester.pumpAndSettle();
+
+      expect(find.text('Competencia'), findsNothing);
+    });
+
+    testWidgets('allows leaving the page when no round is running',
+        (tester) async {
+      await tester.pumpWidget(
+        buildNavApp(
+          competeState: buildReadyState(
+            cubeType: '3x3',
+            lane1Notation: shortScramble.notation,
+            lane2Notation: shortScramble.notation,
+          ),
+        ),
+      );
+      await tester.tap(find.byKey(const ValueKey('open-compete')));
+      await tester.pumpAndSettle();
+
+      await tester.pageBack();
+      await tester.pumpAndSettle();
+
+      expect(find.text('Competencia'), findsNothing);
+    });
+
+    testWidgets('does not open round results while a round is in progress',
+        (tester) async {
+      await tester.pumpWidget(
+        buildPage(
+          sessionState: buildSessionState(),
+          competeState: buildInProgressState(),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('VS'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Resultados por ronda'), findsNothing);
+    });
+
+    testWidgets('opens round results when the round is not running',
+        (tester) async {
+      await tester.pumpWidget(
+        buildPage(
+          sessionState: buildSessionState(),
+          competeState: buildReadyState(
+            cubeType: '3x3',
+            lane1Notation: shortScramble.notation,
+            lane2Notation: shortScramble.notation,
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('VS'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Resultados por ronda'), findsOneWidget);
+    });
   });
 }

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../../domain/entities/session.dart';
 import '../../domain/entities/solve.dart';
 
 import '../bloc/session/session_bloc.dart';
@@ -53,12 +54,31 @@ class _SolveListState extends State<SolveList> {
             }
 
             if (solveState.solves.isEmpty) {
-              // Load solves for current session
-              context.read<SolveBloc>().add(
-                    LoadSolves(sessionId: currentSession.id),
-                  );
-              return const Center(
-                child: Text('No solves yet'),
+              // Cargar solo si el estado todavía no corresponde a esta
+              // sesión: si la sesión ya cargó vacía, re-despachar en cada
+              // build genera un loop infinito loading→empty→loading.
+              if (solveState.sessionId != currentSession.id) {
+                context.read<SolveBloc>().add(
+                      LoadSolves(sessionId: currentSession.id),
+                    );
+              }
+              return Center(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Text('No solves yet'),
+                    const SizedBox(height: 12),
+                    TextButton.icon(
+                      onPressed: () => _showAddDialog(
+                        context,
+                        currentSession,
+                        solveState.currentScramble?.notation,
+                      ),
+                      icon: const Icon(Icons.add_rounded, size: 18),
+                      label: const Text('Add time manually'),
+                    ),
+                  ],
+                ),
               );
             }
 
@@ -125,6 +145,26 @@ class _SolveListState extends State<SolveList> {
                         ],
                       ),
                       const Spacer(),
+                      // Add manual time button
+                      Container(
+                        decoration: BoxDecoration(
+                          color: AppTheme.accentColor.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: IconButton(
+                          icon: const Icon(Icons.add_rounded, size: 20),
+                          onPressed: () {
+                            _showAddDialog(
+                              context,
+                              currentSession,
+                              solveState.currentScramble?.notation,
+                            );
+                          },
+                          tooltip: 'Add solve manually',
+                          color: AppTheme.accentColor,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
                       // Sort button
                       Container(
                         decoration: BoxDecoration(
@@ -150,7 +190,13 @@ class _SolveListState extends State<SolveList> {
                                 children: [
                                   Icon(Icons.schedule, size: 16),
                                   SizedBox(width: 10),
-                                  Text('Date (newest first)'),
+                                  Expanded(
+                                    child: Text(
+                                      'Date (newest first)',
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
                                 ],
                               ),
                             ),
@@ -160,7 +206,13 @@ class _SolveListState extends State<SolveList> {
                                 children: [
                                   Icon(Icons.schedule, size: 16),
                                   SizedBox(width: 10),
-                                  Text('Date (oldest first)'),
+                                  Expanded(
+                                    child: Text(
+                                      'Date (oldest first)',
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
                                 ],
                               ),
                             ),
@@ -170,7 +222,13 @@ class _SolveListState extends State<SolveList> {
                                 children: [
                                   Icon(Icons.timer, size: 16),
                                   SizedBox(width: 10),
-                                  Text('Time (fastest first)'),
+                                  Expanded(
+                                    child: Text(
+                                      'Time (fastest first)',
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
                                 ],
                               ),
                             ),
@@ -180,7 +238,13 @@ class _SolveListState extends State<SolveList> {
                                 children: [
                                   Icon(Icons.timer, size: 16),
                                   SizedBox(width: 10),
-                                  Text('Time (slowest first)'),
+                                  Expanded(
+                                    child: Text(
+                                      'Time (slowest first)',
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
                                 ],
                               ),
                             ),
@@ -536,6 +600,24 @@ class _SolveListState extends State<SolveList> {
     );
   }
 
+  void _showAddDialog(
+    BuildContext context,
+    Session session,
+    String? scrambleNotation,
+  ) {
+    final solveBloc = context.read<SolveBloc>();
+    showDialog(
+      context: context,
+      builder: (dialogContext) => BlocProvider.value(
+        value: solveBloc,
+        child: _AddSolveDialog(
+          session: session,
+          scrambleNotation: scrambleNotation,
+        ),
+      ),
+    );
+  }
+
   void _showDeleteDialog(BuildContext context, Solve solve) {
     showDialog(
       context: context,
@@ -811,6 +893,211 @@ class _EditSolveDialogState extends State<_EditSolveDialog> {
   }
 
   String _getPenaltyDisplayName(Penalty penalty) {
+    switch (penalty) {
+      case Penalty.none:
+        return 'No penalty';
+      case Penalty.plus2:
+        return '+2 seconds';
+      case Penalty.dnf:
+        return 'DNF (Did Not Finish)';
+    }
+  }
+}
+
+/// Convierte la entrada manual de tiempo a milisegundos.
+///
+/// Acepta segundos (`12.34`) o minutos:segundos (`1:23.45`). Devuelve null si
+/// el texto no es un tiempo válido mayor a cero.
+int? parseManualTimeMs(String input) {
+  final trimmed = input.trim().replaceAll(',', '.');
+  if (trimmed.isEmpty) {
+    return null;
+  }
+
+  final parts = trimmed.split(':');
+  if (parts.length > 2) {
+    return null;
+  }
+
+  // Solo dígitos con decimal opcional: rechaza signos, exponentes ('1e3'),
+  // 'Infinity' y demás formas que double.tryParse aceptaría.
+  final secondsText = parts.last;
+  if (!RegExp(r'^(\d+(\.\d+)?|\.\d+)$').hasMatch(secondsText)) {
+    return null;
+  }
+  final seconds = double.parse(secondsText);
+
+  var totalMs = (seconds * 1000).round();
+  if (parts.length == 2) {
+    if (!RegExp(r'^\d+$').hasMatch(parts.first) || seconds >= 60) {
+      return null;
+    }
+    totalMs += int.parse(parts.first) * 60000;
+  }
+
+  return totalMs > 0 ? totalMs : null;
+}
+
+class _AddSolveDialog extends StatefulWidget {
+  final Session session;
+  final String? scrambleNotation;
+
+  const _AddSolveDialog({required this.session, this.scrambleNotation});
+
+  @override
+  State<_AddSolveDialog> createState() => _AddSolveDialogState();
+}
+
+class _AddSolveDialogState extends State<_AddSolveDialog> {
+  final TextEditingController _timeController = TextEditingController();
+  Penalty _selectedPenalty = Penalty.none;
+  String? _errorText;
+
+  @override
+  void dispose() {
+    _timeController.dispose();
+    super.dispose();
+  }
+
+  void _submit() {
+    final timeMs = parseManualTimeMs(_timeController.text);
+    if (timeMs == null) {
+      setState(() {
+        _errorText = 'Enter a valid time, e.g. 12.34 or 1:23.45';
+      });
+      return;
+    }
+
+    final solve = Solve(
+      id: DateTime.now().millisecondsSinceEpoch.toString(),
+      sessionId: widget.session.id,
+      timeMs: timeMs,
+      penalty: _selectedPenalty,
+      scramble: widget.scrambleNotation ?? '',
+      cubeType: widget.session.cubeType,
+      lane: 0,
+      createdAt: DateTime.now(),
+    );
+    context.read<SolveBloc>().add(AddSolveEvent(solve));
+    Navigator.of(context).pop();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      backgroundColor: AppTheme.cardColor,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+      ),
+      title: Text(
+        'Add Solve',
+        style: TextStyle(
+          color: AppTheme.textPrimary,
+          fontWeight: FontWeight.w600,
+        ),
+      ),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          TextField(
+            controller: _timeController,
+            autofocus: true,
+            decoration: InputDecoration(
+              labelText: 'Time',
+              hintText: '12.34 or 1:23.45',
+              errorText: _errorText,
+              labelStyle: TextStyle(
+                color: AppTheme.textSecondary,
+                fontWeight: FontWeight.w500,
+              ),
+              hintStyle: TextStyle(
+                color: AppTheme.textMuted,
+              ),
+            ),
+            style: TextStyle(
+              color: AppTheme.textPrimary,
+              fontFamily: 'RobotoMono',
+              fontWeight: FontWeight.w500,
+            ),
+            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+            onSubmitted: (_) => _submit(),
+          ),
+          const SizedBox(height: 16),
+          DropdownButtonFormField<Penalty>(
+            value: _selectedPenalty,
+            decoration: InputDecoration(
+              labelText: 'Penalty',
+              labelStyle: TextStyle(
+                color: AppTheme.textSecondary,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            style: TextStyle(
+              color: AppTheme.textPrimary,
+              fontWeight: FontWeight.w500,
+            ),
+            dropdownColor: AppTheme.cardColor,
+            items: Penalty.values.map((penalty) {
+              return DropdownMenuItem(
+                value: penalty,
+                child: Text(
+                  _penaltyDisplayName(penalty),
+                  style: TextStyle(
+                    color: AppTheme.textPrimary,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              );
+            }).toList(),
+            onChanged: (penalty) {
+              if (penalty != null) {
+                setState(() {
+                  _selectedPenalty = penalty;
+                });
+              }
+            },
+          ),
+        ],
+      ),
+      actions: [
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: Text(
+              'Cancel',
+              style: TextStyle(
+                color: AppTheme.textSecondary,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ),
+        ),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          decoration: BoxDecoration(
+            color: AppTheme.accentColor.withValues(alpha: 0.1),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: TextButton(
+            onPressed: _submit,
+            child: Text(
+              'Add',
+              style: TextStyle(
+                color: AppTheme.accentColor,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  String _penaltyDisplayName(Penalty penalty) {
     switch (penalty) {
       case Penalty.none:
         return 'No penalty';

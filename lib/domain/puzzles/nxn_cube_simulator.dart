@@ -1,60 +1,49 @@
-import 'package:flutter/material.dart';
+/// Simulador facelet puro (sin Flutter) para cubos NxN (2x2 .. 7x7).
+///
+/// Orientación WCA de scramble: blanco en U, verde en F.
+/// Los ids de color de sticker son los de [CubeColorIds]. Cada cara se expone
+/// row-major vista desde afuera del cubo, con B desplegada a la derecha de R
+/// (net estándar tipo csTimer).
+///
+/// La lógica de giros fue validada contra el paquete `cuber` (ver tests en
+/// `test/domain/puzzles/nxn_cube_simulator_test.dart`).
+library;
 
-enum CubePreviewFace { up, right, front, down, left, back }
-
-enum CubePreviewColor {
-  white(Colors.white),
-  yellow(Color(0xFFFFEB3B)),
-  green(Color(0xFF22C55E)),
-  blue(Color(0xFF1D4ED8)),
-  red(Color(0xFFF44336)),
-  orange(Color(0xFFFF9800));
-
-  const CubePreviewColor(this.color);
-
-  final Color color;
+/// Ids de color usados por [NxnCubeSimulator].
+abstract final class CubeColorIds {
+  static const int white = 0;
+  static const int yellow = 1;
+  static const int green = 2;
+  static const int blue = 3;
+  static const int red = 4;
+  static const int orange = 5;
 }
 
-class CubeNetData {
-  const CubeNetData({
+/// Estado facelet resultante de aplicar un scramble a un cubo NxN.
+class NxnCubeFacelets {
+  const NxnCubeFacelets({
+    required this.size,
     required this.up,
     required this.right,
     required this.front,
     required this.down,
     required this.left,
     required this.back,
-    required this.size,
   });
 
-  final List<CubePreviewColor> up;
-  final List<CubePreviewColor> right;
-  final List<CubePreviewColor> front;
-  final List<CubePreviewColor> down;
-  final List<CubePreviewColor> left;
-  final List<CubePreviewColor> back;
   final int size;
-
-  List<CubePreviewColor> face(CubePreviewFace face) {
-    switch (face) {
-      case CubePreviewFace.up:
-        return up;
-      case CubePreviewFace.right:
-        return right;
-      case CubePreviewFace.front:
-        return front;
-      case CubePreviewFace.down:
-        return down;
-      case CubePreviewFace.left:
-        return left;
-      case CubePreviewFace.back:
-        return back;
-    }
-  }
+  final List<int> up;
+  final List<int> right;
+  final List<int> front;
+  final List<int> down;
+  final List<int> left;
+  final List<int> back;
 }
 
-class CubePreviewEngine {
-  CubePreviewEngine({required this.size})
-      : _stickers = _buildSolvedStickers(size);
+class NxnCubeSimulator {
+  NxnCubeSimulator({required this.size})
+      : assert(size >= 2),
+        _stickers = _buildSolvedStickers(size);
 
   final int size;
   final List<_Sticker> _stickers;
@@ -64,54 +53,47 @@ class CubePreviewEngine {
     for (var row = 0; row < size; row++) {
       for (var column = 0; column < size; column++) {
         stickers
-          ..add(
-            _Sticker(
-              position: _positionFor(CubePreviewFace.up, row, column, size),
-              normal: const _Vector3(0, 1, 0),
-              color: CubePreviewColor.white,
-            ),
-          )
-          ..add(
-            _Sticker(
-              position: _positionFor(CubePreviewFace.down, row, column, size),
-              normal: const _Vector3(0, -1, 0),
-              color: CubePreviewColor.yellow,
-            ),
-          )
-          ..add(
-            _Sticker(
-              position: _positionFor(CubePreviewFace.front, row, column, size),
-              normal: const _Vector3(0, 0, 1),
-              color: CubePreviewColor.green,
-            ),
-          )
-          ..add(
-            _Sticker(
-              position: _positionFor(CubePreviewFace.back, row, column, size),
-              normal: const _Vector3(0, 0, -1),
-              color: CubePreviewColor.blue,
-            ),
-          )
-          ..add(
-            _Sticker(
-              position: _positionFor(CubePreviewFace.right, row, column, size),
-              normal: const _Vector3(1, 0, 0),
-              color: CubePreviewColor.red,
-            ),
-          )
-          ..add(
-            _Sticker(
-              position: _positionFor(CubePreviewFace.left, row, column, size),
-              normal: const _Vector3(-1, 0, 0),
-              color: CubePreviewColor.orange,
-            ),
-          );
+          ..add(_Sticker(
+            position: _positionFor(_Face.up, row, column, size),
+            normal: const _Vector3(0, 1, 0),
+            color: CubeColorIds.white,
+          ))
+          ..add(_Sticker(
+            position: _positionFor(_Face.down, row, column, size),
+            normal: const _Vector3(0, -1, 0),
+            color: CubeColorIds.yellow,
+          ))
+          ..add(_Sticker(
+            position: _positionFor(_Face.front, row, column, size),
+            normal: const _Vector3(0, 0, 1),
+            color: CubeColorIds.green,
+          ))
+          ..add(_Sticker(
+            position: _positionFor(_Face.back, row, column, size),
+            normal: const _Vector3(0, 0, -1),
+            color: CubeColorIds.blue,
+          ))
+          ..add(_Sticker(
+            position: _positionFor(_Face.right, row, column, size),
+            normal: const _Vector3(1, 0, 0),
+            color: CubeColorIds.red,
+          ))
+          ..add(_Sticker(
+            position: _positionFor(_Face.left, row, column, size),
+            normal: const _Vector3(-1, 0, 0),
+            color: CubeColorIds.orange,
+          ));
       }
     }
     return stickers;
   }
 
-  CubeNetData apply(String notation) {
+  /// Aplica una secuencia en notación WCA y devuelve el estado resultante.
+  ///
+  /// Soporta caras externas (`R`, `U'`, `F2`), wide moves (`Rw`, `3Fw2`) y
+  /// rotaciones de cubo completo (`x`, `y'`, `z2`). Tokens desconocidos se
+  /// ignoran para que un scramble con notación extra no rompa el preview.
+  NxnCubeFacelets apply(String notation) {
     for (final token in notation.split(RegExp(r'\s+'))) {
       if (token.isEmpty) {
         continue;
@@ -123,18 +105,23 @@ class CubePreviewEngine {
       _applyMove(move);
     }
 
-    return CubeNetData(
-      up: _collectFace(CubePreviewFace.up),
-      right: _collectFace(CubePreviewFace.right),
-      front: _collectFace(CubePreviewFace.front),
-      down: _collectFace(CubePreviewFace.down),
-      left: _collectFace(CubePreviewFace.left),
-      back: _collectFace(CubePreviewFace.back),
+    return NxnCubeFacelets(
       size: size,
+      up: _collectFace(_Face.up),
+      right: _collectFace(_Face.right),
+      front: _collectFace(_Face.front),
+      down: _collectFace(_Face.down),
+      left: _collectFace(_Face.left),
+      back: _collectFace(_Face.back),
     );
   }
 
   void _applyMove(_MoveToken move) {
+    if (move.isRotation) {
+      _applyRotation(move);
+      return;
+    }
+
     final axis = _axisFor(move.face);
     final outerCoordinate = size - 1;
     final clockwiseDirection = _clockwiseDirection(move.face);
@@ -149,6 +136,29 @@ class CubePreviewEngine {
         layerCoordinate: layerCoordinate,
         quarterTurns: quarterTurns,
       );
+    }
+  }
+
+  void _applyRotation(_MoveToken move) {
+    // x gira como R, y como U, z como F, sobre todas las capas.
+    final referenceFace = switch (move.face) {
+      'x' => 'R',
+      'y' => 'U',
+      _ => 'F',
+    };
+    final axis = _axisFor(referenceFace);
+    final quarterTurns = move.turns * _clockwiseDirection(referenceFace);
+    final turns = quarterTurns % 4;
+    if (turns == 0) {
+      return;
+    }
+    for (var i = 0; i < turns.abs(); i++) {
+      for (var index = 0; index < _stickers.length; index++) {
+        _stickers[index] = _stickers[index].rotated(
+          axis: axis,
+          clockwise: turns > 0,
+        );
+      }
     }
   }
 
@@ -178,10 +188,10 @@ class CubePreviewEngine {
     }
   }
 
-  List<CubePreviewColor> _collectFace(CubePreviewFace face) {
+  List<int> _collectFace(_Face face) {
     final rows = List.generate(
       size,
-      (_) => List.filled(size, CubePreviewColor.white),
+      (_) => List.filled(size, CubeColorIds.white),
     );
     final expectedNormal = _normalForFace(face);
 
@@ -198,12 +208,7 @@ class CubePreviewEngine {
     return rows.expand((row) => row).toList(growable: false);
   }
 
-  static _Vector3 _positionFor(
-    CubePreviewFace face,
-    int row,
-    int column,
-    int size,
-  ) {
+  static _Vector3 _positionFor(_Face face, int row, int column, int size) {
     final min = -(size - 1);
     final max = size - 1;
     final x = min + column * 2;
@@ -214,63 +219,63 @@ class CubePreviewEngine {
     final inverseRow = max - row * 2;
 
     switch (face) {
-      case CubePreviewFace.up:
+      case _Face.up:
         return _Vector3(x, max, zFromTop);
-      case CubePreviewFace.down:
+      case _Face.down:
         return _Vector3(x, min, inverseRow);
-      case CubePreviewFace.front:
+      case _Face.front:
         return _Vector3(x, y, max);
-      case CubePreviewFace.back:
+      case _Face.back:
         return _Vector3(inverseColumn, y, min);
-      case CubePreviewFace.right:
+      case _Face.right:
         return _Vector3(max, y, inverseColumn);
-      case CubePreviewFace.left:
+      case _Face.left:
         return _Vector3(min, y, zFromColumn);
     }
   }
 
-  static _Vector3 _normalForFace(CubePreviewFace face) {
+  static _Vector3 _normalForFace(_Face face) {
     switch (face) {
-      case CubePreviewFace.up:
+      case _Face.up:
         return const _Vector3(0, 1, 0);
-      case CubePreviewFace.right:
+      case _Face.right:
         return const _Vector3(1, 0, 0);
-      case CubePreviewFace.front:
+      case _Face.front:
         return const _Vector3(0, 0, 1);
-      case CubePreviewFace.down:
+      case _Face.down:
         return const _Vector3(0, -1, 0);
-      case CubePreviewFace.left:
+      case _Face.left:
         return const _Vector3(-1, 0, 0);
-      case CubePreviewFace.back:
+      case _Face.back:
         return const _Vector3(0, 0, -1);
     }
   }
 
-  int _rowForFace(CubePreviewFace face, _Vector3 position) {
+  int _rowForFace(_Face face, _Vector3 position) {
     switch (face) {
-      case CubePreviewFace.up:
+      case _Face.up:
         return (position.z + (size - 1)) ~/ 2;
-      case CubePreviewFace.down:
+      case _Face.down:
         return ((size - 1) - position.z) ~/ 2;
-      case CubePreviewFace.front:
-      case CubePreviewFace.back:
-      case CubePreviewFace.right:
-      case CubePreviewFace.left:
+      case _Face.front:
+      case _Face.back:
+      case _Face.right:
+      case _Face.left:
         return ((size - 1) - position.y) ~/ 2;
     }
   }
 
-  int _columnForFace(CubePreviewFace face, _Vector3 position) {
+  int _columnForFace(_Face face, _Vector3 position) {
     switch (face) {
-      case CubePreviewFace.up:
-      case CubePreviewFace.down:
-      case CubePreviewFace.front:
+      case _Face.up:
+      case _Face.down:
+      case _Face.front:
         return (position.x + (size - 1)) ~/ 2;
-      case CubePreviewFace.back:
+      case _Face.back:
         return ((size - 1) - position.x) ~/ 2;
-      case CubePreviewFace.right:
+      case _Face.right:
         return ((size - 1) - position.z) ~/ 2;
-      case CubePreviewFace.left:
+      case _Face.left:
         return (position.z + (size - 1)) ~/ 2;
     }
   }
@@ -323,20 +328,35 @@ class CubePreviewEngine {
   }
 }
 
+enum _Face { up, right, front, down, left, back }
+
 class _MoveToken {
   const _MoveToken({
     required this.face,
     required this.layers,
     required this.turns,
+    this.isRotation = false,
   });
 
   final String face;
   final int layers;
   final int turns;
+  final bool isRotation;
 
   static _MoveToken? parse(String token) {
-    final match =
-        RegExp(r"^(\d+)?([URFDLB])(w)?(2|'|)?$").firstMatch(token.trim());
+    final trimmed = token.trim();
+
+    final rotation = RegExp(r"^([xyz])(2|')?$").firstMatch(trimmed);
+    if (rotation != null) {
+      return _MoveToken(
+        face: rotation.group(1)!,
+        layers: 0,
+        turns: _turnsForSuffix(rotation.group(2)),
+        isRotation: true,
+      );
+    }
+
+    final match = RegExp(r"^(\d+)?([URFDLB])(w)?(2|')?$").firstMatch(trimmed);
     if (match == null) {
       return null;
     }
@@ -344,24 +364,28 @@ class _MoveToken {
     final widthPrefix = match.group(1);
     final face = match.group(2)!;
     final isWide = match.group(3) != null;
-    final suffix = match.group(4) ?? '';
-
     final layers = widthPrefix != null
         ? int.parse(widthPrefix)
         : isWide
             ? 2
             : 1;
-    final turns = suffix == '2'
-        ? 2
-        : suffix == "'"
-            ? 3
-            : 1;
 
     return _MoveToken(
       face: face,
       layers: layers,
-      turns: turns,
+      turns: _turnsForSuffix(match.group(4)),
     );
+  }
+
+  static int _turnsForSuffix(String? suffix) {
+    switch (suffix) {
+      case '2':
+        return 2;
+      case "'":
+        return 3;
+      default:
+        return 1;
+    }
   }
 }
 
@@ -374,7 +398,7 @@ class _Sticker {
 
   final _Vector3 position;
   final _Vector3 normal;
-  final CubePreviewColor color;
+  final int color;
 
   _Sticker rotated({
     required String axis,

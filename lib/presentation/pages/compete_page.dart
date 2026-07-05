@@ -2,6 +2,7 @@ import 'dart:async';
 
 import '../../core/constants/timer_thresholds.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:vibration/vibration.dart';
 
@@ -94,33 +95,48 @@ class _CompetePageState extends State<CompetePage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Competencia'),
-        backgroundColor: AppTheme.primaryColor,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            onPressed: () {
-              context.read<CompeteBloc>().add(const ResetCompete());
-              _resetAllTimers();
-            },
-          ),
-        ],
-      ),
-      body: BlocBuilder<SessionBloc, SessionState>(
-        builder: (context, sessionState) {
-          return BlocBuilder<CompeteBloc, CompeteState>(
-            builder: (context, competeState) {
-              if (competeState.status == CompeteStatus.initial) {
-                return _buildSetupScreen(sessionState);
-              }
+    return BlocBuilder<CompeteBloc, CompeteState>(
+      builder: (context, competeState) {
+        final roundActive = competeState.status == CompeteStatus.inProgress;
 
-              return _buildCompeteScreen(competeState);
-            },
-          );
-        },
-      ),
+        // Con una ronda activa la página no se puede abandonar: si se pudiera
+        // volver al timer principal quedaría accesible el historial y el
+        // CompeteBloc colgado en inProgress. No se muestra SnackBar porque un
+        // overlay sobre los carriles podría robar el toque de stop de un
+        // jugador que sigue resolviendo.
+        return PopScope(
+          canPop: !roundActive,
+          onPopInvokedWithResult: (didPop, result) {
+            if (!didPop) {
+              HapticFeedback.mediumImpact();
+            }
+          },
+          child: Scaffold(
+            appBar: AppBar(
+              title: const Text('Competencia'),
+              backgroundColor: AppTheme.primaryColor,
+              actions: [
+                IconButton(
+                  icon: const Icon(Icons.refresh),
+                  onPressed: () {
+                    context.read<CompeteBloc>().add(const ResetCompete());
+                    _resetAllTimers();
+                  },
+                ),
+              ],
+            ),
+            body: BlocBuilder<SessionBloc, SessionState>(
+              builder: (context, sessionState) {
+                if (competeState.status == CompeteStatus.initial) {
+                  return _buildSetupScreen(sessionState);
+                }
+
+                return _buildCompeteScreen(competeState);
+              },
+            ),
+          ),
+        );
+      },
     );
   }
 
@@ -301,56 +317,65 @@ class _CompetePageState extends State<CompetePage> {
 
         // Centered score display - clickeable
         Center(
-          child: GestureDetector(
-            onTap: () => _showCompetitionResults(competeState),
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-              decoration: BoxDecoration(
-                color: AppTheme.backgroundColor.withValues(alpha: 0.95),
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(
-                  color: AppTheme.textMuted.withValues(alpha: 0.3),
-                  width: 1,
-                ),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.2),
-                    blurRadius: 8,
-                    offset: const Offset(0, 2),
+          // Durante la ronda el chip deja pasar los toques al carril de
+          // abajo: toda la pantalla debe seguir sirviendo para frenar
+          // (US-007) y los resultados cuentan como historial bloqueado.
+          child: IgnorePointer(
+            ignoring: competeState.status == CompeteStatus.inProgress,
+            child: GestureDetector(
+              onTap: competeState.status == CompeteStatus.inProgress
+                  ? null
+                  : () => _showCompetitionResults(competeState),
+              child: Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                decoration: BoxDecoration(
+                  color: AppTheme.backgroundColor.withValues(alpha: 0.95),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(
+                    color: AppTheme.textMuted.withValues(alpha: 0.3),
+                    width: 1,
                   ),
-                ],
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    '${competeState.lane1Score}',
-                    style: const TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                      color: AppTheme.accentColor,
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.2),
+                      blurRadius: 8,
+                      offset: const Offset(0, 2),
                     ),
-                  ),
-                  const Padding(
-                    padding: EdgeInsets.symmetric(horizontal: 12),
-                    child: Text(
-                      'VS',
-                      style: TextStyle(
-                        fontSize: 16,
+                  ],
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      '${competeState.lane1Score}',
+                      style: const TextStyle(
+                        fontSize: 20,
                         fontWeight: FontWeight.bold,
-                        color: AppTheme.textMuted,
+                        color: AppTheme.accentColor,
                       ),
                     ),
-                  ),
-                  Text(
-                    '${competeState.lane2Score}',
-                    style: const TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                      color: AppTheme.accentColor,
+                    const Padding(
+                      padding: EdgeInsets.symmetric(horizontal: 12),
+                      child: Text(
+                        'VS',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: AppTheme.textMuted,
+                        ),
+                      ),
                     ),
-                  ),
-                ],
+                    Text(
+                      '${competeState.lane2Score}',
+                      style: const TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                        color: AppTheme.accentColor,
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
           ),
@@ -543,15 +568,9 @@ class _CompetePageState extends State<CompetePage> {
               ? '-'
               : stats.recentSolves.first.formattedTimeWithPenalty),
       MapEntry(
-          'ao5',
-          stats == null
-              ? '-'
-              : Statistics.formatTime(stats.averageOf5)),
-      MapEntry(
-          'ao12',
-          stats == null
-              ? '-'
-              : Statistics.formatTime(stats.averageOf12)),
+          'ao5', stats == null ? '-' : Statistics.formatTime(stats.averageOf5)),
+      MapEntry('ao12',
+          stats == null ? '-' : Statistics.formatTime(stats.averageOf12)),
     ];
 
     return Align(
@@ -638,8 +657,7 @@ class _CompetePageState extends State<CompetePage> {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Resultados por ronda'),
-        contentPadding:
-            const EdgeInsets.fromLTRB(12, 16, 12, 8),
+        contentPadding: const EdgeInsets.fromLTRB(12, 16, 12, 8),
         content: SizedBox(
           key: const ValueKey('compete-results-content'),
           width: double.maxFinite,
@@ -662,13 +680,14 @@ class _CompetePageState extends State<CompetePage> {
                       itemCount: roundCount,
                       separatorBuilder: (_, __) => const SizedBox(height: 8),
                       itemBuilder: (context, index) {
-                        final lane1Solve =
-                            index < lane1Solves.length ? lane1Solves[index] : null;
-                        final lane2Solve =
-                            index < lane2Solves.length ? lane2Solves[index] : null;
-                        final scrambleNotation = lane1Solve?.scramble ??
-                            lane2Solve?.scramble ??
-                            '';
+                        final lane1Solve = index < lane1Solves.length
+                            ? lane1Solves[index]
+                            : null;
+                        final lane2Solve = index < lane2Solves.length
+                            ? lane2Solves[index]
+                            : null;
+                        final scrambleNotation =
+                            lane1Solve?.scramble ?? lane2Solve?.scramble ?? '';
 
                         return _buildRoundRow(
                           roundIndex: index,
@@ -697,12 +716,10 @@ class _CompetePageState extends State<CompetePage> {
     required Solve? lane1Solve,
     required Solve? lane2Solve,
   }) {
-    final lane1Text = lane1Solve == null
-        ? '-'
-        : lane1Solve.formattedTimeWithPenalty;
-    final lane2Text = lane2Solve == null
-        ? '-'
-        : lane2Solve.formattedTimeWithPenalty;
+    final lane1Text =
+        lane1Solve == null ? '-' : lane1Solve.formattedTimeWithPenalty;
+    final lane2Text =
+        lane2Solve == null ? '-' : lane2Solve.formattedTimeWithPenalty;
 
     return Card(
       key: ValueKey('compete-results-round-$roundIndex'),
@@ -737,7 +754,8 @@ class _CompetePageState extends State<CompetePage> {
                       ),
                       Text(
                         lane1Text,
-                        key: ValueKey('compete-results-round-$roundIndex-lane1'),
+                        key:
+                            ValueKey('compete-results-round-$roundIndex-lane1'),
                         style:
                             Theme.of(context).textTheme.titleMedium?.copyWith(
                                   fontFamily: 'RobotoMono',
@@ -778,7 +796,8 @@ class _CompetePageState extends State<CompetePage> {
                       ),
                       Text(
                         lane2Text,
-                        key: ValueKey('compete-results-round-$roundIndex-lane2'),
+                        key:
+                            ValueKey('compete-results-round-$roundIndex-lane2'),
                         style:
                             Theme.of(context).textTheme.titleMedium?.copyWith(
                                   fontFamily: 'RobotoMono',

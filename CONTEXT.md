@@ -187,28 +187,37 @@ Este archivo resume lo indispensable para continuar el desarrollo de este repo s
 
 ## 7. Estado actual del motor visual del scramble
 
-- El preview visual de cubos NxN parte de:
-  - `U = blanco`
-  - `D = amarillo`
-  - `F = verde`
-  - `B = azul`
-  - `R = rojo`
-  - `L = naranja`
-- El preview visual de Pyraminx usa el estándar WCA (Yellow Down, Green Front):
-  - `Front = verde`
-  - `Down = amarillo`
-  - `Left = rojo`
-  - `Right = azul`
-  - Layout: Triángulo grande hacia arriba (Centro=Down, Arriba=Left, Izq=Right, Der=Front).
-- La secuencia se aplica de izquierda a derecha como en un cubo real.
-- El motor actual fue extraido a `cube_preview_engine.dart`.
-- Se corrigio la orientacion de giros y se lo comparo contra `cuber` para:
-  - `3x3`: `U`, `R`, `F`, `D`, `L`, `B` y la secuencia `R U R' U'`
-  - `Pyraminx`: `U`, `L`, `R`, `B` (swaps de 3 ciclos corregidos).
-- Si vuelve a reportarse un mismatch visual:
-  1. primero comparar el estado del engine contra `cuber` (para 3x3) o lógica de permutación,
-  2. si el engine da bien, revisar render/net/rotacion de caras en `scramble_preview.dart`,
-  3. si falla en 4x4+, revisar parsing wide moves.
+Arquitectura (desde 2026-07-04):
+
+- Simulacion de puzzles en `lib/domain/puzzles/` (Dart puro, sin Flutter):
+  - `nxn_cube_simulator.dart`: cubos 2x2..7x7, wide moves (`Rw`, `3Fw2`) y rotaciones (`x/y/z`); validado contra `cuber` en tests.
+  - `pyraminx_simulator.dart`, `skewb_simulator.dart`, `megaminx_simulator.dart`, `clock_simulator.dart`: ports exactos de las tablas de permutacion de csTimer (image.js pre-poly3d, commit `4718f7a7`, + `scramble/clock.js`).
+  - `square1_simulator.dart`: port bit a bit de `SqCubie` (csTimer `scramble_sq1_new.js`): 24 slots, esquinas de 2 slots, slice que intercambia `ur`/`dl`, y chequeos `topSliceable`/`bottomSliceable` para validar que un `/` sea fisicamente ejecutable. `GenerateScramble` usa este mismo modelo para emitir solo scrambles legales de sq1.
+- Dibujo en `lib/presentation/widgets/preview/`: un `CustomPainter` por puzzle (`cube_net_painter`, `pyraminx_net_painter`, `skewb_net_painter`, `megaminx_net_painter`, `clock_painter`) + `puzzle_palettes.dart` (colores) + `preview_fit.dart` (letterbox).
+- `scramble_preview.dart` es el widget publico: normaliza variantes (`3x3oh`/`444bf`/etc → puzzle base), despacha simulador+painter y expone `supports()`. Para agregar un puzzle: simulador + painter + registrarlo ahi.
+- Los simuladores devuelven ids de color enteros; la paleta es responsabilidad de presentacion.
+
+Convenciones de color/orientacion:
+
+- NxN: blanco U, verde F (net: U / L F R B / D). Ids: 0 blanco, 1 amarillo, 2 verde, 3 azul, 4 rojo, 5 naranja.
+- Pyraminx (WCA, layout csTimer: L|F|R arriba, D abajo, triangulo grande apuntando abajo): F verde, L rojo, R azul, D amarillo.
+- Skewb: net desplegado de csTimer (6 rombos), caras 0..5 = blanco, azul, rojo, amarillo, verde, naranja.
+- Megaminx: dos flores de 6 pentagonos (U+vecinas / D+vecinas) con etiquetas U y F; 12 colores estandar csTimer.
+- Clock: dos grillas 3x3 (frente/dorso) con agujas, marcas y pines; algoritmo con `moveArr` de csTimer.
+- Square-1: dos discos (U izquierda, D derecha) + franja de capa media; esquema csTimer (U amarillo, D blanco, R naranja, L rojo, F verde, B azul).
+
+Bugs historicos a no repetir:
+
+- `_CubePreviewEngine` embebido en `scramble_preview.dart` habia quedado como placeholder que SIEMPRE devolvia el cubo resuelto (el motor real `cube_preview_engine.dart` quedo desconectado tras un fix de compilacion web). Ambos archivos fueron eliminados; hoy hay un solo camino: dominio simula, painter dibuja. El test "cube preview paints the scrambled state, not the solved cube" guarda esa regresion.
+- El selector de sesiones ofrece los ids `4x4bf`/`5x5bf` pero el generador solo manejaba `444bf`/`555bf`: esas sesiones recibian scrambles de 3x3 silenciosamente. `GenerateScramble` ahora acepta ambos ids (y `3x3mbf`); si se agrega una categoria nueva al selector, verificar que el switch del generador la contemple (test de aliases en `generate_scramble_test.dart`).
+- El generador viejo de sq1 emitia pares `(top,bottom)` al azar sin validar que el slice fuera ejecutable (movimientos imposibles en un cubo real). Hoy usa `Square1Cubie` y valida legalidad antes de cada `/`; el preview de sq1 usa el mismo modelo.
+- Los scrambles BLD todavia no emiten rotaciones finales (`z' y'`), pero el simulador NxN ya las soporta si `FIX-017` las agrega.
+
+Si vuelve a reportarse un mismatch visual:
+
+1. comparar el estado del simulador contra `cuber` (3x3) o contra csTimer con el mismo scramble,
+2. si el simulador da bien, revisar el painter correspondiente en `preview/`,
+3. si falla en 4x4+, revisar parsing de wide moves en `nxn_cube_simulator.dart`.
 
 ## 8. Pendiente inmediato
 
@@ -530,3 +539,18 @@ Entradas actuales:
   - se agregaron espacios (gaps) y bordes redondeados a los stickers de Pyraminx para mejorar la diferenciación visual
   - archivos afectados: `lib/presentation/widgets/scramble_preview.dart`, `CONTEXT.md`
   - validacion: el análisis de Flutter pasa y la lógica de dibujo fue actualizada para encoger los triángulos hacia su centroide
+
+- `2026-07-04`
+  - se arreglo la imagen del scramble para todas las categorias: el preview NxN estaba clavado en "resuelto" porque `scramble_preview.dart` usaba un `_CubePreviewEngine` placeholder; ademas Skewb/Megaminx no tenian preview y Clock era un icono estatico
+  - se reestructuro con capas: simuladores puros en `lib/domain/puzzles/` (NxN validado contra `cuber`; Pyraminx/Skewb/Megaminx/Clock portados exactos de csTimer) y painters por puzzle en `lib/presentation/widgets/preview/`; `cube_preview_engine.dart` y los motores embebidos fueron eliminados (ver seccion 7)
+  - archivos afectados: `lib/domain/puzzles/*`, `lib/presentation/widgets/preview/*`, `lib/presentation/widgets/scramble_preview.dart`, `test/domain/puzzles/*`, `test/presentation/widgets/scramble_preview_test.dart`, `lib/TODO.TXT` (`FIX-022`), `CONTEXT.md`
+  - validacion: `dart format`, `flutter analyze` (sin issues nuevos), `flutter test` 154/154 (baseline previa: 115 ok + 6 fallando por keys `*-svg` que el widget habia dejado de emitir), `flutter build web --no-pub`
+  - siguiente paso: verificar visualmente cada categoria contra csTimer con un mismo scramble (sobre todo Pyraminx/Skewb/Megaminx) y decidir si se encara el preview de Square-1 (portar `SqCubie` de csTimer)
+
+- `2026-07-04` (2da tanda: fixes pendientes del backlog)
+  - se cerraron los pendientes de la lista corta: (a) sort de tiempos ya existia completo en `SolveList` (solo se tildo y se cubrio con tests, incluida la rama DNF), (b) insercion manual de tiempos (boton `+` en header de SolveList + CTA en estado vacio, dialogo con `parseManualTimeMs` que acepta `12.34`/`12,34`/`1:23.45` y rechaza cero/exponentes/malformados; usa el scramble actual y `AddSolveEvent`), (c) bloqueo de historial en modo versus (PopScope en `CompetePage` impide salir con ronda `inProgress`, sin SnackBar para no robar toques de stop; el chip VS queda con `IgnorePointer` durante la ronda para que el toque pase al carril — US-007), (d) preview + generador validado de Square-1 (`square1_simulator.dart` port de SqCubie; el generador solo emite slices ejecutables) y (e) `FIX-023`: aliases `4x4bf`/`5x5bf`/`3x3mbf`/`square-1` en `GenerateScramble` (antes caian al default 3x3)
+  - fix colateral encontrado por review: el branch vacio de `SolveList` re-despachaba `LoadSolves` en cada build generando loop loading→empty→loading; ahora solo despacha si `solveState.sessionId != currentSession.id`
+  - decision consciente: el alta manual de un solve regenera el scramble actual (mismo flujo que un solve real); si el timer principal estuviera corriendo en ese momento, el solve en curso se guardaria con el scramble nuevo — edge case aceptado porque ya existia via el boton Scramble
+  - archivos afectados: `lib/domain/puzzles/square1_simulator.dart`, `lib/presentation/widgets/preview/square1_painter.dart`, `lib/presentation/widgets/scramble_preview.dart`, `lib/domain/usecases/generate_scramble.dart` (tambien limpieza de codigo muerto), `lib/presentation/widgets/solve_list.dart`, `lib/presentation/pages/compete_page.dart`, tests correspondientes, `lib/TODO.TXT`, `CONTEXT.md`
+  - validacion: `dart format`, `flutter analyze` (sin issues nuevos; bajaron de 41 a ~36 por limpieza), `flutter test` 185/185, `flutter build web --no-pub`; ademas review adversarial multi-agente sobre el diff (hallazgos confirmados eran gaps de tests, todos cerrados)
+  - siguiente paso: probar en dispositivo/web real el alta manual y el bloqueo de versus; verificar visualmente el preview de sq1 contra csTimer; queda `FIX-017`-extension (rotaciones finales `z' y'` en scrambles BLD) y el resto del roadmap web/backend

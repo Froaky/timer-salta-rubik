@@ -179,17 +179,17 @@ class ScrambleDisplay extends StatelessWidget {
       textStyle!,
       textWidth,
     );
-    
+
     const headerHeight = 0.0;
     final minHeight = isSmallScreen ? 74.0 : 84.0;
-    
+
     // Significantly increased maxHeight to allow more lines to be visible
     // without scrolling on mobile (FIX-020).
     final maxHeight = switch (cubeType) {
       '6x6' || '7x7' || 'megaminx' => isSmallScreen ? 240.0 : 300.0,
       _ => isSmallScreen ? 200.0 : 240.0,
     };
-    
+
     // Add a larger buffer (12px) to the measured height to prevent any clipping
     // due to line-height or font rendering differences.
     final contentHeight = measuredTextHeight + padding.vertical + 12.0;

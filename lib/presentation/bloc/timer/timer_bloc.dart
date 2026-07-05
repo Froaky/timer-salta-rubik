@@ -190,8 +190,7 @@ class TimerBloc extends Bloc<TimerEvent, TimerState> {
     emit(state.copyWith(tapToStartEnabled: !state.tapToStartEnabled));
   }
 
-  void _onStartImmediate(
-      TimerStartImmediate event, Emitter<TimerState> emit) {
+  void _onStartImmediate(TimerStartImmediate event, Emitter<TimerState> emit) {
     if (state.status == TimerStatus.inspection) {
       add(const TimerStopInspection());
       add(const TimerStart());

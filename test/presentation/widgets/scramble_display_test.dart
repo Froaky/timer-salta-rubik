@@ -87,7 +87,8 @@ void main() {
     await tester.pumpWidget(buildDisplay(state, width: 280));
     await tester.pumpAndSettle();
 
-    final card = tester.getRect(find.byKey(const ValueKey('main-scramble-card')));
+    final card =
+        tester.getRect(find.byKey(const ValueKey('main-scramble-card')));
     expect(card.height, greaterThan(0));
     expect(card.height, lessThan(140));
 
@@ -95,7 +96,8 @@ void main() {
     expect(text, findsOneWidget);
   });
 
-  testWidgets('keeps long 7x7 scramble fully readable via internal scroll '
+  testWidgets(
+      'keeps long 7x7 scramble fully readable via internal scroll '
       '(FIX-019)', (tester) async {
     // ~100 wide moves, mimicking 7x7 length.
     final notation = List.generate(
@@ -114,7 +116,8 @@ void main() {
     await tester.pumpWidget(buildDisplay(state, width: 320));
     await tester.pumpAndSettle();
 
-    final card = tester.getRect(find.byKey(const ValueKey('main-scramble-card')));
+    final card =
+        tester.getRect(find.byKey(const ValueKey('main-scramble-card')));
     // Card must remain bounded so the timer keeps usable space.
     expect(card.height, lessThanOrEqualTo(254.0));
 

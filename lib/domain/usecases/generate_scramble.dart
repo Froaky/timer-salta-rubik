@@ -4,6 +4,7 @@ import 'package:cuber/cuber.dart' as cuber;
 
 import '../../core/usecases/usecase.dart';
 import '../entities/scramble.dart';
+import '../puzzles/square1_simulator.dart';
 
 /// Generador de scrambles usando el paquete cuber que implementa
 /// el algoritmo de Kociemba y sigue estándares WCA más robustos
@@ -15,14 +16,17 @@ class GenerateScramble implements UseCaseSync<Scramble, String> {
       case '3x3oh':
       case '3x3bf':
       case '3x3fm':
+      case '3x3mbf':
         return _generate3x3Scramble();
       case '2x2':
         return _generate2x2Scramble();
       case '4x4':
       case '444bf':
+      case '4x4bf':
         return _generate4x4Scramble();
       case '5x5':
       case '555bf':
+      case '5x5bf':
         return _generate5x5Scramble();
       case '6x6':
         return _generate6x6Scramble();
@@ -37,6 +41,7 @@ class GenerateScramble implements UseCaseSync<Scramble, String> {
       case 'clock':
         return _generateClockScramble();
       case 'sq1':
+      case 'square-1':
         return _generateSquare1Scramble();
       default:
         return _generate3x3Scramble();
@@ -85,7 +90,6 @@ class GenerateScramble implements UseCaseSync<Scramble, String> {
   Scramble _generate2x2Scramble() {
     final random = Random();
     final faces = ['R', 'U', 'F'];
-    final modifiers = ['', '\'', '2'];
     final moves = <String>[];
 
     String? lastFace;
@@ -400,54 +404,13 @@ class GenerateScramble implements UseCaseSync<Scramble, String> {
         invertedMove = moveStr;
       } else {
         // R -> R'
-        invertedMove = moveStr + '\'';
+        invertedMove = "$moveStr'";
       }
 
       invertedMoves.add(invertedMove);
     }
 
     return invertedMoves;
-  }
-
-  /// Genera una secuencia de movimientos válida
-  List<String> _generateMoveSequence({
-    required List<String> faces,
-    required int length,
-    bool allowTips = false,
-  }) {
-    final moves = <String>[];
-    final modifiers = allowTips ? ['', '\''] : ['', '\'', '2'];
-    String? lastFace;
-    String? secondLastFace;
-
-    for (int i = 0; i < length; i++) {
-      String face;
-
-      // Evitar movimientos consecutivos en la misma cara o caras opuestas
-      do {
-        face =
-            faces[(DateTime.now().millisecondsSinceEpoch + i) % faces.length];
-      } while (_isInvalidMove(face, lastFace, secondLastFace));
-
-      final modifier = modifiers[
-          (DateTime.now().microsecondsSinceEpoch + i) % modifiers.length];
-
-      // Para Pyraminx, agregar ocasionalmente movimientos de tips
-      if (allowTips && (DateTime.now().millisecondsSinceEpoch + i) % 4 == 0) {
-        final tips = ['r', 'l', 'u', 'b'];
-        final tip = tips[i % tips.length];
-        final tipModifier =
-            ['', '\''][(DateTime.now().microsecondsSinceEpoch + i) % 2];
-        moves.add('$tip$tipModifier');
-      } else {
-        moves.add('$face$modifier');
-      }
-
-      secondLastFace = lastFace;
-      lastFace = face;
-    }
-
-    return moves;
   }
 
   /// Genera scramble para 3x3x3 siguiendo estándares WCA oficiales
@@ -522,38 +485,6 @@ class GenerateScramble implements UseCaseSync<Scramble, String> {
         face == secondLastFace) {
       return true;
     }
-
-    return false;
-  }
-
-  /// Verifica si un movimiento 4x4x4 es inválido
-  bool _isInvalidMove4x4(
-      String face, String? lastFace, String? secondLastFace) {
-    if (lastFace == null) return false;
-
-    // Extraer la cara base (sin w o minúscula)
-    String getBaseFace(String f) {
-      if (f.endsWith('w')) return f.substring(0, f.length - 1);
-      return f.toUpperCase();
-    }
-
-    final baseFace = getBaseFace(face);
-    final lastBaseFace = getBaseFace(lastFace);
-
-    // No permitir movimientos consecutivos en la misma cara base
-    if (baseFace == lastBaseFace) return true;
-
-    // No permitir caras opuestas consecutivas
-    final oppositeFaces = {
-      'R': 'L',
-      'L': 'R',
-      'U': 'D',
-      'D': 'U',
-      'F': 'B',
-      'B': 'F',
-    };
-
-    if (oppositeFaces[baseFace] == lastBaseFace) return true;
 
     return false;
   }
@@ -718,21 +649,70 @@ class GenerateScramble implements UseCaseSync<Scramble, String> {
     return '$pin$value$sign';
   }
 
-  /// Genera scramble para Square-1 (simplificado)
+  /// Genera scramble para Square-1 con movimientos ejecutables en un cubo
+  /// real: cada par `(top,bottom)` se elige de modo que el slice (`/`) que lo
+  /// sigue no quede bloqueado por una esquina en ninguna de las dos capas.
+  ///
+  /// Simula el estado con [Square1Cubie] (mismo modelo que usa el preview),
+  /// evita el par nulo `(0,0)` y muestra los giros en el rango estándar
+  /// `-5..6`.
   Scramble _generateSquare1Scramble() {
     final random = Random();
+    final cubie = Square1Cubie();
     final moves = <String>[];
-    for (int i = 0; i < 10; i++) {
-      int top = random.nextInt(12) - 5;
-      int bottom = random.nextInt(12) - 5;
-      moves.add('($top,$bottom)');
+    const pairCount = 13;
+
+    for (int i = 0; i < pairCount; i++) {
+      final legalTops = _legalSquare1Turns(cubie, top: true);
+      final legalBottoms = _legalSquare1Turns(cubie, top: false);
+
+      int top;
+      int bottom;
+      do {
+        top = legalTops[random.nextInt(legalTops.length)];
+        bottom = legalBottoms[random.nextInt(legalBottoms.length)];
+      } while (top == 0 && bottom == 0);
+
+      if (top != 0) {
+        cubie.doMove(top);
+      }
+      if (bottom != 0) {
+        cubie.doMove(-bottom);
+      }
+      final isLast = i == pairCount - 1;
+      if (!isLast) {
+        cubie.doMove(0);
+      }
+
+      final displayTop = top > 6 ? top - 12 : top;
+      final displayBottom = bottom > 6 ? bottom - 12 : bottom;
+      moves.add('($displayTop,$displayBottom)');
     }
+
     return Scramble(
       notation: moves.join(' / '),
       cubeType: 'sq1',
       moves: moves,
       generatedAt: DateTime.now(),
     );
+  }
+
+  /// Giros (0..11) de la capa pedida que dejan esa capa lista para el slice.
+  ///
+  /// Siempre hay al menos uno: en cualquier forma de capa existen dos cortes
+  /// enfrentados, así que alguna rotación alinea el plano del slice.
+  List<int> _legalSquare1Turns(Square1Cubie cubie, {required bool top}) {
+    final legal = <int>[];
+    for (int amount = 0; amount < 12; amount++) {
+      final probe = cubie.clone();
+      if (amount != 0) {
+        probe.doMove(top ? amount : -amount);
+      }
+      if (top ? probe.topSliceable : probe.bottomSliceable) {
+        legal.add(amount);
+      }
+    }
+    return legal;
   }
 }
 

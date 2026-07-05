@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:salta_rubik/domain/puzzles/square1_simulator.dart';
 import 'package:salta_rubik/domain/usecases/generate_scramble.dart';
 
 void main() {
@@ -137,12 +138,79 @@ void main() {
       expect(sawPositiveSix, isTrue);
     });
 
-    test('generates square-1 scrambles with ten slash-separated moves', () {
+    test('generates square-1 scrambles with thirteen slash-separated pairs',
+        () {
       final scramble = usecase('sq1');
 
       expect(scramble.cubeType, 'sq1');
-      expect(scramble.moves.length, 10);
-      expect(scramble.notation.split(' / ').length, 10);
+      expect(scramble.moves.length, 13);
+      expect(scramble.notation.split(' / ').length, 13);
+    });
+
+    test('square-1 pairs are well-formed, in range and never (0,0)', () {
+      final pairPattern = RegExp(r'^\((-?\d+),(-?\d+)\)$');
+
+      for (var i = 0; i < 30; i++) {
+        final scramble = usecase('sq1');
+
+        for (final move in scramble.moves) {
+          final match = pairPattern.firstMatch(move);
+          expect(match, isNotNull, reason: 'Malformed token: $move');
+
+          final top = int.parse(match!.group(1)!);
+          final bottom = int.parse(match.group(2)!);
+          expect(top, inInclusiveRange(-5, 6), reason: move);
+          expect(bottom, inInclusiveRange(-5, 6), reason: move);
+          expect(top != 0 || bottom != 0, isTrue,
+              reason: 'Null pair (0,0) emitted');
+        }
+      }
+    });
+
+    test('square-1 scrambles only contain executable slices', () {
+      final pairPattern = RegExp(r'^\((-?\d+),(-?\d+)\)$');
+
+      for (var i = 0; i < 30; i++) {
+        final scramble = usecase('sq1');
+        final cubie = Square1Cubie();
+
+        for (var m = 0; m < scramble.moves.length; m++) {
+          final match = pairPattern.firstMatch(scramble.moves[m])!;
+          final top = (int.parse(match.group(1)!) + 12) % 12;
+          final bottom = (int.parse(match.group(2)!) + 12) % 12;
+
+          if (top != 0) {
+            cubie.doMove(top);
+          }
+          if (bottom != 0) {
+            cubie.doMove(-bottom);
+          }
+
+          final isLast = m == scramble.moves.length - 1;
+          if (!isLast) {
+            expect(cubie.topSliceable, isTrue,
+                reason: 'Blocked top slice after ${scramble.moves[m]} '
+                    'in ${scramble.notation}');
+            expect(cubie.bottomSliceable, isTrue,
+                reason: 'Blocked bottom slice after ${scramble.moves[m]} '
+                    'in ${scramble.notation}');
+            cubie.doMove(0);
+          }
+        }
+      }
+    });
+
+    test('bld and selector aliases map to their base puzzle scrambles', () {
+      expect(usecase('4x4bf').cubeType, '4x4');
+      expect(usecase('5x5bf').cubeType, '5x5');
+      expect(usecase('444bf').cubeType, '4x4');
+      expect(usecase('555bf').cubeType, '5x5');
+      expect(usecase('3x3mbf').cubeType, '3x3');
+      expect(usecase('square-1').cubeType, 'sq1');
+
+      // Regresión del bug: '4x4bf'/'5x5bf' caían al default y devolvían 3x3.
+      final fourBf = usecase('4x4bf');
+      expect(fourBf.moves.length, greaterThan(30));
     });
 
     test('supports all configured public puzzle types', () {
@@ -151,11 +219,14 @@ void main() {
         '3x3oh',
         '3x3bf',
         '3x3fm',
+        '3x3mbf',
         '2x2',
         '4x4',
         '444bf',
+        '4x4bf',
         '5x5',
         '555bf',
+        '5x5bf',
         '6x6',
         '7x7',
         'pyraminx',

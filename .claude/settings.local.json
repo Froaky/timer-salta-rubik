@@ -1,6 +1,5 @@
 {
   "permissions": {
-    "defaultMode": "acceptEdits",
     "allow": [
       "Bash(flutter analyze *)",
       "Bash(flutter pub:*)",
@@ -34,7 +33,26 @@
       "Bash(git config --get:*)",
       "Skill(update-config)",
       "Skill(update-config:*)",
-      "Bash(python -c \"import json; json.load\\(open\\('.claude/settings.local.json'\\)\\)\")"
+      "Bash(python -c \"import json; json.load\\(open\\('.claude/settings.local.json'\\)\\)\")",
+      "Bash(flutter test *)",
+      "Bash(curl -sL https://raw.githubusercontent.com/cs0x7f/cstimer/master/src/js/tools/image.js -o C:/Users/theco/AppData/Local/Temp/claude/c--code-timer-salta-rubik/363fdf1b-3f52-4fa9-b4cc-d6d271e9d4aa/scratchpad/cstimer_image.js)",
+      "Bash(curl -sL https://raw.githubusercontent.com/cs0x7f/cstimer/master/src/js/scramble/clock.js -o C:/Users/theco/AppData/Local/Temp/claude/c--code-timer-salta-rubik/363fdf1b-3f52-4fa9-b4cc-d6d271e9d4aa/scratchpad/cstimer_clock.js)",
+      "Bash(curl -sL https://raw.githubusercontent.com/cs0x7f/cstimer/982aebf7b9c53afeb5b3b5aafefeb0b400d3d1be/src/js/tools/image.js -o C:/Users/theco/AppData/Local/Temp/claude/c--code-timer-salta-rubik/363fdf1b-3f52-4fa9-b4cc-d6d271e9d4aa/scratchpad/cstimer_image_2019.js)",
+      "Bash(curl -s \"https://api.github.com/repos/cs0x7f/cstimer/git/trees/982aebf7b9c53afeb5b3b5aafefeb0b400d3d1be?recursive=1\")",
+      "Bash(python -c ' *)",
+      "Bash(curl -s https://api.github.com/repos/cs0x7f/cstimer/git/trees/982aebf7b9c53afeb5b3b5aafefeb0b400d3d1be?recursive=1 -o C:/Users/theco/AppData/Local/Temp/claude/c--code-timer-salta-rubik/363fdf1b-3f52-4fa9-b4cc-d6d271e9d4aa/scratchpad/tree2019.json)",
+      "Bash(curl -sL https://raw.githubusercontent.com/cs0x7f/cstimer/4718f7a717bbcc889de8a239a738bbdc73d1aeee/src/js/tools/image.js -o C:/Users/theco/AppData/Local/Temp/claude/c--code-timer-salta-rubik/363fdf1b-3f52-4fa9-b4cc-d6d271e9d4aa/scratchpad/cstimer_image_2020.js)",
+      "Bash(curl -sL https://raw.githubusercontent.com/cs0x7f/cstimer/master/src/js/utils.js -o C:/Users/theco/AppData/Local/Temp/claude/c--code-timer-salta-rubik/363fdf1b-3f52-4fa9-b4cc-d6d271e9d4aa/scratchpad/cstimer_utils.js)",
+      "Bash(curl -s \"https://api.github.com/search/code?q=ctxRotate+repo:cs0x7f/cstimer\" -H \"Accept: application/vnd.github+json\")",
+      "Bash(gh api *)",
+      "Bash(curl -s https://api.github.com/repos/cs0x7f/cstimer/git/trees/master?recursive=1 -o C:/Users/theco/AppData/Local/Temp/claude/c--code-timer-salta-rubik/363fdf1b-3f52-4fa9-b4cc-d6d271e9d4aa/scratchpad/tree_master.json)",
+      "Bash(curl -sL https://raw.githubusercontent.com/cs0x7f/cstimer/master/src/js/lib/utillib.js -o C:/Users/theco/AppData/Local/Temp/claude/c--code-timer-salta-rubik/363fdf1b-3f52-4fa9-b4cc-d6d271e9d4aa/scratchpad/cstimer_utillib.js)",
+      "Bash(python -)",
+      "Bash(dart format *)",
+      "Bash(flutter build *)",
+      "Bash(git -C c:/code/timer-salta-rubik status --short)",
+      "Bash(curl -sL https://raw.githubusercontent.com/cs0x7f/cstimer/master/src/js/scramble/scramble_sq1_new.js -o C:/Users/theco/AppData/Local/Temp/claude/c--code-timer-salta-rubik/363fdf1b-3f52-4fa9-b4cc-d6d271e9d4aa/scratchpad/cstimer_sq1.js)",
+      "Bash(grep -E \"lib\\\\\\\\\\\\\\\\domain\\\\\\\\\\\\\\\\puzzles|lib\\\\\\\\\\\\\\\\presentation\\\\\\\\\\\\\\\\widgets\\\\\\\\\\\\\\\\preview|scramble_preview|solve_list|compete_page|generate_scramble|square1|error -\")"
     ],
     "deny": [
       "Bash(git push --force:*)",
@@ -45,6 +63,7 @@
       "Bash(git clean -fdx:*)",
       "Bash(git branch -D:*)",
       "Bash(rm -rf:*)"
-    ]
+    ],
+    "defaultMode": "acceptEdits"
   }
 }

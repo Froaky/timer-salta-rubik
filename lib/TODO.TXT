@@ -1,13 +1,13 @@
 -| Deberia venir por default una sesion. ✅
 -| Deberia poder cambiarse el nombre de la sesion. ✅
 -| Los +2, DNF NO se estan guardando. ✅
--| Deberia poder filtrar los tiempos por mas alto a mas bajo y viceversa, lo mismo con fecha
+-| Deberia poder filtrar los tiempos por mas alto a mas bajo y viceversa, lo mismo con fecha ✅ (SolveList ya tenia sort por tiempo/fecha asc-desc; se agrego cobertura en solve_list_test)
 -| Agregar opcion de inspeccion ✅
--| Agregar la opcion de insertar manualmente los tiempos
+-| Agregar la opcion de insertar manualmente los tiempos ✅ (boton + en header de SolveList y CTA en estado vacio; dialogo con tiempo 12.34 o 1:23.45 + penalty; usa el scramble actual y AddSolveEvent)
 -| Al cambiar de sesion deberia actualizar el scram a ese evento ✅
 -| Deberia cambiarte a la sesion creada automaticamente ✅
 -| Reducir el tiempo de presion para iniciar el tiempo a 200ms ✅
--| Al competir, no deberia dejar entrar al historial
+-| Al competir, no deberia dejar entrar al historial ✅ (modo versus: PopScope impide salir de CompetePage con ronda inProgress y el chip de resultados queda deshabilitado durante la ronda; el toggle "Modo competir" de settings ya bloqueaba historial/stats en el timer principal)
 
 Feedback testers -> User Stories para fix
 
@@ -84,6 +84,17 @@ CRITERIOS:
 - Si no hay stats suficientes, no debe dejar espacio vacio reservado.
 - En desktop/web ancho se puede mantener el layout actual o adaptar solo si no rompe la sidebar; el objetivo principal es mobile.
 - Agregar cobertura en `test/presentation/pages/timer_page_test.dart` para verificar que en mobile las stats no ocupan fila fija, no interceptan el timer y siguen mostrando valores correctos.
+-| FIX-022 ✅ | Como speedcuber de cualquier categoria, quiero que la imagen del scramble muestre el estado real del puzzle mezclado (NxN, Pyraminx, Skewb, Megaminx y Clock), para confiar en la referencia visual antes del solve. [done]
+CRITERIOS:
+- El preview NxN vuelve a aplicar el scramble (el motor estaba desconectado y siempre mostraba el cubo resuelto).
+- La simulacion vive en `lib/domain/puzzles/` (Dart puro, testeada; 3x3 validado contra `cuber`) y el dibujo en `lib/presentation/widgets/preview/`.
+- Skewb, Megaminx y Clock ganan preview real (antes: vacio o placeholder); Pyraminx pasa al net estandar de csTimer/WCA.
+- Square-1 tambien tiene preview (vista de dos discos estilo csTimer con capa media) y su generador ahora solo emite slices fisicamente ejecutables via `Square1Cubie`.
+- Cobertura en `test/domain/puzzles/` y `test/presentation/widgets/scramble_preview_test.dart`.
+-| FIX-023 ✅ | Como usuario que crea una sesion 4x4 BLD o 5x5 BLD desde el selector, quiero recibir scrambles del puzzle correcto, para no practicar con mezclas de 3x3 por error. [done]
+CRITERIOS:
+- `GenerateScramble` acepta los ids `4x4bf`/`5x5bf` (los que ofrece el selector) ademas de `444bf`/`555bf`, y `3x3mbf`; antes caian al default 3x3.
+- Regresion cubierta en `test/domain/usecases/generate_scramble_test.dart` (test de aliases).
 
 Play Store launch checklist
 
