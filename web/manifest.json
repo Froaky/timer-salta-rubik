@@ -1,11 +1,11 @@
 {
-    "name": "salta_rubik",
-    "short_name": "salta_rubik",
+    "name": "Salta Rubik",
+    "short_name": "Salta Rubik",
     "start_url": ".",
     "display": "standalone",
-    "background_color": "#FFFFFF",
-    "theme_color": "#FFFFFF",
-    "description": "A new Flutter project.",
+    "background_color": "#020617",
+    "theme_color": "#0F172A",
+    "description": "Timer de speedcubing con sesiones, scrambles estilo WCA, estadísticas y modo competencia.",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [

@@ -33,7 +33,8 @@ class LocalDatabase {
     }
 
     solves.sort(
-      (a, b) => (b['created_at'] as int).compareTo(a['created_at'] as int),
+      (a, b) => (b['created_at'] as int? ?? 0)
+          .compareTo(a['created_at'] as int? ?? 0),
     );
 
     final safeOffset = offset ?? 0;
@@ -106,7 +107,8 @@ class LocalDatabase {
   Future<List<Map<String, dynamic>>> getSessions() async {
     final sessions = await _readSessions();
     sessions.sort(
-      (a, b) => (b['created_at'] as int).compareTo(a['created_at'] as int),
+      (a, b) => (b['created_at'] as int? ?? 0)
+          .compareTo(a['created_at'] as int? ?? 0),
     );
     return sessions;
   }
@@ -146,7 +148,11 @@ class LocalDatabase {
     if (raw == null || raw.isEmpty) {
       return _defaultSessions();
     }
-    return _decodeList(raw);
+    return _decodeListOrRecover(
+      raw,
+      key: _sessionsKey,
+      fallback: _defaultSessions,
+    );
   }
 
   Future<List<Map<String, dynamic>>> _readSolves() async {
@@ -155,7 +161,35 @@ class LocalDatabase {
     if (raw == null || raw.isEmpty) {
       return <Map<String, dynamic>>[];
     }
-    return _decodeList(raw);
+    return _decodeListOrRecover(
+      raw,
+      key: _solvesKey,
+      fallback: () => <Map<String, dynamic>>[],
+    );
+  }
+
+  /// Un blob corrupto en localStorage (escritura truncada por cuota, otra
+  /// pestana, extension del navegador) no debe dejar la app web inutilizable
+  /// para siempre: se respalda el valor crudo bajo `<key>.corrupt`, se
+  /// persiste un reemplazo valido y se sigue funcionando.
+  List<Map<String, dynamic>> _decodeListOrRecover(
+    String raw, {
+    required String key,
+    required List<Map<String, dynamic>> Function() fallback,
+  }) {
+    try {
+      return _decodeList(raw);
+    } catch (_) {
+      final replacement = fallback();
+      try {
+        _storage['$key.corrupt'] = raw;
+        _storage[key] = jsonEncode(replacement);
+      } catch (_) {
+        // Si ni siquiera se puede escribir (cuota llena), al menos devolver
+        // el fallback para que la sesion actual siga operativa.
+      }
+      return replacement;
+    }
   }
 
   Future<void> _writeSessions(List<Map<String, dynamic>> sessions) async {

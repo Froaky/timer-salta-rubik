@@ -83,6 +83,31 @@ class _CompetePageState extends State<CompetePage> {
   static const int yellowThreshold = TimerThresholds.yellow;
   static const int greenThreshold = TimerThresholds.green;
 
+  // Marca si el hold actual arranco desde `stopped`, para que un toque breve
+  // posterior a una ronda no borre los tiempos finales visibles.
+  bool _lane1HoldFromStopped = false;
+  bool _lane2HoldFromStopped = false;
+
+  @override
+  void initState() {
+    super.initState();
+    final competeState = context.read<CompeteBloc>().state;
+
+    // Defensa ante un CompeteBloc app-scoped colgado en inProgress (p.ej. si
+    // algun camino futuro permite salir con la ronda corriendo, o tras un
+    // hot-restart parcial): al re-entrar se aborta esa ronda preservando
+    // marcador, scrambles y solves. Complementa al PopScope del build.
+    if (competeState.status == CompeteStatus.inProgress ||
+        competeState.lane1Running ||
+        competeState.lane2Running) {
+      context.read<CompeteBloc>().add(const AbortCompeteRound());
+    }
+
+    // Restaurar el tipo de cubo de la partida en curso para que los solves
+    // no se etiqueten como 3x3 al re-entrar entre rondas.
+    _selectedCubeType = competeState.cubeType ?? _selectedCubeType;
+  }
+
   @override
   void dispose() {
     _lane1HoldTimer?.cancel();
@@ -141,7 +166,9 @@ class _CompetePageState extends State<CompetePage> {
   }
 
   Widget _buildSetupScreen(SessionState sessionState) {
-    return Padding(
+    // Scroll para que la pantalla de configuracion no desborde en landscape
+    // o ventanas bajas de navegador.
+    return SingleChildScrollView(
       padding: const EdgeInsets.all(24.0),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -468,7 +495,7 @@ class _CompetePageState extends State<CompetePage> {
           color: timerColor,
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.1),
+              color: Colors.black.withValues(alpha: 0.1),
               blurRadius: 20,
               offset: const Offset(0, 8),
             ),
@@ -647,6 +674,14 @@ class _CompetePageState extends State<CompetePage> {
   }
 
   void _showCompetitionResults(CompeteState competeState) {
+    // Guardia defensiva ademas del IgnorePointer/onTap-null del chip: el
+    // historial de rondas nunca debe abrirse con una ronda o carril activo.
+    if (competeState.status == CompeteStatus.inProgress ||
+        _lane1Status == CompeteTimerStatus.running ||
+        _lane2Status == CompeteTimerStatus.running) {
+      return;
+    }
+
     final lane1Solves = competeState.lane1.solves;
     final lane2Solves = competeState.lane2.solves;
     final roundCount = lane1Solves.length > lane2Solves.length
@@ -688,10 +723,19 @@ class _CompetePageState extends State<CompetePage> {
                             : null;
                         final scrambleNotation =
                             lane1Solve?.scramble ?? lane2Solve?.scramble ?? '';
+                        // En modo "scrambles distintos", mostrar tambien la
+                        // mezcla del carril 2 para no atribuirle a ambos la
+                        // del carril 1.
+                        final lane2Notation = lane2Solve != null &&
+                                lane1Solve != null &&
+                                lane2Solve.scramble != lane1Solve.scramble
+                            ? lane2Solve.scramble
+                            : null;
 
                         return _buildRoundRow(
                           roundIndex: index,
                           scrambleNotation: scrambleNotation,
+                          lane2ScrambleNotation: lane2Notation,
                           lane1Solve: lane1Solve,
                           lane2Solve: lane2Solve,
                         );
@@ -713,6 +757,7 @@ class _CompetePageState extends State<CompetePage> {
   Widget _buildRoundRow({
     required int roundIndex,
     required String scrambleNotation,
+    String? lane2ScrambleNotation,
     required Solve? lane1Solve,
     required Solve? lane2Solve,
   }) {
@@ -844,13 +889,44 @@ class _CompetePageState extends State<CompetePage> {
     _competitionRunStopwatch = null;
     _lane1ReleasedForSyncStart = false;
     _lane2ReleasedForSyncStart = false;
+    _lane1HoldFromStopped = false;
+    _lane2HoldFromStopped = false;
+  }
+
+  // Un toque breve que arranco desde `stopped` restaura ese carril con su
+  // tiempo final visible; si arranco desde idle, se resetea todo como antes.
+  void _abortLaneHold({required int lane}) {
+    final fromStopped =
+        lane == 1 ? _lane1HoldFromStopped : _lane2HoldFromStopped;
+
+    if (!fromStopped) {
+      _resetAllTimers();
+      return;
+    }
+
+    setState(() {
+      if (lane == 1) {
+        _lane1HoldFromStopped = false;
+        _lane1Status = CompeteTimerStatus.stopped;
+        _lane1Color = CompeteTimerColor.white;
+        _lane1HoldDurationMs = 0;
+      } else {
+        _lane2HoldFromStopped = false;
+        _lane2Status = CompeteTimerStatus.stopped;
+        _lane2Color = CompeteTimerColor.white;
+        _lane2HoldDurationMs = 0;
+      }
+    });
   }
 
   // Lane 1 timer methods
   void _onLane1TapDown() {
     if (_lane1Status != CompeteTimerStatus.idle &&
-        _lane1Status != CompeteTimerStatus.stopped) return;
+        _lane1Status != CompeteTimerStatus.stopped) {
+      return;
+    }
 
+    _lane1HoldFromStopped = _lane1Status == CompeteTimerStatus.stopped;
     _lane1HoldStopwatch = Stopwatch()..start();
     setState(() {
       _lane1Status = CompeteTimerStatus.holdPending;
@@ -882,7 +958,7 @@ class _CompetePageState extends State<CompetePage> {
 
       _handleArmedLaneRelease(lane: 1);
     } else if (_lane1Status == CompeteTimerStatus.holdPending) {
-      _resetAllTimers();
+      _abortLaneHold(lane: 1);
     }
   }
 
@@ -891,7 +967,7 @@ class _CompetePageState extends State<CompetePage> {
     _lane1HoldTimer = null;
     _lane1HoldStopwatch?.stop();
     _lane1HoldStopwatch = null;
-    _resetAllTimers();
+    _abortLaneHold(lane: 1);
   }
 
   void _handleArmedLaneRelease({required int lane}) {
@@ -989,8 +1065,11 @@ class _CompetePageState extends State<CompetePage> {
   // Lane 2 timer methods
   void _onLane2TapDown() {
     if (_lane2Status != CompeteTimerStatus.idle &&
-        _lane2Status != CompeteTimerStatus.stopped) return;
+        _lane2Status != CompeteTimerStatus.stopped) {
+      return;
+    }
 
+    _lane2HoldFromStopped = _lane2Status == CompeteTimerStatus.stopped;
     _lane2HoldStopwatch = Stopwatch()..start();
     setState(() {
       _lane2Status = CompeteTimerStatus.holdPending;
@@ -1022,7 +1101,7 @@ class _CompetePageState extends State<CompetePage> {
 
       _handleArmedLaneRelease(lane: 2);
     } else if (_lane2Status == CompeteTimerStatus.holdPending) {
-      _resetAllTimers();
+      _abortLaneHold(lane: 2);
     }
   }
 
@@ -1031,7 +1110,7 @@ class _CompetePageState extends State<CompetePage> {
     _lane2HoldTimer = null;
     _lane2HoldStopwatch?.stop();
     _lane2HoldStopwatch = null;
-    _resetAllTimers();
+    _abortLaneHold(lane: 2);
   }
 
   void _stopLane2Timer() {
@@ -1263,13 +1342,19 @@ class _CompetePageState extends State<CompetePage> {
   void _saveLane1Solve(int finalTime, String? scrambleNotation) {
     if (scrambleNotation == null) return;
 
+    // El cubeType de la partida vive en el bloc (sobrevive re-entradas a la
+    // pagina); el campo local es solo el ultimo valor elegido en el setup.
+    final competeCubeType = context.read<CompeteBloc>().state.cubeType ??
+        _selectedCubeType ??
+        '3x3';
+
     final solve = Solve(
       id: DateTime.now().millisecondsSinceEpoch.toString(),
       sessionId: 'compete_session',
       timeMs: finalTime,
       penalty: Penalty.none,
       scramble: scrambleNotation,
-      cubeType: _selectedCubeType ?? '3x3',
+      cubeType: competeCubeType,
       lane: 1,
       createdAt: DateTime.now(),
     );
@@ -1282,13 +1367,17 @@ class _CompetePageState extends State<CompetePage> {
   void _saveLane2Solve(int finalTime, String? scrambleNotation) {
     if (scrambleNotation == null) return;
 
+    final competeCubeType = context.read<CompeteBloc>().state.cubeType ??
+        _selectedCubeType ??
+        '3x3';
+
     final solve = Solve(
       id: DateTime.now().millisecondsSinceEpoch.toString(),
       sessionId: 'compete_session',
       timeMs: finalTime,
       penalty: Penalty.none,
       scramble: scrambleNotation,
-      cubeType: _selectedCubeType ?? '3x3',
+      cubeType: competeCubeType,
       lane: 2,
       createdAt: DateTime.now(),
     );

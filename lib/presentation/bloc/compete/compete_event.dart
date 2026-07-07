@@ -39,6 +39,12 @@ class ResetCompete extends CompeteEvent {
   const ResetCompete();
 }
 
+/// Aborta una ronda que quedo activa (p.ej. al salir de la pagina con los
+/// timers corriendo) preservando marcador, scrambles y solves de la partida.
+class AbortCompeteRound extends CompeteEvent {
+  const AbortCompeteRound();
+}
+
 class UpdateLaneTimer extends CompeteEvent {
   final int lane;
   final int elapsedMs;

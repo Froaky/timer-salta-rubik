@@ -148,11 +148,16 @@ class LocalDatabase {
   }
 
   Future<void> markSolvesAsSynced(List<String> ids) async {
+    if (ids.isEmpty) {
+      return;
+    }
     final db = await database;
+    final placeholders = List.filled(ids.length, '?').join(',');
     await db.update(
       'solves',
       {'is_synced': 1},
-      where: 'id IN (${ids.map((id) => "'$id'").join(',')})',
+      where: 'id IN ($placeholders)',
+      whereArgs: ids,
     );
   }
 

@@ -104,12 +104,29 @@ void main() {
 
     test('generates official style 6x6 scrambles with wide 3-layer moves', () {
       final scramble = usecase('6x6');
-      final movePattern = RegExp(
-          r"^(R|U|F|L|D|B|Rw|Uw|Fw|Lw|Dw|Bw|3Rw|3Uw|3Fw|3Lw|3Dw|3Bw)(2|'|)?$");
+      final movePattern =
+          RegExp(r"^(R|U|F|L|D|B|Rw|Uw|Fw|Lw|Dw|Bw|3Rw|3Uw|3Fw)(2|'|)?$");
 
       expect(scramble.cubeType, '6x6');
       expect(scramble.moves.length, 80);
       expect(scramble.moves.every(movePattern.hasMatch), isTrue);
+    });
+
+    test('6x6 and 7x7 never emit redundant 3Lw/3Dw/3Bw wides', () {
+      final forbidden = RegExp(r'^3(Lw|Dw|Bw)');
+
+      for (final cubeType in const ['6x6', '7x7']) {
+        for (var i = 0; i < 20; i++) {
+          final scramble = usecase(cubeType);
+          for (final move in scramble.moves) {
+            expect(
+              forbidden.hasMatch(move),
+              isFalse,
+              reason: 'Move "$move" appeared in $cubeType scramble (run $i)',
+            );
+          }
+        }
+      }
     });
 
     test('generates random-state pyraminx scrambles (layer <= 11 + tips)', () {
@@ -208,6 +225,17 @@ void main() {
       }
 
       expect(sawPositiveSix, isTrue);
+    });
+
+    test('clock scrambles never emit 0- turns', () {
+      for (var i = 0; i < 50; i++) {
+        final scramble = usecase('clock');
+
+        expect(
+          scramble.moves.where((move) => move != 'y2'),
+          isNot(contains(endsWith('0-'))),
+        );
+      }
     });
 
     test('generates square-1 scrambles with thirteen slash-separated pairs',

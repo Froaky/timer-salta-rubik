@@ -96,12 +96,12 @@ class _SolveListState extends State<SolveList> {
                     color: AppTheme.cardColor,
                     borderRadius: BorderRadius.circular(16),
                     border: Border.all(
-                      color: AppTheme.textMuted.withOpacity(0.1),
+                      color: AppTheme.textMuted.withValues(alpha: 0.1),
                       width: 1,
                     ),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withOpacity(0.05),
+                        color: Colors.black.withValues(alpha: 0.05),
                         blurRadius: 10,
                         offset: const Offset(0, 2),
                       ),
@@ -112,7 +112,7 @@ class _SolveListState extends State<SolveList> {
                       Container(
                         padding: const EdgeInsets.all(8),
                         decoration: BoxDecoration(
-                          color: AppTheme.accentColor.withOpacity(0.1),
+                          color: AppTheme.accentColor.withValues(alpha: 0.1),
                           borderRadius: BorderRadius.circular(10),
                         ),
                         child: Icon(
@@ -168,7 +168,7 @@ class _SolveListState extends State<SolveList> {
                       // Sort button
                       Container(
                         decoration: BoxDecoration(
-                          color: AppTheme.textMuted.withOpacity(0.1),
+                          color: AppTheme.textMuted.withValues(alpha: 0.1),
                           borderRadius: BorderRadius.circular(12),
                         ),
                         child: PopupMenuButton<SortOption>(
@@ -254,7 +254,7 @@ class _SolveListState extends State<SolveList> {
                       const SizedBox(width: 8),
                       Container(
                         decoration: BoxDecoration(
-                          color: AppTheme.errorColor.withOpacity(0.12),
+                          color: AppTheme.errorColor.withValues(alpha: 0.12),
                           borderRadius: BorderRadius.circular(12),
                         ),
                         child: IconButton(
@@ -274,7 +274,7 @@ class _SolveListState extends State<SolveList> {
                       const SizedBox(width: 8),
                       Container(
                         decoration: BoxDecoration(
-                          color: AppTheme.textMuted.withOpacity(0.1),
+                          color: AppTheme.textMuted.withValues(alpha: 0.1),
                           borderRadius: BorderRadius.circular(12),
                         ),
                         child: IconButton(
@@ -326,18 +326,18 @@ class _SolveListState extends State<SolveList> {
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: isLatest
-            ? AppTheme.accentColor.withOpacity(0.05)
+            ? AppTheme.accentColor.withValues(alpha: 0.05)
             : AppTheme.cardColor,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
           color: isLatest
-              ? AppTheme.accentColor.withOpacity(0.2)
-              : AppTheme.textMuted.withOpacity(0.1),
+              ? AppTheme.accentColor.withValues(alpha: 0.2)
+              : AppTheme.textMuted.withValues(alpha: 0.1),
           width: 1,
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.03),
+            color: Colors.black.withValues(alpha: 0.03),
             blurRadius: 8,
             offset: const Offset(0, 2),
           ),
@@ -350,10 +350,10 @@ class _SolveListState extends State<SolveList> {
             width: 40,
             height: 40,
             decoration: BoxDecoration(
-              color: _getPenaltyColor(solve.penalty).withOpacity(0.1),
+              color: _getPenaltyColor(solve.penalty).withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(12),
               border: Border.all(
-                color: _getPenaltyColor(solve.penalty).withOpacity(0.3),
+                color: _getPenaltyColor(solve.penalty).withValues(alpha: 0.3),
                 width: 1,
               ),
             ),
@@ -422,7 +422,7 @@ class _SolveListState extends State<SolveList> {
           // Menu button
           Container(
             decoration: BoxDecoration(
-              color: AppTheme.textMuted.withOpacity(0.1),
+              color: AppTheme.textMuted.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(10),
             ),
             child: PopupMenuButton<String>(
@@ -505,22 +505,10 @@ class _SolveListState extends State<SolveList> {
     }
   }
 
-  String _getPenaltyText(Penalty penalty) {
-    switch (penalty) {
-      case Penalty.none:
-        return '';
-      case Penalty.plus2:
-        return '+2';
-      case Penalty.dnf:
-        return 'DNF';
-    }
-  }
-
   String _buildTimeDisplay(Solve solve) {
     // Para +2, mostrar: tiempo original +2 (tiempo final)
     if (solve.penalty == Penalty.plus2) {
       final original = _formatMs(solve.timeMs);
-      final effective = _formatMs(solve.effectiveTimeMs);
       return '$original +2';
     }
     // Para DNF, mostrar DNF
@@ -659,7 +647,7 @@ class _SolveListState extends State<SolveList> {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             decoration: BoxDecoration(
-              color: AppTheme.errorColor.withOpacity(0.1),
+              color: AppTheme.errorColor.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(12),
             ),
             child: TextButton(
@@ -717,7 +705,7 @@ class _SolveListState extends State<SolveList> {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             decoration: BoxDecoration(
-              color: AppTheme.errorColor.withOpacity(0.1),
+              color: AppTheme.errorColor.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(12),
             ),
             child: TextButton(
@@ -864,7 +852,7 @@ class _EditSolveDialogState extends State<_EditSolveDialog> {
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
           decoration: BoxDecoration(
-            color: AppTheme.accentColor.withOpacity(0.1),
+            color: AppTheme.accentColor.withValues(alpha: 0.1),
             borderRadius: BorderRadius.circular(12),
           ),
           child: TextButton(

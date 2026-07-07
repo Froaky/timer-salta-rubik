@@ -7,7 +7,20 @@
 -| Al cambiar de sesion deberia actualizar el scram a ese evento ✅
 -| Deberia cambiarte a la sesion creada automaticamente ✅
 -| Reducir el tiempo de presion para iniciar el tiempo a 200ms ✅
--| Al competir, no deberia dejar entrar al historial ✅ (modo versus: PopScope impide salir de CompetePage con ronda inProgress y el chip de resultados queda deshabilitado durante la ronda; el toggle "Modo competir" de settings ya bloqueaba historial/stats en el timer principal)
+-| Al competir, no deberia dejar entrar al historial ✅ (modo versus: PopScope impide salir de CompetePage con ronda inProgress, el chip de resultados queda pasivo/deshabilitado durante la ronda y el toggle "Modo competir" de settings ya bloqueaba historial/stats en el timer principal)
+
+Production pass 2026-07-07 (pre-release; mergeado con el rework de scrambles random-state del remoto)
+
+-| PROD-001 ✅ | Preview del scramble: la regresion del stub que dibujaba el cubo resuelto quedo resuelta definitivamente por la nueva arquitectura de preview (simuladores en lib/domain/puzzles + painters por puzzle, ahora tambien megaminx/skewb/sq1). [done]
+-| PROD-002 ✅ | Sesiones 4x4bf/5x5bf recibian scrambles de 3x3: selector unificado a 444bf/555bf con normalizacion en el dialogo de edicion + alias legacy en el generador. [done]
+-| PROD-003 ✅ | Penalidad de inspeccion (+2/DNF) contaminaba solves siguientes; DNF por inspeccion no se guardaba y mostraba -0.00. Ahora la penalidad viaja como pendingPenalty, se persiste el solve como DNF/+2 real y se limpia al consumirse. [done]
+-| PROD-004 ✅ | Tap breve durante inspeccion reseteaba el countdown (permitia esquivar +2/DNF); ahora vuelve a inspeccion sin reiniciar el reloj. [done]
+-| PROD-005 ✅ | Solve perdido al frenar con teclado con historial/estadisticas abiertos: listener de guardado ahora vive a nivel pagina. [done]
+-| PROD-006 ✅ | Compete: PopScope (remoto) + AbortCompeteRound defensivo al re-entrar, copyWith no limpiaba tiempos finales (sentinel), empates comparan exactamente lo que muestra la UI, tap accidental post-ronda ya no borra tiempos, cubeType desde el bloc al guardar, resultados muestran ambos scrambles si difieren, setup con scroll. [done]
+-| PROD-007 ✅ | Scrambles random-state calidad TNoodle para 3x3/2x2/Pyraminx/Skewb y sq1 simulado ejecutable (remoto); sobre eso: clock sin 0-, 6x6/7x7 sin 3Lw/3Dw/3Bw, y Kociemba deshabilitado en el runtime web (jank) con fallback valido. [done]
+-| PROD-008 ✅ | Web/persistencia: localStorage corrupto se auto-recupera con backup .corrupt, wakelock activo durante inspeccion/resolucion, Caddyfile con no-cache para entry points, Dockerfile acepta SALTA_API_BASE_URL, PWA metadata real. [done]
+-| PROD-009 ✅ | Backend: allowlist de redirects OAuth ahora compara origin exacto (cerrado open-redirect de robo de token). Pendiente validar build en Railway (sin Node local). [done]
+-| PROD-010 ✅ | Limpieza: flutter analyze en 0 issues, deps muertas removidas (uuid, intl, auto_size_text, vector_math, injectable, build_runner), claims "WCA oficial" corregidos a "WCA-style" en docs/pubspec/codigo. [done]
 
 Feedback testers -> User Stories para fix
 

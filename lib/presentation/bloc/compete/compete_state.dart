@@ -103,8 +103,8 @@ class CompeteState extends Equatable {
     int? lane2Score,
     bool? lane1Running,
     bool? lane2Running,
-    int? lane1FinishedAtMs,
-    int? lane2FinishedAtMs,
+    Object? lane1FinishedAtMs = _unset,
+    Object? lane2FinishedAtMs = _unset,
     bool? roundScored,
     String? cubeType,
   }) {
@@ -120,8 +120,12 @@ class CompeteState extends Equatable {
       lane2Score: lane2Score ?? this.lane2Score,
       lane1Running: lane1Running ?? this.lane1Running,
       lane2Running: lane2Running ?? this.lane2Running,
-      lane1FinishedAtMs: lane1FinishedAtMs ?? this.lane1FinishedAtMs,
-      lane2FinishedAtMs: lane2FinishedAtMs ?? this.lane2FinishedAtMs,
+      lane1FinishedAtMs: identical(lane1FinishedAtMs, _unset)
+          ? this.lane1FinishedAtMs
+          : lane1FinishedAtMs as int?,
+      lane2FinishedAtMs: identical(lane2FinishedAtMs, _unset)
+          ? this.lane2FinishedAtMs
+          : lane2FinishedAtMs as int?,
       roundScored: roundScored ?? this.roundScored,
       cubeType: cubeType ?? this.cubeType,
     );

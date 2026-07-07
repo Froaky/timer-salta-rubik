@@ -1,5 +1,7 @@
 import 'package:equatable/equatable.dart';
 
+import '../../../domain/entities/solve.dart';
+
 enum TimerStatus {
   idle,
   holdPending,
@@ -28,6 +30,11 @@ class TimerState extends Equatable {
   final bool competeMode;
   final bool tapToStartEnabled;
 
+  /// Penalidad de inspeccion pendiente para el solve recien detenido.
+  /// `elapsedMs` guarda siempre el tiempo crudo; la penalidad se aplica al
+  /// persistir el solve, no al cronometro.
+  final Penalty pendingPenalty;
+
   const TimerState({
     required this.status,
     required this.color,
@@ -39,6 +46,7 @@ class TimerState extends Equatable {
     this.inspectionRemainingMs = 15000,
     this.competeMode = false,
     this.tapToStartEnabled = false,
+    this.pendingPenalty = Penalty.none,
   });
 
   factory TimerState.initial() {
@@ -66,6 +74,7 @@ class TimerState extends Equatable {
     int? inspectionRemainingMs,
     bool? competeMode,
     bool? tapToStartEnabled,
+    Penalty? pendingPenalty,
   }) {
     return TimerState(
       status: status ?? this.status,
@@ -79,6 +88,7 @@ class TimerState extends Equatable {
           inspectionRemainingMs ?? this.inspectionRemainingMs,
       competeMode: competeMode ?? this.competeMode,
       tapToStartEnabled: tapToStartEnabled ?? this.tapToStartEnabled,
+      pendingPenalty: pendingPenalty ?? this.pendingPenalty,
     );
   }
 
@@ -99,16 +109,32 @@ class TimerState extends Equatable {
       return seconds.toStringAsFixed(1);
     }
 
-    final timeToShow = status == TimerStatus.running ? elapsedMs : elapsedMs;
+    // DNF por exceso de inspeccion: el numero deja de tener sentido.
+    if (status == TimerStatus.stopped && pendingPenalty == Penalty.dnf) {
+      return 'DNF';
+    }
+
+    // +2 por exceso de inspeccion: mostrar el tiempo efectivo con marcador.
+    final timeToShow =
+        status == TimerStatus.stopped && pendingPenalty == Penalty.plus2
+            ? elapsedMs + 2000
+            : elapsedMs;
     final seconds = timeToShow / 1000;
 
+    final String formatted;
     if (seconds >= 60) {
       final minutes = (seconds / 60).floor();
       final remainingSeconds = seconds % 60;
-      return '$minutes:${remainingSeconds.toStringAsFixed(2).padLeft(5, '0')}';
+      formatted =
+          '$minutes:${remainingSeconds.toStringAsFixed(2).padLeft(5, '0')}';
     } else {
-      return seconds.toStringAsFixed(2);
+      formatted = seconds.toStringAsFixed(2);
     }
+
+    if (status == TimerStatus.stopped && pendingPenalty == Penalty.plus2) {
+      return '$formatted+';
+    }
+    return formatted;
   }
 
   /// Check if timer can start (is armed)
@@ -132,5 +158,6 @@ class TimerState extends Equatable {
         inspectionRemainingMs,
         competeMode,
         tapToStartEnabled,
+        pendingPenalty,
       ];
 }

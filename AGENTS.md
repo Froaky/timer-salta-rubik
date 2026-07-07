@@ -2,7 +2,7 @@
 
 ## Project context
 
-- This repository is a Flutter speedcubing timer app with session management, WCA scrambles, statistics, compete mode, and authentication work in progress.
+- This repository is a Flutter speedcubing timer app with session management, WCA-style scrambles, statistics, compete mode, and authentication work in progress.
 - The codebase follows a layered structure under `lib/`: `core`, `data`, `domain`, and `presentation`.
 - State management uses `flutter_bloc`.
 - Dependency injection is wired manually in `lib/injection_container.dart` with `get_it`.

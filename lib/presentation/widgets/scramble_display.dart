@@ -180,7 +180,6 @@ class ScrambleDisplay extends StatelessWidget {
       textWidth,
     );
 
-    const headerHeight = 0.0;
     final minHeight = isSmallScreen ? 74.0 : 84.0;
 
     // Significantly increased maxHeight to allow more lines to be visible

@@ -10,9 +10,20 @@ import '../scramble/random_cube_state.dart';
 import '../scramble/skewb_scrambler.dart';
 import '../scramble/two_by_two_scrambler.dart';
 
-/// Generador de scrambles usando el paquete cuber que implementa
-/// el algoritmo de Kociemba y sigue estándares WCA más robustos
+/// Generador de scrambles estilo WCA ("WCA-style").
+///
+/// 3x3/2x2/Pyraminx/Skewb usan generadores *random-state* (calidad
+/// equivalente a TNoodle) y Square-1 simula el estado para emitir solo
+/// slices ejecutables; el resto usa generadores random-move con validacion.
+/// NO integra TNoodle, por lo que los scrambles no son "oficiales WCA".
 class GenerateScramble implements UseCaseSync<Scramble, String> {
+  /// `dart:io` no existe en el runtime web; mismo criterio que el
+  /// conditional export de `LocalDatabase`. En web los solvers sincronicos
+  /// (Kociemba y las busquedas random-state) corren en el unico thread de
+  /// la UI y pueden congelar la app varios segundos, asi que ahi se usa el
+  /// generador aleatorio valido.
+  static const bool _isWebRuntime = !bool.fromEnvironment('dart.library.io');
+
   @override
   Scramble call(String cubeType) {
     switch (cubeType) {
@@ -59,6 +70,10 @@ class GenerateScramble implements UseCaseSync<Scramble, String> {
   /// solución. Reintenta con estados nuevos si el solver no converge; sólo cae
   /// al scramble de respaldo (movimientos al azar) en el caso extremo.
   Scramble _generate3x3Scramble() {
+    if (_isWebRuntime) {
+      return _generateFallbackScramble('3x3');
+    }
+
     final random = Random();
     try {
       for (var attempt = 0; attempt < 3; attempt++) {
@@ -201,7 +216,9 @@ class GenerateScramble implements UseCaseSync<Scramble, String> {
     final random = Random();
     final outerFaces = ['R', 'U', 'F', 'L', 'D', 'B'];
     final wide2Faces = ['Rw', 'Uw', 'Fw', 'Lw', 'Dw', 'Bw'];
-    final wide3Faces = ['3Rw', '3Uw', '3Fw', '3Lw', '3Dw', '3Bw'];
+    // Solo 3Rw/3Uw/3Fw: los 3-wide de L/D/B son redundantes (equivalen a
+    // rotacion + 3Rw/3Uw/3Fw) y no aparecen en scrambles estilo WCA.
+    final wide3Faces = ['3Rw', '3Uw', '3Fw'];
     final allFaces = [...outerFaces, ...wide2Faces, ...wide3Faces];
     final modifiers = ['', '\'', '2'];
     final moves = <String>[];
@@ -239,7 +256,9 @@ class GenerateScramble implements UseCaseSync<Scramble, String> {
     final random = Random();
     final outerFaces = ['R', 'U', 'F', 'L', 'D', 'B'];
     final wide2Faces = ['Rw', 'Uw', 'Fw', 'Lw', 'Dw', 'Bw'];
-    final wide3Faces = ['3Rw', '3Uw', '3Fw', '3Lw', '3Dw', '3Bw'];
+    // Solo 3Rw/3Uw/3Fw: los 3-wide de L/D/B son redundantes (equivalen a
+    // rotacion + 3Rw/3Uw/3Fw) y no aparecen en scrambles estilo WCA.
+    final wide3Faces = ['3Rw', '3Uw', '3Fw'];
     final allFaces = [...outerFaces, ...wide2Faces, ...wide3Faces];
     final modifiers = ['', '\'', '2'];
     final moves = <String>[];
@@ -469,7 +488,10 @@ class GenerateScramble implements UseCaseSync<Scramble, String> {
 
   String _generateClockTurn(String pin, Random random) {
     final value = random.nextInt(7);
-    final sign = value == 6 ? '+' : (random.nextBool() ? '+' : '-');
+    // 0 y 6 se escriben siempre con '+': '0-' y '6-' no existen en la
+    // notacion estilo WCA de clock.
+    final sign =
+        (value == 6 || value == 0) ? '+' : (random.nextBool() ? '+' : '-');
     return '$pin$value$sign';
   }
 

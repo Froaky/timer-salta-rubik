@@ -29,7 +29,7 @@ It is stronger when described as a system that had to solve **timing precision**
 
 ### Very short
 
-Salta Rubik is a Flutter speedcubing timer with WCA scrambles, sessions, statistics, competition mode, web support, and a backend foundation for account-backed sync.
+Salta Rubik is a Flutter speedcubing timer with WCA-style scrambles, sessions, statistics, competition mode, web support, and a backend foundation for account-backed sync.
 
 ### Portfolio card
 

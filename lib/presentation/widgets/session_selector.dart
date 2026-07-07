@@ -351,9 +351,9 @@ class _CreateSessionDialogState extends State<_CreateSessionDialog> {
     '3x3bf',
     '3x3fm',
     '4x4',
-    '4x4bf',
+    '444bf',
     '5x5',
-    '5x5bf',
+    '555bf',
     '6x6',
     '7x7',
     'pyraminx',
@@ -491,9 +491,9 @@ class _EditSessionDialogState extends State<_EditSessionDialog> {
     '3x3bf',
     '3x3fm',
     '4x4',
-    '4x4bf',
+    '444bf',
     '5x5',
-    '5x5bf',
+    '555bf',
     '6x6',
     '7x7',
     'pyraminx',
@@ -507,7 +507,20 @@ class _EditSessionDialogState extends State<_EditSessionDialog> {
   void initState() {
     super.initState();
     _nameController = TextEditingController(text: widget.session.name);
-    _selectedCubeType = widget.session.cubeType;
+    _selectedCubeType = _normalizeCubeType(widget.session.cubeType);
+  }
+
+  // Sessions saved before the blind IDs were unified may still carry the
+  // legacy '4x4bf'/'5x5bf' values, which are not valid dropdown items.
+  String _normalizeCubeType(String cubeType) {
+    switch (cubeType) {
+      case '4x4bf':
+        return '444bf';
+      case '5x5bf':
+        return '555bf';
+      default:
+        return _cubeTypes.contains(cubeType) ? cubeType : '3x3';
+    }
   }
 
   @override

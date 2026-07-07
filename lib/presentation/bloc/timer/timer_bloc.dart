@@ -4,6 +4,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:vibration/vibration.dart';
 
 import '../../../core/constants/timer_thresholds.dart';
+import '../../../domain/entities/solve.dart';
 import 'timer_event.dart';
 import 'timer_state.dart';
 
@@ -97,6 +98,20 @@ class TimerBloc extends Bloc<TimerEvent, TimerState> {
       return;
     }
 
+    // Un toque breve durante la inspeccion no debe abortarla: el timer de
+    // inspeccion sigue vivo, asi que solo se restaura el estado visual y el
+    // reloj de inspeccion continua desde su inicio original (sin resetear
+    // el countdown ni esquivar el +2/DNF por exceso).
+    if (_startedHoldFromInspection) {
+      _startedHoldFromInspection = false;
+      emit(state.copyWith(
+        status: TimerStatus.inspection,
+        color: TimerColor.white,
+        holdDurationMs: 0,
+      ));
+      return;
+    }
+
     add(const TimerReset());
   }
 
@@ -122,6 +137,7 @@ class TimerBloc extends Bloc<TimerEvent, TimerState> {
       color: TimerColor.white,
       elapsedMs: 0,
       startTime: _runStartTime,
+      pendingPenalty: Penalty.none,
     ));
 
     _startRunTimer();
@@ -139,14 +155,23 @@ class TimerBloc extends Bloc<TimerEvent, TimerState> {
     final stoppedAt = event.stoppedAt ?? DateTime.now();
     final baseTime = event.elapsedMsOverride ??
         stoppedAt.difference(_runStartTime!).inMilliseconds;
-    final finalTime =
-        _inspectionPenaltyMs == -1 ? -1 : baseTime + _inspectionPenaltyMs;
+
+    // La penalidad de inspeccion se traduce a un Penalty pendiente y se
+    // consume aca mismo: si no se limpiara, un +2/DNF de inspeccion
+    // contaminaria los solves siguientes que arrancan sin inspeccion.
+    final pendingPenalty = switch (_inspectionPenaltyMs) {
+      -1 => Penalty.dnf,
+      2000 => Penalty.plus2,
+      _ => Penalty.none,
+    };
+    _inspectionPenaltyMs = 0;
 
     _lastStoppedAt = stoppedAt;
 
     emit(state.copyWith(
       status: TimerStatus.stopped,
-      elapsedMs: finalTime,
+      elapsedMs: baseTime,
+      pendingPenalty: pendingPenalty,
     ));
 
     _triggerHapticFeedback();
@@ -221,6 +246,7 @@ class TimerBloc extends Bloc<TimerEvent, TimerState> {
       color: TimerColor.white,
       elapsedMs: 0,
       startTime: _runStartTime,
+      pendingPenalty: Penalty.none,
     ));
 
     _startRunTimer();

@@ -1,5 +1,4 @@
 import 'package:get_it/get_it.dart';
-import 'package:injectable/injectable.dart';
 import 'package:http/http.dart' as http;
 
 import 'data/datasources/auth_local_datasource.dart';
@@ -35,7 +34,6 @@ import 'presentation/bloc/compete/compete_bloc.dart';
 
 final sl = GetIt.instance;
 
-@InjectableInit()
 Future<void> configureDependencies() async {
   sl.registerLazySingleton<http.Client>(
     () => http.Client(),

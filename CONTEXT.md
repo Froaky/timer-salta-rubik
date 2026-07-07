@@ -27,12 +27,12 @@ Este archivo resume lo indispensable para continuar el desarrollo de este repo s
 ## 1. Que es este repo
 
 - App Flutter de timer para speedcubing.
-- Tiene sesiones, scrambles WCA, historial de solves, estadisticas y modo competencia/versus.
+- Tiene sesiones, scrambles estilo WCA ("WCA-style", sin TNoodle), historial de solves, estadisticas y modo competencia/versus.
 - La arquitectura esta separada en `lib/core`, `lib/data`, `lib/domain` y `lib/presentation`.
 - El estado de UI usa `flutter_bloc`.
 - La DI se arma a mano con `get_it` en `lib/injection_container.dart`.
-- Persistencia principal: `sqflite`.
-- Dependencia clave de scrambles/3x3 oracle: `cuber`.
+- Persistencia local-first por plataforma: `sqflite` en mobile/desktop y `localStorage` en web (conditional export en `local_database.dart`).
+- Dependencia clave de scrambles/3x3 oracle: `cuber` (solo mobile/desktop; en web se usa el fallback aleatorio valido).
 
 ## 2. Entry points y archivos base
 
@@ -107,6 +107,18 @@ Este archivo resume lo indispensable para continuar el desarrollo de este repo s
 - Penalidades soportadas: `none`, `plus2`, `dnf`.
 - `lane`: `0` single, `1-2` competencia.
 - El historial y stats deben refrescar despues de add/update/delete.
+- Guardrails agregados en el production pass 2026-07-07:
+  - El preview NxN de `scramble_preview.dart` DEBE usar `CubePreviewEngine` de `cube_preview_engine.dart`; nunca volver a un stub que dibuje el cubo resuelto (regresion real que ya paso una vez con el rewrite de Pyraminx).
+  - `TimerState.elapsedMs` guarda siempre el tiempo crudo; la penalidad de inspeccion viaja en `pendingPenalty` y se consume/limpia en `_onStop`. Un +2/DNF de inspeccion no debe contaminar el solve siguiente, y el DNF por inspeccion debe persistirse como solve con `Penalty.dnf`.
+  - Un toque breve durante la inspeccion vuelve a `inspection` sin resetear el countdown (no debe permitir esquivar el +2/DNF por exceso).
+  - El listener que guarda solves vive a nivel pagina en `timer_page.dart` (`_onTimerStateChanged`), no dentro de la vista del timer: un stop por teclado con historial/estadisticas abiertos debe guardar igual.
+  - IDs canonicos de blind grandes: `444bf`/`555bf`; el generador acepta ademas los alias legacy `4x4bf`/`5x5bf` de sesiones viejas.
+  - `CompeteBloc` es app-scoped: al re-entrar a `CompetePage` con una ronda colgada se despacha `AbortCompeteRound` (initState), que preserva marcador/scrambles/solves y limpia la ronda.
+  - El pill VS del centro debe ser pasivo (IgnorePointer) durante ronda activa y `_showCompetitionResults` tiene guardia propia.
+  - El desempate de competencia compara exactamente los centesimos que pinta la UI (`toStringAsFixed(2)`), no `(ms/10).round()`.
+  - En web NO se usa el solve de Kociemba de `cuber` (congela el thread de UI); se usa el fallback aleatorio valido. No revertir sin mover el solve fuera del main thread.
+  - `local_database_browser.dart` debe auto-recuperarse de JSON corrupto (backup `.corrupt` + reset del blob afectado); no dejar que un decode roto brickee la app web.
+  - Los scrambles son "WCA-style", nunca "WCA oficial" en docs/UI/comentarios; TNoodle no esta integrado.
 
 ## 6. Cambios ya implementados importantes
 
@@ -223,18 +235,12 @@ Si vuelve a reportarse un mismatch visual:
 
 Quedan visibles estos items sin cerrar en `lib/TODO.TXT`:
 
-- ordenado/filtro de tiempos por fecha y tiempo.
-- insercion manual de tiempos.
-- `US-011`: mostrar referencia pasiva por carril en modo competencia con ultimo single, avg/ao5 y avg12, sin saturar ni capturar interacciones del timer.
-- `FIX-016`: mantener visible el tiempo final post-stop y prevenir doble toque accidental, incluyendo cooldown de 500 ms para `Inicio rapido`.
-- `FIX-017`: corregir scrambles 4x4/444bf para evitar `Dw`/`Lw`/`Bw` y arrancar con bloque tipo 3x3 antes de la parte 4x4.
-- `FIX-018`: redisenar resultados/historial de competencia como vista comparativa por scramble/ronda, con scroll desde cualquier zona y tiempos de cada carril a los lados.
-- `FIX-019`: ajustar el scramble principal en mobile para que 2x2 no se corte y 7x7/NxN largo sea legible completo con tipografia/alto/scroll responsivo.
-- `FIX-020`: mover stats rapidas del timer mobile a una capa superficial/flotante que no reserve espacio vertical ni intercepte gestos.
 - checklist de salida a Play Store (`PS-001` a `PS-010`).
-- web/Railway pendiente: `WEB-US-001`, `WEB-US-007`, `EPIC-WEB-003`, `WEB-US-008` a `WEB-US-010`, `EPIC-WEB-004` y `WEB-US-011` a `WEB-US-014`.
+- web/Railway pendiente: `WEB-US-001` (smoke test real post-deploy), `WEB-US-007`, `EPIC-WEB-003`, `WEB-US-008` a `WEB-US-010`, `EPIC-WEB-004` y `WEB-US-011` a `WEB-US-014`.
 - backend/API pendiente: `EPIC-BE-002` queda abierto por `BE-US-006`; `EPIC-BE-003` queda abierto por `BE-US-009`, `BE-US-010` y `BE-US-014`.
 - auth WCA cross-platform pendiente: deep links/app links mobile (`BE-US-014`).
+- validar el build del backend en Railway despues del fix de `auth_redirects.ts` (en esta maquina no hay Node.js para `npm run build`).
+- retestear manualmente en dispositivo real: inspeccion con +2/DNF (nuevo flujo `pendingPenalty`), wakelock durante solves largos y el flujo compete completo (abort de ronda al salir/volver).
 
 ## 9. Tests utiles
 
@@ -244,7 +250,7 @@ Quedan visibles estos items sin cerrar en `lib/TODO.TXT`:
 - [test/presentation/pages/compete_page_test.dart](C:/Users/MateoCoca/Documents/REPOS/timer-salta-rubik/test/presentation/pages/compete_page_test.dart)
 - [test/presentation/bloc/compete_bloc_test.dart](C:/Users/MateoCoca/Documents/REPOS/timer-salta-rubik/test/presentation/bloc/compete_bloc_test.dart)
 - [test/presentation/widgets/scramble_preview_test.dart](C:/Users/MateoCoca/Documents/REPOS/timer-salta-rubik/test/presentation/widgets/scramble_preview_test.dart)
-- [test/presentation/widgets/cube_preview_engine_test.dart](C:/Users/MateoCoca/Documents/REPOS/timer-salta-rubik/test/presentation/widgets/cube_preview_engine_test.dart)
+- [test/domain/puzzles/](C:/Users/MateoCoca/Documents/REPOS/timer-salta-rubik/test/domain/puzzles) (simuladores por puzzle, validados contra `cuber`/csTimer)
 
 ### Tests agregados en esta etapa de trabajo
 - `cube_preview_engine_test.dart`
@@ -264,9 +270,9 @@ flutter test
 ```
 
 Notas:
-- `flutter test` estaba pasando completo al cierre de esta tanda.
-- `flutter analyze` sigue con warnings/info viejos del repo; no todos vienen de los ultimos cambios.
-- para este slice web, la validacion importante fue `flutter build web --no-pub`.
+- Al cierre del production pass 2026-07-07: `flutter test` 126/126 pasando, `flutter analyze` 0 issues, `flutter build web --release` OK.
+- El SDK Flutter local vive en `C:\nose\flutter` (3.29.3 stable, misma revision que `.metadata` y el Dockerfile); si desaparece, `android/local.properties` espera esa ruta.
+- En esta maquina no hay Node.js: el backend (`backend/`) se valida en Railway o en otro entorno.
 
 ## 11. Convenciones de trabajo de este repo
 
@@ -554,3 +560,16 @@ Entradas actuales:
   - archivos afectados: `lib/domain/puzzles/square1_simulator.dart`, `lib/presentation/widgets/preview/square1_painter.dart`, `lib/presentation/widgets/scramble_preview.dart`, `lib/domain/usecases/generate_scramble.dart` (tambien limpieza de codigo muerto), `lib/presentation/widgets/solve_list.dart`, `lib/presentation/pages/compete_page.dart`, tests correspondientes, `lib/TODO.TXT`, `CONTEXT.md`
   - validacion: `dart format`, `flutter analyze` (sin issues nuevos; bajaron de 41 a ~36 por limpieza), `flutter test` 185/185, `flutter build web --no-pub`; ademas review adversarial multi-agente sobre el diff (hallazgos confirmados eran gaps de tests, todos cerrados)
   - siguiente paso: probar en dispositivo/web real el alta manual y el bloqueo de versus; verificar visualmente el preview de sq1 contra csTimer; queda `FIX-017`-extension (rotaciones finales `z' y'` en scrambles BLD) y el resto del roadmap web/backend
+
+- `2026-07-07`
+  - production pass completo pre-release (revision profunda multi-agente + fixes) hecho en paralelo al rework de scrambles del 07-04, y luego mergeado con `origin/master`: detalle final en `PROD-001` a `PROD-010` de `lib/TODO.TXT`
+  - resolucion del merge: se tomo como base el rework remoto (scrambles random-state calidad TNoodle para 3x3/2x2/Pyraminx/Skewb via `lib/domain/scramble/`, simuladores + painters de preview, alta manual de tiempos, PopScope en compete, fix del loop de SolveList, aliases del generador) y sobre eso se re-aplicaron los fixes locales que el remoto no cubria
+  - timer (local): `pendingPenalty` en `TimerState` (el +2/DNF de inspeccion ya no contamina solves siguientes, el DNF se persiste y se muestra "DNF"), tap breve en inspeccion ya no resetea el countdown, listener de guardado a nivel pagina (stop por teclado con historial abierto ya no pierde el solve), wakelock durante inspeccion/running, sidebar desktop con scroll
+  - compete (local, sobre el PopScope remoto): `AbortCompeteRound` defensivo en initState, sentinel en `CompeteState.copyWith` para limpiar tiempos finales (StartLane los "limpiaba" en no-op), empates comparan exactamente lo que pinta la UI, cubeType desde el bloc al guardar solves, tap accidental post-ronda conserva los tiempos visibles, resultados muestran ambos scrambles si difieren, setup con scroll
+  - scrambles (local, sobre el random-state remoto): clock sin `0-`, 6x6/7x7 sin `3Lw/3Dw/3Bw`, Kociemba/busquedas random-state deshabilitadas en runtime web (el solve sincronico congela el unico thread; se usa scramble aleatorio valido)
+  - web/persistencia/deploy (local): localStorage corrupto se auto-recupera (backup `.corrupt`), `markSolvesAsSynced` parametrizado, Caddyfile con no-cache para entry points, Dockerfile con ARG `SALTA_API_BASE_URL`, PWA metadata real, sesion auth corrupta en SharedPreferences se descarta sola
+  - backend (local): `isAllowedRedirectUri` compara origin exacto para http/https y limite de path para esquemas custom (cerrado open-redirect que filtraba el bearer token en el callback OAuth)
+  - limpieza/docs (local): deprecations resueltas (withOpacity/MaterialStateProperty/background), removidas dependencias sin uso (`uuid`, `intl`, `auto_size_text`, `vector_math`, `injectable`, `injectable_generator`, `build_runner`), claims "WCA oficial" → "WCA-style" en README/SCRAMBLES_WCA.md/pubspec/portfolio/AGENTS, `SCRAMBLES_WCA.md` reescrito
+  - entorno: el Flutter SDK habia desaparecido de `C:\nose\flutter`; se reinstalo Flutter 3.29.3 stable ahi. Sin Node.js local: `npm run build` del backend pendiente de validar en Railway
+  - validacion post-merge: `dart format`, `flutter analyze` 0 issues, `flutter test` completo pasando, `flutter build web --release` OK
+  - siguiente paso: push del merge, deploy a Railway (frontend + backend), smoke test browser real y retest manual en dispositivo de inspeccion con penalidades y compete

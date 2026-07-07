@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:wakelock_plus/wakelock_plus.dart';
 import 'settings_page.dart';
 
 import '../../domain/entities/scramble.dart';
@@ -71,7 +72,23 @@ class _TimerPageState extends State<TimerPage> {
   @override
   void dispose() {
     _keyboardFocusNode.dispose();
+    _setWakelock(false);
     super.dispose();
+  }
+
+  // Mantiene la pantalla despierta durante inspeccion/resolucion. Es un
+  // side-effect fire-and-forget: nunca debe tocar el estado del timer ni el
+  // instante de stop.
+  void _setWakelock(bool enabled) {
+    try {
+      if (enabled) {
+        WakelockPlus.enable();
+      } else {
+        WakelockPlus.disable();
+      }
+    } catch (_) {
+      // Plataformas sin soporte de wakelock no deben romper el timer.
+    }
   }
 
   void _onSessionChanged(SessionState sessionState) {
@@ -86,25 +103,75 @@ class _TimerPageState extends State<TimerPage> {
     }
   }
 
+  // Persistencia y side-effects del ciclo running -> stopped. Vive a nivel
+  // pagina (no dentro de la vista del timer) para que un stop disparado por
+  // teclado mientras se muestra historial/estadisticas no pierda el solve.
+  void _onTimerStateChanged(BuildContext context, TimerState timerState) {
+    final wasRunning = _previousTimerStatus == TimerStatus.running;
+    final wasAwake = _previousTimerStatus == TimerStatus.running ||
+        _previousTimerStatus == TimerStatus.inspection;
+    _previousTimerStatus = timerState.status;
+
+    final isAwake = timerState.status == TimerStatus.running ||
+        timerState.status == TimerStatus.inspection;
+    if (isAwake != wasAwake) {
+      _setWakelock(isAwake);
+    }
+
+    if (timerState.status != TimerStatus.running &&
+        _latchedStopElapsedMs != null) {
+      setState(() {
+        _latchedStopElapsedMs = null;
+      });
+    }
+
+    if (timerState.status != TimerStatus.running) {
+      _lastDisplayedElapsedMs = null;
+    }
+
+    // Save solve only on the running -> stopped transition,
+    // so brief taps that bounce stopped -> holdPending -> stopped
+    // don't trigger duplicate saves (FIX-016).
+    if (wasRunning &&
+        timerState.status == TimerStatus.stopped &&
+        timerState.elapsedMs > 0) {
+      final elapsedMs = timerState.elapsedMs;
+      final penalty = timerState.pendingPenalty;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) {
+          return;
+        }
+        _saveSolve(elapsedMs, penalty: penalty);
+      });
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    return BlocListener<SessionBloc, SessionState>(
-        listener: (context, sessionState) {
-          _onSessionChanged(sessionState);
-          // Auto-generate scramble when session changes or its cube type changes
-          final current = sessionState.currentSession;
-          if (current != null) {
-            final changedId = current.id != _lastSessionId;
-            final changedCube = current.cubeType != _lastCubeType;
-            if (changedId || changedCube) {
-              _lastSessionId = current.id;
-              _lastCubeType = current.cubeType;
-              context
-                  .read<SolveBloc>()
-                  .add(GenerateNewScramble(current.cubeType));
-            }
-          }
-        },
+    return MultiBlocListener(
+        listeners: [
+          BlocListener<SessionBloc, SessionState>(
+            listener: (context, sessionState) {
+              _onSessionChanged(sessionState);
+              // Auto-generate scramble when session changes or its cube type changes
+              final current = sessionState.currentSession;
+              if (current != null) {
+                final changedId = current.id != _lastSessionId;
+                final changedCube = current.cubeType != _lastCubeType;
+                if (changedId || changedCube) {
+                  _lastSessionId = current.id;
+                  _lastCubeType = current.cubeType;
+                  context
+                      .read<SolveBloc>()
+                      .add(GenerateNewScramble(current.cubeType));
+                }
+              }
+            },
+          ),
+          BlocListener<TimerBloc, TimerState>(
+            listener: _onTimerStateChanged,
+          ),
+        ],
         child: Scaffold(
           appBar: AppBar(
             title: InkWell(
@@ -216,143 +283,107 @@ class _TimerPageState extends State<TimerPage> {
   }
 
   Widget _buildTimerView({required bool isImmersive}) {
-    return BlocListener<TimerBloc, TimerState>(
-      listener: (context, timerState) {
-        final wasRunning = _previousTimerStatus == TimerStatus.running;
-        _previousTimerStatus = timerState.status;
+    return LayoutBuilder(builder: (context, constraints) {
+      final useDesktopLayout =
+          !isImmersive && _useDesktopTimerLayout(constraints.maxWidth);
 
-        if (timerState.status != TimerStatus.running &&
-            _latchedStopElapsedMs != null) {
-          setState(() {
-            _latchedStopElapsedMs = null;
-          });
-        }
-
-        if (timerState.status != TimerStatus.running) {
-          _lastDisplayedElapsedMs = null;
-        }
-
-        // Save solve only on the running -> stopped transition,
-        // so brief taps that bounce stopped -> holdPending -> stopped
-        // don't trigger duplicate saves (FIX-016).
-        if (wasRunning &&
-            timerState.status == TimerStatus.stopped &&
-            timerState.elapsedMs > 0) {
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            if (!mounted) {
-              return;
-            }
-            _saveSolve(timerState.elapsedMs);
-          });
-        }
-      },
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          final useDesktopLayout =
-              !isImmersive && _useDesktopTimerLayout(constraints.maxWidth);
-
-          if (useDesktopLayout) {
-            return BlocBuilder<SessionBloc, SessionState>(
-              builder: (context, sessionState) {
-                return BlocBuilder<SolveBloc, SolveState>(
-                  builder: (context, solveState) {
-                    return Center(
-                      child: ConstrainedBox(
-                        constraints: const BoxConstraints(maxWidth: 1480),
-                        child: Padding(
-                          padding: const EdgeInsets.fromLTRB(20, 10, 20, 20),
-                          child: Row(
-                            crossAxisAlignment: CrossAxisAlignment.stretch,
-                            children: [
-                              Expanded(
-                                flex: 5,
-                                child: Column(
-                                  children: [
-                                    const ScrambleDisplay(),
-                                    const SizedBox(height: 8),
-                                    Expanded(
-                                      child: AnimatedScale(
-                                        duration:
-                                            const Duration(milliseconds: 220),
-                                        curve: Curves.easeOutCubic,
-                                        scale: 1,
-                                        child: _buildTimerWithControls(
-                                          isImmersive: false,
-                                        ),
-                                      ),
+      if (useDesktopLayout) {
+        return BlocBuilder<SessionBloc, SessionState>(
+          builder: (context, sessionState) {
+            return BlocBuilder<SolveBloc, SolveState>(
+              builder: (context, solveState) {
+                return Center(
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 1480),
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(20, 10, 20, 20),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          Expanded(
+                            flex: 5,
+                            child: Column(
+                              children: [
+                                const ScrambleDisplay(),
+                                const SizedBox(height: 8),
+                                Expanded(
+                                  child: AnimatedScale(
+                                    duration: const Duration(milliseconds: 220),
+                                    curve: Curves.easeOutCubic,
+                                    scale: 1,
+                                    child: _buildTimerWithControls(
+                                      isImmersive: false,
                                     ),
-                                    Builder(builder: (context) {
-                                      final stats = solveState.statistics ??
-                                          (solveState.solves.isNotEmpty
-                                              ? Statistics.fromSolves(
-                                                  solveState.solves)
-                                              : null);
-                                      return _buildInlineStats(context, stats);
-                                    }),
-                                  ],
+                                  ),
                                 ),
-                              ),
-                              const SizedBox(width: 20),
-                              SizedBox(
-                                width: 300,
-                                child: _buildDesktopSidebar(
-                                  solveState: solveState,
-                                  sessionState: sessionState,
-                                ),
-                              ),
-                            ],
+                                Builder(builder: (context) {
+                                  final stats = solveState.statistics ??
+                                      (solveState.solves.isNotEmpty
+                                          ? Statistics.fromSolves(
+                                              solveState.solves)
+                                          : null);
+                                  return _buildInlineStats(context, stats);
+                                }),
+                              ],
+                            ),
                           ),
-                        ),
+                          const SizedBox(width: 20),
+                          SizedBox(
+                            width: 300,
+                            child: _buildDesktopSidebar(
+                              solveState: solveState,
+                              sessionState: sessionState,
+                            ),
+                          ),
+                        ],
                       ),
-                    );
-                  },
+                    ),
+                  ),
                 );
               },
             );
-          }
+          },
+        );
+      }
 
-          return Column(
-            children: [
-              if (!isImmersive) const ScrambleDisplay(),
-              Expanded(
-                flex: 1,
-                child: AnimatedScale(
-                  duration: const Duration(milliseconds: 220),
-                  curve: Curves.easeOutCubic,
-                  scale: isImmersive ? 1.02 : 1,
-                  child: Stack(
-                    children: [
-                      Positioned.fill(
-                        child:
-                            _buildTimerWithControls(isImmersive: isImmersive),
-                      ),
-                      if (!isImmersive)
-                        Positioned(
-                          left: 0,
-                          right: 0,
-                          bottom: 12,
-                          child: IgnorePointer(
-                            child: BlocBuilder<SolveBloc, SolveState>(
-                              builder: (context, solveState) {
-                                final stats = solveState.statistics ??
-                                    (solveState.solves.isNotEmpty
-                                        ? Statistics.fromSolves(
-                                            solveState.solves)
-                                        : null);
-                                return _buildFloatingStats(context, stats);
-                              },
-                            ),
-                          ),
-                        ),
-                    ],
+      return Column(
+        children: [
+          if (!isImmersive) const ScrambleDisplay(),
+          Expanded(
+            flex: 1,
+            child: AnimatedScale(
+              duration: const Duration(milliseconds: 220),
+              curve: Curves.easeOutCubic,
+              scale: isImmersive ? 1.02 : 1,
+              child: Stack(
+                children: [
+                  Positioned.fill(
+                    child: _buildTimerWithControls(isImmersive: isImmersive),
                   ),
-                ),
+                  if (!isImmersive)
+                    Positioned(
+                      left: 0,
+                      right: 0,
+                      bottom: 12,
+                      child: IgnorePointer(
+                        child: BlocBuilder<SolveBloc, SolveState>(
+                          builder: (context, solveState) {
+                            final stats = solveState.statistics ??
+                                (solveState.solves.isNotEmpty
+                                    ? Statistics.fromSolves(solveState.solves)
+                                    : null);
+                            return _buildFloatingStats(context, stats);
+                          },
+                        ),
+                      ),
+                    ),
+                ],
               ),
-            ],
-          );
-        },
-      ),
-    );
+            ),
+          ),
+        ],
+      );
+    });
   }
 
   Widget _buildDesktopSidebar({
@@ -362,7 +393,10 @@ class _TimerPageState extends State<TimerPage> {
     final currentSession = sessionState.currentSession;
     final currentScramble = solveState.currentScramble;
 
-    return Column(
+    // Scroll propio: en ventanas desktop bajas las cards exceden el alto
+    // disponible y sin scroll el sidebar desborda.
+    return SingleChildScrollView(
+        child: Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         if (currentSession != null)
@@ -454,7 +488,7 @@ class _TimerPageState extends State<TimerPage> {
           ),
         ],
       ],
-    );
+    ));
   }
 
   Widget _buildTimerWithControls({required bool isImmersive}) {
@@ -578,7 +612,14 @@ class _TimerPageState extends State<TimerPage> {
 
   void _stopRunningTimer(TimerBloc timerBloc, TimerState timerState) {
     final stoppedAt = DateTime.now();
-    final displayedElapsedMs = _lastDisplayedElapsedMs ?? timerState.elapsedMs;
+    // El ultimo valor pintado solo es confiable si la vista del timer esta
+    // montada; con historial/estadisticas abiertos el display no se pinta y
+    // ese valor quedaria congelado en un frame viejo.
+    final timerViewVisible = !_showStatistics && !_showSolveList;
+    final displayedElapsedMs = (timerViewVisible
+            ? _lastDisplayedElapsedMs
+            : null) ??
+        stoppedAt.difference(timerState.startTime ?? stoppedAt).inMilliseconds;
     setState(() {
       _latchedStopElapsedMs = displayedElapsedMs;
     });
@@ -900,7 +941,7 @@ class _TimerPageState extends State<TimerPage> {
     });
   }
 
-  void _saveSolve(int timeMs) {
+  void _saveSolve(int timeMs, {Penalty penalty = Penalty.none}) {
     final sessionState = context.read<SessionBloc>().state;
     final solveState = context.read<SolveBloc>().state;
 
@@ -915,7 +956,7 @@ class _TimerPageState extends State<TimerPage> {
       id: DateTime.now().millisecondsSinceEpoch.toString(),
       sessionId: currentSession.id,
       timeMs: timeMs,
-      penalty: Penalty.none,
+      penalty: penalty,
       scramble: currentScramble.notation,
       cubeType: currentSession.cubeType,
       lane: 0,

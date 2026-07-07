@@ -35,6 +35,32 @@
       "Skill(update-config:*)",
       "Bash(python -c \"import json; json.load\\(open\\('.claude/settings.local.json'\\)\\)\")",
       "Bash(flutter test *)",
+      "Bash(cmd //c \"where flutter dart 2>nul\")",
+      "Read(//c/Users/MateoCoca/flutter/**)",
+      "Read(//c/Users/MateoCoca/AppData/Local/**)",
+      "Bash(powershell.exe -NoProfile -Command \"Get-Command flutter,dart -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Source\")",
+      "Bash(powershell.exe -NoProfile -ExecutionPolicy Bypass -File \"C:\\\\Users\\\\MATEOC~1\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\c--Users-MateoCoca-Documents-REPOS-timer-salta-rubik\\\\d13c19a2-0344-4a63-924e-067b4c1ff3f6\\\\scratchpad\\\\findflutter.ps1\")",
+      "Bash(ls /c/nose/flutter/bin/ 2>/dev/null | head; ls /c/nose 2>/dev/null | head)",
+      "Read(//c/nose/flutter/**)",
+      "Read(//c//**)",
+      "Bash(powershell.exe -NoProfile -ExecutionPolicy Bypass -File \"C:\\\\Users\\\\MATEOC~1\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\c--Users-MateoCoca-Documents-REPOS-timer-salta-rubik\\\\d13c19a2-0344-4a63-924e-067b4c1ff3f6\\\\scratchpad\\\\findflutter2.ps1\")",
+      "Bash(grep -iE \"flutter|dart\" \"/c/Users/MateoCoca/AppData/Roaming/Microsoft/Windows/PowerShell/PSReadLine/ConsoleHost_history.txt\" 2>/dev/null | tail -30)",
+      "Read(//c/Users/MateoCoca/AppData/Roaming/Microsoft/Windows/PowerShell/PSReadLine/**)",
+      "Bash(python -c \"import json; json.load\\(open\\('.claude/settings.local.json'\\)\\); print\\('JSON OK'\\)\")",
+      "Bash(node -e \"JSON.parse\\(require\\('fs'\\).readFileSync\\('.claude/settings.local.json','utf8'\\)\\); console.log\\('JSON OK'\\)\")",
+      "Bash(echo \"exit=$?\")",
+      "Bash(cmd //c \"dir C:\\\\nose 2>&1\")",
+      "Bash(curl -s https://storage.googleapis.com/flutter_infra_release/releases/releases_windows.json -o __TRACKED_VAR__/flutter_releases.json)",
+      "Bash(curl -s https://storage.googleapis.com/flutter_infra_release/releases/releases_windows.json -o /tmp/flutter_releases.json)",
+      "Read(//tmp/**)",
+      "Bash(grep -B4 -A8 \"ea121f8859e4b13e47a8f845e4586164519588bc\" /tmp/flutter_releases.json | head -30)",
+      "Bash(mkdir -p /c/nose && echo \"C:\\\\nose created OK\")",
+      "Bash(curl -sL -o flutter_sdk.zip https://storage.googleapis.com/flutter_infra_release/releases/stable/windows/flutter_windows_3.29.3-stable.zip)",
+      "Bash(tar -xf flutter_sdk.zip)",
+      "Bash(rm flutter_sdk.zip)",
+      "Bash(/c/nose/flutter/bin/flutter --version)",
+      "Read(//c/nose/**)",
+      "Bash(/c/Windows/System32/tar.exe -xf flutter_sdk.zip)",
       "Bash(curl -sL https://raw.githubusercontent.com/cs0x7f/cstimer/master/src/js/tools/image.js -o C:/Users/theco/AppData/Local/Temp/claude/c--code-timer-salta-rubik/363fdf1b-3f52-4fa9-b4cc-d6d271e9d4aa/scratchpad/cstimer_image.js)",
       "Bash(curl -sL https://raw.githubusercontent.com/cs0x7f/cstimer/master/src/js/scramble/clock.js -o C:/Users/theco/AppData/Local/Temp/claude/c--code-timer-salta-rubik/363fdf1b-3f52-4fa9-b4cc-d6d271e9d4aa/scratchpad/cstimer_clock.js)",
       "Bash(curl -sL https://raw.githubusercontent.com/cs0x7f/cstimer/982aebf7b9c53afeb5b3b5aafefeb0b400d3d1be/src/js/tools/image.js -o C:/Users/theco/AppData/Local/Temp/claude/c--code-timer-salta-rubik/363fdf1b-3f52-4fa9-b4cc-d6d271e9d4aa/scratchpad/cstimer_image_2019.js)",
@@ -53,6 +79,7 @@
       "Bash(git -C c:/code/timer-salta-rubik status --short)",
       "Bash(curl -sL https://raw.githubusercontent.com/cs0x7f/cstimer/master/src/js/scramble/scramble_sq1_new.js -o C:/Users/theco/AppData/Local/Temp/claude/c--code-timer-salta-rubik/363fdf1b-3f52-4fa9-b4cc-d6d271e9d4aa/scratchpad/cstimer_sq1.js)",
       "Bash(grep -E \"lib\\\\\\\\\\\\\\\\domain\\\\\\\\\\\\\\\\puzzles|lib\\\\\\\\\\\\\\\\presentation\\\\\\\\\\\\\\\\widgets\\\\\\\\\\\\\\\\preview|scramble_preview|solve_list|compete_page|generate_scramble|square1|error -\")"
+
     ],
     "deny": [
       "Bash(git push --force:*)",
@@ -64,6 +91,9 @@
       "Bash(git branch -D:*)",
       "Bash(rm -rf:*)"
     ],
-    "defaultMode": "acceptEdits"
+    "defaultMode": "dontAsk",
+    "additionalDirectories": [
+      "C:\\"
+    ]
   }
 }

@@ -32,12 +32,10 @@ class AppTheme {
         primary: accentColor,
         secondary: secondaryColor,
         surface: cardColor,
-        background: backgroundColor,
         error: errorColor,
         onPrimary: textPrimary,
         onSecondary: textPrimary,
         onSurface: textPrimary,
-        onBackground: textPrimary,
         onError: textPrimary,
       ),
       scaffoldBackgroundColor: backgroundColor,
@@ -55,11 +53,11 @@ class AppTheme {
       cardTheme: CardTheme(
         color: cardColor,
         elevation: 0,
-        shadowColor: Colors.black.withOpacity(0.1),
+        shadowColor: Colors.black.withValues(alpha: 0.1),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(16),
           side: BorderSide(
-            color: textMuted.withOpacity(0.1),
+            color: textMuted.withValues(alpha: 0.1),
             width: 1,
           ),
         ),
@@ -80,8 +78,8 @@ class AppTheme {
             fontWeight: FontWeight.w600,
           ),
         ).copyWith(
-          overlayColor: MaterialStateProperty.all(
-            textPrimary.withOpacity(0.1),
+          overlayColor: WidgetStateProperty.all(
+            textPrimary.withValues(alpha: 0.1),
           ),
         ),
       ),
@@ -97,8 +95,8 @@ class AppTheme {
             fontWeight: FontWeight.w500,
           ),
         ).copyWith(
-          overlayColor: MaterialStateProperty.all(
-            textAccent.withOpacity(0.1),
+          overlayColor: WidgetStateProperty.all(
+            textAccent.withValues(alpha: 0.1),
           ),
         ),
       ),
@@ -114,8 +112,8 @@ class AppTheme {
             borderRadius: BorderRadius.circular(12),
           ),
         ).copyWith(
-          overlayColor: MaterialStateProperty.all(
-            textSecondary.withOpacity(0.1),
+          overlayColor: WidgetStateProperty.all(
+            textSecondary.withValues(alpha: 0.1),
           ),
         ),
       ),
@@ -228,14 +226,14 @@ class AppTheme {
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
           borderSide: BorderSide(
-            color: textMuted.withOpacity(0.2),
+            color: textMuted.withValues(alpha: 0.2),
             width: 1,
           ),
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
           borderSide: BorderSide(
-            color: textMuted.withOpacity(0.2),
+            color: textMuted.withValues(alpha: 0.2),
             width: 1,
           ),
         ),
@@ -277,12 +275,10 @@ class AppTheme {
         primary: Color(0xFF2D3748),
         secondary: Color(0xFF4A5568),
         surface: Colors.white,
-        background: Color(0xFFF7FAFC),
         error: Color(0xFFE53E3E),
         onPrimary: Colors.white,
         onSecondary: Colors.white,
         onSurface: Color(0xFF1A202C),
-        onBackground: Color(0xFF1A202C),
         onError: Colors.white,
       ),
       scaffoldBackgroundColor: const Color(0xFFF7FAFC),

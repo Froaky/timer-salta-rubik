@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:salta_rubik/domain/entities/solve.dart';
 import 'package:salta_rubik/presentation/bloc/timer/timer_bloc.dart';
 import 'package:salta_rubik/presentation/bloc/timer/timer_event.dart';
 import 'package:salta_rubik/presentation/bloc/timer/timer_state.dart';
@@ -212,8 +213,20 @@ void main() {
       await Future<void>.delayed(const Duration(milliseconds: 5));
 
       expect(bloc.state.status, TimerStatus.stopped);
-      // 50ms + 2000ms penalty
-      expect(bloc.state.elapsedMs, 2050);
+      // El tiempo crudo queda intacto y la penalidad viaja aparte.
+      expect(bloc.state.elapsedMs, 50);
+      expect(bloc.state.pendingPenalty, Penalty.plus2);
+      expect(bloc.state.formattedTime, '2.05+');
+
+      // Un nuevo solve sin inspeccion no debe heredar la penalidad.
+      bloc.add(const TimerToggleInspection());
+      await Future<void>.delayed(Duration.zero);
+      bloc.add(const TimerStartImmediate());
+      await Future<void>.delayed(const Duration(milliseconds: 5));
+      bloc.add(const TimerStop(elapsedMsOverride: 30));
+      await Future<void>.delayed(const Duration(milliseconds: 5));
+      expect(bloc.state.elapsedMs, 30);
+      expect(bloc.state.pendingPenalty, Penalty.none);
 
       await bloc.close();
     });
@@ -314,7 +327,41 @@ void main() {
       await Future<void>.delayed(const Duration(milliseconds: 5));
 
       expect(bloc.state.status, TimerStatus.stopped);
-      expect(bloc.state.elapsedMs, -1);
+      // El DNF por inspeccion conserva el tiempo real para poder persistir
+      // el solve como DNF, y el display lo muestra como tal.
+      expect(bloc.state.elapsedMs, 50);
+      expect(bloc.state.pendingPenalty, Penalty.dnf);
+      expect(bloc.state.formattedTime, 'DNF');
+
+      await bloc.close();
+    });
+
+    test('brief tap during inspection keeps inspection running', () async {
+      final bloc = TimerBloc(
+        yellowThresholdMs: 30,
+        greenThresholdMs: 60,
+        inspectionDurationMs: 500,
+        inspectionPlusTwoThresholdMs: 500,
+        inspectionDnfThresholdMs: 800,
+      );
+
+      bloc.add(const TimerToggleInspection());
+      await Future<void>.delayed(Duration.zero);
+
+      // Entrar a inspeccion con un hold completo.
+      bloc.add(const TimerStartHold());
+      await Future<void>.delayed(const Duration(milliseconds: 80));
+      bloc.add(const TimerStopHold());
+      await Future<void>.delayed(const Duration(milliseconds: 5));
+      expect(bloc.state.status, TimerStatus.inspection);
+
+      // Un toque breve (soltado antes de armed) no debe abortar la
+      // inspeccion ni reiniciar su countdown.
+      bloc.add(const TimerStartHold());
+      await Future<void>.delayed(const Duration(milliseconds: 10));
+      bloc.add(const TimerStopHold());
+      await Future<void>.delayed(const Duration(milliseconds: 5));
+      expect(bloc.state.status, TimerStatus.inspection);
 
       await bloc.close();
     });

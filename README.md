@@ -33,7 +33,8 @@ flutter build web --no-pub
 
 Notes:
 - On this Windows environment, `dart pub get` works without requiring Developer Mode.
-- `flutter analyze` still reports a set of older repo warnings unrelated to the web bootstrap work.
+- The project pins Flutter 3.29.3 (see `.metadata`); the Dockerfile uses the same version.
+- `flutter analyze` reports zero issues as of the 2026-07 production pass.
 
 ## Railway deployment
 
@@ -92,14 +93,22 @@ Frontend auth config:
 
 ## Current web scope
 
-This first web slice is intentionally narrow:
+This web slice currently covers:
 - the app boots and builds for web
 - browser persistence keeps sessions and solves after refresh
+- optional WCA login on web through the backend (`AuthPage` + `/auth/callback`)
 - Android keeps its current UI and storage path
 
 Not included yet:
-- login
+- WCA login on mobile (deep links pending)
 - remote sync
 - shared cloud-backed sessions between devices
 
-Those next steps are already tracked in `lib/TODO.TXT` under the web epics.
+Those next steps are already tracked in `lib/TODO.TXT` under the web and backend epics.
+
+## Scrambles
+
+Scrambles are **WCA-style**, not official WCA scrambles: 3x3 uses the Dart
+`cuber` package (Kociemba) with a safe random fallback, and the other events
+use custom generators that mimic official notation and structure. TNoodle is
+not integrated; see [SCRAMBLES_WCA.md](SCRAMBLES_WCA.md) for details.

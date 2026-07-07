@@ -51,11 +51,22 @@ class StatisticsPanel extends StatelessWidget {
               );
             }
 
-            final sessionSolves = solveState.solves
-                .where((solve) => solve.sessionId == currentSession.id)
-                .toList();
-            final solveCount = sessionSolves.length;
-            final stats = Statistics.fromSolves(sessionSolves);
+            // Reusar las estadisticas ya calculadas por el bloc: recalcular
+            // Statistics.fromSolves en cada build es O(n^2) por los barridos
+            // de mejores promedios y congela sesiones grandes.
+            final Statistics stats;
+            final int solveCount;
+            if (solveState.statistics != null &&
+                solveState.sessionId == currentSession.id) {
+              stats = solveState.statistics!;
+              solveCount = stats.totalSolves;
+            } else {
+              final sessionSolves = solveState.solves
+                  .where((solve) => solve.sessionId == currentSession.id)
+                  .toList();
+              solveCount = sessionSolves.length;
+              stats = Statistics.fromSolves(sessionSolves);
+            }
 
             return SingleChildScrollView(
               padding: const EdgeInsets.all(16),

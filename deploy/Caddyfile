@@ -1,6 +1,13 @@
 :{$PORT:8080} {
 	root * /srv
 	encode gzip zstd
+
+	# El entry point y el service worker no deben cachearse: si quedan
+	# stale, el navegador sigue sirviendo la version vieja despues de un
+	# redeploy en Railway.
+	@nocache path / /index.html /flutter_service_worker.js /flutter_bootstrap.js /version.json
+	header @nocache Cache-Control "no-cache, must-revalidate"
+
 	try_files {path} /index.html
 	file_server
 }

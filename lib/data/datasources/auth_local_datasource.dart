@@ -31,9 +31,17 @@ class AuthLocalDataSourceImpl implements AuthLocalDataSource {
       return null;
     }
 
-    final session = AuthSessionModel.fromStorage(rawValue);
-    _memorySession = session;
-    return session;
+    // Una sesion persistida corrupta no debe romper AuthPage en cada
+    // apertura: se descarta y se limpia para que el proximo login la
+    // regenere.
+    try {
+      final session = AuthSessionModel.fromStorage(rawValue);
+      _memorySession = session;
+      return session;
+    } catch (_) {
+      await preferences.remove(_sessionKey);
+      return null;
+    }
   }
 
   @override

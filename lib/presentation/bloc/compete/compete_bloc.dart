@@ -13,6 +13,7 @@ class CompeteBloc extends Bloc<CompeteEvent, CompeteState> {
     on<StartCompeteRound>(_onStartCompeteRound);
     on<AddCompeteSolve>(_onAddCompeteSolve);
     on<ResetCompete>(_onResetCompete);
+    on<AbortCompeteRound>(_onAbortCompeteRound);
     on<UpdateLaneTimer>(_onUpdateLaneTimer);
     on<GenerateCompeteScrambles>(_onGenerateCompeteScrambles);
     on<AwardPoint>(_onAwardPoint);
@@ -160,6 +161,34 @@ class CompeteBloc extends Bloc<CompeteEvent, CompeteState> {
     emit(CompeteState.initial());
   }
 
+  Future<void> _onAbortCompeteRound(
+      AbortCompeteRound event, Emitter<CompeteState> emit) async {
+    if (state.status == CompeteStatus.initial) {
+      return;
+    }
+
+    // Cierra una ronda colgada sin perder la partida: se conservan marcador,
+    // scrambles, solves y configuracion; solo se limpia el estado de la
+    // ronda activa para que los carriles puedan volver a arrancar.
+    emit(CompeteState(
+      status: CompeteStatus.ready,
+      scrambleLane1: state.scrambleLane1,
+      scrambleLane2: state.scrambleLane2,
+      lane1: state.lane1.copyWith(isFinished: false),
+      lane2: state.lane2.copyWith(isFinished: false),
+      winner: null,
+      useSameScramble: state.useSameScramble,
+      lane1Score: state.lane1Score,
+      lane2Score: state.lane2Score,
+      lane1Running: false,
+      lane2Running: false,
+      lane1FinishedAtMs: null,
+      lane2FinishedAtMs: null,
+      roundScored: false,
+      cubeType: state.cubeType,
+    ));
+  }
+
   Future<void> _onUpdateLaneTimer(
       UpdateLaneTimer event, Emitter<CompeteState> emit) async {
     if (event.lane == 1) {
@@ -207,6 +236,11 @@ class CompeteBloc extends Bloc<CompeteEvent, CompeteState> {
   }
 
   int _toDisplayedCentiseconds(int milliseconds) {
-    return (milliseconds / 10).round();
+    // Debe coincidir exactamente con lo que pinta la UI de competencia, que
+    // formatea con toStringAsFixed(2) sobre segundos double. Un .round()
+    // directo sobre ms/10 puede diferir en los limites X.XX5 y otorgarle un
+    // punto a un empate visual.
+    final seconds = milliseconds / 1000;
+    return (double.parse(seconds.toStringAsFixed(2)) * 100).round();
   }
 }
