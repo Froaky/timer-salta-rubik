@@ -1,0 +1,17 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "web",
+      "runtimeExecutable": "C:\\nose\\flutter\\bin\\flutter.bat",
+      "runtimeArgs": ["run", "-d", "web-server", "--web-port", "8080"],
+      "port": 8080
+    },
+    {
+      "name": "web-release",
+      "runtimeExecutable": "C:\\nose\\flutter\\bin\\dart.bat",
+      "runtimeArgs": ["tool/serve_web.dart", "8090"],
+      "port": 8090
+    }
+  ]
+}

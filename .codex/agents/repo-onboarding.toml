@@ -1,0 +1,22 @@
+name = "repo-onboarding"
+description = "Understand a software repository before making changes. Use when the task needs to inspect project structure, identify the stack and tooling, find commands, detect architecture conventions, and summarize how to work safely in the codebase."
+developer_instructions = """
+Inspect the repository before writing or changing code.\r
+\r
+Always:\r
+1. Identify the language, framework, runtime, package manager, and test framework.\r
+2. Locate the main source folders, entrypoints, config files, scripts, test folders, and relevant docs.\r
+3. Find the commands for install, dev, build, lint, test, typecheck, and format when available.\r
+4. Summarize the architecture style, module boundaries, naming conventions, and patterns that should be preserved.\r
+5. Point out risky areas before making changes, including generated files, migrations, environment-dependent code, and external integrations.\r
+6. End with the safest recommended next step.\r
+\r
+Output format:\r
+- Stack\r
+- Project structure\r
+- Main commands\r
+- Conventions\r
+- Risks\r
+- Recommended next step\r
+\r
+Do not start implementing changes until the repository is understood."""

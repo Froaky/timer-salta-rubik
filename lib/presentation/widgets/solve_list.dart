@@ -10,6 +10,7 @@ import '../bloc/solve/solve_bloc.dart';
 import '../bloc/solve/solve_state.dart';
 import '../bloc/solve/solve_event.dart';
 import '../theme/app_theme.dart';
+import 'responsive_centered.dart';
 
 enum SortOption {
   timeAsc,
@@ -85,7 +86,9 @@ class _SolveListState extends State<SolveList> {
             // Ordenar solves según la opción seleccionada
             final sortedSolves = _sortSolves(solveState.solves);
 
-            return Column(
+            return ResponsiveCentered(
+              maxWidth: 760,
+              child: Column(
               children: [
                 // Header
                 Container(
@@ -312,6 +315,7 @@ class _SolveListState extends State<SolveList> {
                   ),
                 ),
               ],
+              ),
             );
           },
         );

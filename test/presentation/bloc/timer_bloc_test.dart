@@ -1,8 +1,27 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:salta_rubik/data/datasources/settings_local_datasource.dart';
 import 'package:salta_rubik/domain/entities/solve.dart';
 import 'package:salta_rubik/presentation/bloc/timer/timer_bloc.dart';
 import 'package:salta_rubik/presentation/bloc/timer/timer_event.dart';
 import 'package:salta_rubik/presentation/bloc/timer/timer_state.dart';
+
+/// In-memory settings store so bloc persistence can be asserted without
+/// touching platform SharedPreferences.
+class _FakeSettingsDataSource implements SettingsLocalDataSource {
+  TimerSettingsData stored;
+  int saveCount = 0;
+
+  _FakeSettingsDataSource(this.stored);
+
+  @override
+  Future<TimerSettingsData> loadSettings() async => stored;
+
+  @override
+  Future<void> saveSettings(TimerSettingsData settings) async {
+    stored = settings;
+    saveCount++;
+  }
+}
 
 void main() {
   group('TimerBloc', () {
@@ -150,6 +169,47 @@ void main() {
       bloc.add(const TimerToggleCompeteMode());
       await Future<void>.delayed(Duration.zero);
       expect(bloc.state.competeMode, isTrue);
+
+      await bloc.close();
+    });
+
+    test('restores persisted settings on construction', () async {
+      final dataSource = _FakeSettingsDataSource(
+        const TimerSettingsData(
+          inspectionEnabled: true,
+          hideTimerEnabled: false,
+          competeMode: true,
+          tapToStartEnabled: true,
+        ),
+      );
+
+      final bloc = TimerBloc(settingsDataSource: dataSource);
+      await Future<void>.delayed(const Duration(milliseconds: 10));
+
+      expect(bloc.state.inspectionEnabled, isTrue);
+      expect(bloc.state.hideTimerEnabled, isFalse);
+      expect(bloc.state.competeMode, isTrue);
+      expect(bloc.state.tapToStartEnabled, isTrue);
+
+      await bloc.close();
+    });
+
+    test('persists feature flags to the store when toggled', () async {
+      final dataSource = _FakeSettingsDataSource(TimerSettingsData.defaults);
+
+      final bloc = TimerBloc(settingsDataSource: dataSource);
+      await Future<void>.delayed(const Duration(milliseconds: 10));
+
+      bloc.add(const TimerToggleInspection());
+      await Future<void>.delayed(const Duration(milliseconds: 10));
+      expect(bloc.state.inspectionEnabled, isTrue);
+      expect(dataSource.stored.inspectionEnabled, isTrue);
+
+      bloc.add(const TimerToggleTapToStart());
+      await Future<void>.delayed(const Duration(milliseconds: 10));
+      expect(dataSource.stored.tapToStartEnabled, isTrue);
+      // Inspection flag stays persisted alongside the newly toggled one.
+      expect(dataSource.stored.inspectionEnabled, isTrue);
 
       await bloc.close();
     });

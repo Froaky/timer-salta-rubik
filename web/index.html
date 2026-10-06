@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html>
+<html lang="es">
 <head>
   <!--
     If you are serving your web app in a path other than the root, change the
@@ -18,11 +18,13 @@
 
   <meta charset="UTF-8">
   <meta content="IE=Edge" http-equiv="X-UA-Compatible">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
   <meta name="description" content="Salta Rubik: timer de speedcubing con sesiones, scrambles estilo WCA, estadísticas y modo competencia.">
+  <meta name="theme-color" content="#020617">
 
   <!-- iOS meta tags & icons -->
   <meta name="mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="Salta Rubik">
   <link rel="apple-touch-icon" href="icons/Icon-192.png">
 
@@ -31,8 +33,100 @@
 
   <title>Salta Rubik</title>
   <link rel="manifest" href="manifest.json">
+
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      height: 100%;
+      background-color: #020617;
+    }
+
+    /* Branded splash shown until Flutter paints its first frame, so the app
+       does not flash the default blank white page on load. */
+    #app-loading {
+      position: fixed;
+      inset: 0;
+      z-index: 9999;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 22px;
+      background:
+        radial-gradient(1200px 600px at 50% -10%, #0f172a 0%, #020617 60%);
+      color: #f8fafc;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+        Helvetica, Arial, sans-serif;
+      transition: opacity 0.35s ease;
+    }
+
+    #app-loading.hidden {
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    #app-loading .brand {
+      font-size: 1.4rem;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+    }
+
+    #app-loading .brand span {
+      color: #60a5fa;
+    }
+
+    #app-loading .tagline {
+      font-size: 0.85rem;
+      color: #cbd5e1;
+      letter-spacing: 0.02em;
+    }
+
+    #app-loading .spinner {
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      border: 3px solid rgba(148, 163, 184, 0.25);
+      border-top-color: #3b82f6;
+      animation: app-spin 0.9s linear infinite;
+    }
+
+    @keyframes app-spin {
+      to { transform: rotate(360deg); }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      #app-loading .spinner { animation-duration: 2.4s; }
+    }
+  </style>
 </head>
 <body>
+  <div id="app-loading" role="status" aria-live="polite">
+    <div class="spinner"></div>
+    <div class="brand">Salta <span>Rubik</span></div>
+    <div class="tagline">Cargando tu timer…</div>
+  </div>
+
+  <script>
+    (function () {
+      function removeSplash() {
+        var el = document.getElementById('app-loading');
+        if (!el) return;
+        el.classList.add('hidden');
+        window.setTimeout(function () {
+          if (el && el.parentNode) {
+            el.parentNode.removeChild(el);
+          }
+        }, 400);
+      }
+
+      // Flutter fires this once the first frame has been rendered.
+      window.addEventListener('flutter-first-frame', removeSplash);
+      // Safety net in case the event is missed for any reason.
+      window.setTimeout(removeSplash, 8000);
+    })();
+  </script>
+
   <script src="flutter_bootstrap.js" async></script>
 </body>
 </html>

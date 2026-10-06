@@ -1,0 +1,57 @@
+name = "flutter-web-railway"
+description = "Plan and implement Flutter Web support and Railway deployment for this repository without breaking the existing Android app. Use when the work involves browser compatibility, web entry/runtime constraints, release build/deploy flow, environment configuration, or safe platform gating for the current mobile-first app."
+developer_instructions = """
+Enable web as a first-class runtime while preserving the current mobile product.\r
+\r
+Always:\r
+1. Read `CONTEXT.md`, `lib/TODO.TXT`, `pubspec.yaml`, `lib/main.dart`, and any current platform-specific persistence wiring before changing code.\r
+2. Preserve Android behavior and UI unless the task explicitly asks for a cross-platform redesign.\r
+3. Treat web enablement, deployment, and browser persistence as separate concerns even if they are implemented in sequence.\r
+4. Check whether any package or API used in mobile is incompatible with Flutter Web before proposing structural changes.\r
+5. Prefer platform adapters and capability checks over `kIsWeb` scattered through feature code.\r
+6. Keep timer semantics, session alignment, scramble generation, penalties, and compete restrictions identical across platforms.\r
+7. Leave a deploy path that is reproducible: build command, start behavior, env assumptions, and validation steps.\r
+\r
+Workflow:\r
+1. Confirm the minimum web outcome:\r
+   - app boots in browser,\r
+   - core timer flows render,\r
+   - local persistence works on web,\r
+   - Railway can serve the built app.\r
+2. Inventory platform blockers:\r
+   - storage,\r
+   - plugins,\r
+   - file/path assumptions,\r
+   - routing/refresh behavior,\r
+   - environment variables,\r
+   - service worker or asset loading issues.\r
+3. Decide the safest thin slice:\r
+   - runtime compatibility first,\r
+   - deployment second,\r
+   - polish later.\r
+4. Add focused tests or validation notes for the exact risky change.\r
+5. Document the build/deploy contract once the path is stable.\r
+\r
+Platform guardrails:\r
+- Do not force mobile UI compromises just to make web work.\r
+- Do not change timer gesture semantics to fit desktop/web unless explicitly requested.\r
+- Do not bind domain logic to Railway-specific concepts.\r
+- Do not make web deploy depend on future auth/sync work.\r
+\r
+Railway guardrails:\r
+- Prefer static hosting of the Flutter Web build unless a real backend need exists.\r
+- Keep configuration explicit: build command, output directory, and any headers/rewrites needed.\r
+- Call out what must exist in Railway versus what stays in the repo.\r
+\r
+Use `.agents/skills/flutter-web-railway/references/deploy-checklist.md` for the practical checklist and validation order.\r
+\r
+Output format:\r
+- Goal\r
+- Current blockers\r
+- Proposed thin slice\r
+- Files to inspect or change\r
+- Platform risks\r
+- Deploy notes\r
+- Validation plan\r
+\r
+Prefer getting one stable web deploy path working over prematurely solving every future backend concern."""

@@ -64,3 +64,9 @@ class TimerToggleTapToStart extends TimerEvent {
 class TimerStartImmediate extends TimerEvent {
   const TimerStartImmediate();
 }
+
+/// Loads the persisted feature flags into the timer state. Dispatched once on
+/// construction when a settings store is available.
+class TimerLoadSettings extends TimerEvent {
+  const TimerLoadSettings();
+}

@@ -8,6 +8,7 @@ import '../bloc/solve/solve_bloc.dart';
 import '../bloc/solve/solve_state.dart';
 import '../bloc/solve/solve_event.dart';
 import '../theme/app_theme.dart';
+import 'responsive_centered.dart';
 
 class StatisticsPanel extends StatelessWidget {
   const StatisticsPanel({super.key});
@@ -68,29 +69,32 @@ class StatisticsPanel extends StatelessWidget {
               stats = Statistics.fromSolves(sessionSolves);
             }
 
-            return SingleChildScrollView(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Session info
-                  _buildSessionInfo(context, currentSession.name, solveCount),
+            return ResponsiveCentered(
+              maxWidth: 760,
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Session info
+                    _buildSessionInfo(context, currentSession.name, solveCount),
 
-                  const SizedBox(height: 24),
+                    const SizedBox(height: 24),
 
-                  // Main statistics
-                  _buildMainStats(context, stats),
+                    // Main statistics
+                    _buildMainStats(context, stats),
 
-                  const SizedBox(height: 24),
+                    const SizedBox(height: 24),
 
-                  // Current averages
-                  _buildCurrentAverages(context, stats, solveCount),
+                    // Current averages
+                    _buildCurrentAverages(context, stats, solveCount),
 
-                  const SizedBox(height: 24),
+                    const SizedBox(height: 24),
 
-                  // Best times
-                  _buildBestTimes(context, stats),
-                ],
+                    // Best times
+                    _buildBestTimes(context, stats),
+                  ],
+                ),
               ),
             );
           },

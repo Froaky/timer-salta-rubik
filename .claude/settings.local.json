@@ -78,8 +78,22 @@
       "Bash(flutter build *)",
       "Bash(git -C c:/code/timer-salta-rubik status --short)",
       "Bash(curl -sL https://raw.githubusercontent.com/cs0x7f/cstimer/master/src/js/scramble/scramble_sq1_new.js -o C:/Users/theco/AppData/Local/Temp/claude/c--code-timer-salta-rubik/363fdf1b-3f52-4fa9-b4cc-d6d271e9d4aa/scratchpad/cstimer_sq1.js)",
-      "Bash(grep -E \"lib\\\\\\\\\\\\\\\\domain\\\\\\\\\\\\\\\\puzzles|lib\\\\\\\\\\\\\\\\presentation\\\\\\\\\\\\\\\\widgets\\\\\\\\\\\\\\\\preview|scramble_preview|solve_list|compete_page|generate_scramble|square1|error -\")"
-
+      "Bash(grep -E \"lib\\\\\\\\\\\\\\\\domain\\\\\\\\\\\\\\\\puzzles|lib\\\\\\\\\\\\\\\\presentation\\\\\\\\\\\\\\\\widgets\\\\\\\\\\\\\\\\preview|scramble_preview|solve_list|compete_page|generate_scramble|square1|error -\")",
+      "PowerShell($f = Get-Command flutter -ErrorAction SilentlyContinue; if \\($f\\) { $f.Source } else { \"flutter not on PATH\" }; if \\(-not $f\\) { Get-ChildItem -Path C:\\\\ -Filter flutter.bat -Recurse -Depth 4 -ErrorAction SilentlyContinue | Select-Object -First 3 -ExpandProperty FullName })",
+      "PowerShell(& C:\\\\nose\\\\flutter\\\\bin\\\\flutter.bat --version 2>&1)",
+      "PowerShell(& C:\\\\nose\\\\flutter\\\\bin\\\\flutter.bat analyze lib 2>&1)",
+      "PowerShell(& C:\\\\nose\\\\flutter\\\\bin\\\\flutter.bat test test/presentation 2>&1)",
+      "PowerShell(& C:\\\\nose\\\\flutter\\\\bin\\\\flutter.bat test 2>&1)",
+      "PowerShell(& C:\\\\nose\\\\flutter\\\\bin\\\\flutter.bat build web 2>&1)",
+      "PowerShell(& C:\\\\nose\\\\flutter\\\\bin\\\\flutter.bat test test/presentation/bloc/timer_bloc_test.dart 2>&1)",
+      "PowerShell($py = Get-Command python -ErrorAction SilentlyContinue; if \\($py\\) { \"python: $\\($py.Source\\)\" } else { \"no python\" }; $dart = Test-Path \"C:\\\\nose\\\\flutter\\\\bin\\\\dart.bat\"; \"dart: $dart\")",
+      "PowerShell(& python --version 2>&1)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:8080)",
+      "Bash(curl -s http://localhost:8080/)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:8090)",
+      "PowerShell(& C:\\\\nose\\\\flutter\\\\bin\\\\flutter.bat test test/presentation/bloc/timer_bloc_test.dart test/widget_test.dart 2>&1)",
+      "PowerShell(Add-Type -AssemblyName System.Drawing; $files = @\\(\"assets\\\\icons\\\\app_icon.png\",\"web\\\\icons\\\\Icon-512.png\",\"web\\\\icons\\\\Icon-192.png\",\"web\\\\favicon.png\"\\); foreach \\($f in $files\\) { $p = Join-Path \\(Get-Location\\) $f; if \\(Test-Path $p\\) { $img = [System.Drawing.Image]::FromFile\\($p\\); $sz = \\(Get-Item $p\\).Length; \"{0}  ->  {1}x{2}px  \\({3:N0} bytes\\)\" -f $f, $img.Width, $img.Height, $sz; $img.Dispose\\(\\) } else { \"$f  -> NO EXISTE\" } })",
+      "PowerShell(python \"C:\\\\Users\\\\MATEOC~1\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\C--Users-MateoCoca-Documents-REPOS-timer-salta-rubik\\\\596738aa-035d-4a95-a494-2dcfe072bd9c\\\\scratchpad\\\\inspect.py\")"
     ],
     "deny": [
       "Bash(git push --force:*)",

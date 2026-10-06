@@ -4,6 +4,7 @@ import 'package:http/http.dart' as http;
 import 'data/datasources/auth_local_datasource.dart';
 import 'data/datasources/auth_remote_datasource.dart';
 import 'data/datasources/local_database.dart';
+import 'data/datasources/settings_local_datasource.dart';
 import 'data/datasources/solve_local_datasource.dart';
 import 'data/datasources/session_local_datasource.dart';
 import 'data/repositories/auth_repository_impl.dart';
@@ -53,6 +54,10 @@ Future<void> configureDependencies() async {
     () => AuthRemoteDataSourceImpl(sl<http.Client>()),
   );
 
+  sl.registerLazySingleton<SettingsLocalDataSource>(
+    () => SettingsLocalDataSource(),
+  );
+
   sl.registerLazySingleton<SolveLocalDataSource>(
     () => SolveLocalDataSourceImpl(sl<LocalDatabase>()),
   );
@@ -95,7 +100,7 @@ Future<void> configureDependencies() async {
   sl.registerLazySingleton(() => GenerateScramble());
 
   // BLoCs
-  sl.registerFactory(() => TimerBloc());
+  sl.registerFactory(() => TimerBloc(settingsDataSource: sl()));
   sl.registerFactory(() => SolveBloc(
         addSolve: sl(),
         getSolves: sl(),

@@ -1,0 +1,48 @@
+name = "auth-sync-readiness"
+description = "Shape and implement the foundations for account-backed data and future sync in this repository without breaking current local-first behavior. Use when the work involves login prerequisites, remote identity for sessions/solves, migration from local-only data, sync rules, or web/mobile parity for user-owned history and statistics."
+developer_instructions = """
+Prepare the app for account-aware data without coupling everything to auth too early.\r
+\r
+Always:\r
+1. Read `CONTEXT.md`, `lib/TODO.TXT`, and the current local solve/session flow before proposing account or sync changes.\r
+2. Separate three concerns:\r
+   - authentication,\r
+   - remote data model,\r
+   - sync behavior.\r
+3. Preserve the local-first experience until remote sync is explicitly shipped.\r
+4. Keep future web/mobile parity in scope: a signed-in user should later see the same sessions, solves, and stats on both platforms.\r
+5. Prefer additive foundations such as stable IDs, ownership fields, and migration hooks over a big-bang replacement of local storage.\r
+6. Surface conflict rules and offline assumptions instead of hiding them.\r
+\r
+Foundational questions:\r
+- What identifies a user-owned session across devices?\r
+- What identifies a solve across local and remote systems?\r
+- How will legacy local-only data be attached to an account?\r
+- What happens when the same logical data changes in two places?\r
+- Which stats are derived and should be recomputed versus stored remotely?\r
+\r
+Safe rollout order:\r
+1. Stabilize local data shape for future sync.\r
+2. Introduce account ownership concepts without requiring sync everywhere.\r
+3. Define migration/linking behavior for existing local users.\r
+4. Define remote read model for sessions, solves, and stats.\r
+5. Implement sync later with explicit conflict handling.\r
+\r
+Guardrails:\r
+- Do not make login a prerequisite for the existing mobile timer unless explicitly requested.\r
+- Do not store derived stats remotely if they can be recomputed consistently from solves.\r
+- Do not let remote sync alter timer precision or compete-mode guardrails.\r
+- Do not design IDs or timestamps in a way that blocks merge/import later.\r
+\r
+Use `.agents/skills/auth-sync-readiness/references/sync-decisions.md` for the minimum architectural questions that should be answered before coding sync.\r
+\r
+Output format:\r
+- Goal\r
+- Current local behavior\r
+- Foundation to add now\r
+- Deferred decisions\r
+- Risks and invariants\r
+- Migration notes\r
+- Suggested next slice\r
+\r
+Prefer making the future possible over partially shipping a fragile sync layer."""

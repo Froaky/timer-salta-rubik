@@ -4,6 +4,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:vibration/vibration.dart';
 
 import '../../../core/constants/timer_thresholds.dart';
+import '../../../data/datasources/settings_local_datasource.dart';
 import '../../../domain/entities/solve.dart';
 import 'timer_event.dart';
 import 'timer_state.dart';
@@ -15,6 +16,10 @@ class TimerBloc extends Bloc<TimerEvent, TimerState> {
   final int inspectionDurationMs;
   final int inspectionPlusTwoThresholdMs;
   final int inspectionDnfThresholdMs;
+
+  /// Persists the feature flags across launches. Optional so unit tests can
+  /// construct a bloc without touching platform storage.
+  final SettingsLocalDataSource? _settingsDataSource;
   Timer? _holdTimer;
   Timer? _runTimer;
   Timer? _inspectionTimer;
@@ -35,7 +40,9 @@ class TimerBloc extends Bloc<TimerEvent, TimerState> {
     this.inspectionDurationMs = 15000,
     this.inspectionPlusTwoThresholdMs = 15000,
     this.inspectionDnfThresholdMs = 17000,
-  }) : super(TimerState.initial()) {
+    SettingsLocalDataSource? settingsDataSource,
+  })  : _settingsDataSource = settingsDataSource,
+        super(TimerState.initial()) {
     on<TimerStartHold>(_onStartHold);
     on<TimerStopHold>(_onStopHold);
     on<TimerTick>(_onTick);
@@ -49,6 +56,12 @@ class TimerBloc extends Bloc<TimerEvent, TimerState> {
     on<TimerToggleCompeteMode>(_onToggleCompeteMode);
     on<TimerToggleTapToStart>(_onToggleTapToStart);
     on<TimerStartImmediate>(_onStartImmediate);
+    on<TimerLoadSettings>(_onLoadSettings);
+
+    // Restore persisted preferences right away when a store is wired in.
+    if (_settingsDataSource != null) {
+      add(const TimerLoadSettings());
+    }
   }
 
   void _onStartHold(TimerStartHold event, Emitter<TimerState> emit) {
@@ -198,21 +211,65 @@ class TimerBloc extends Bloc<TimerEvent, TimerState> {
   void _onToggleInspection(
       TimerToggleInspection event, Emitter<TimerState> emit) {
     emit(state.copyWith(inspectionEnabled: !state.inspectionEnabled));
+    _persistSettings();
   }
 
   void _onToggleHideTimer(
       TimerToggleHideTimer event, Emitter<TimerState> emit) {
     emit(state.copyWith(hideTimerEnabled: !state.hideTimerEnabled));
+    _persistSettings();
   }
 
   void _onToggleCompeteMode(
       TimerToggleCompeteMode event, Emitter<TimerState> emit) {
     emit(state.copyWith(competeMode: !state.competeMode));
+    _persistSettings();
   }
 
   void _onToggleTapToStart(
       TimerToggleTapToStart event, Emitter<TimerState> emit) {
     emit(state.copyWith(tapToStartEnabled: !state.tapToStartEnabled));
+    _persistSettings();
+  }
+
+  Future<void> _onLoadSettings(
+      TimerLoadSettings event, Emitter<TimerState> emit) async {
+    final store = _settingsDataSource;
+    if (store == null) {
+      return;
+    }
+
+    // Preferencias corruptas o un backend de storage no disponible no deben
+    // romper el arranque del timer: simplemente se conservan los defaults.
+    try {
+      final settings = await store.loadSettings();
+      emit(state.copyWith(
+        inspectionEnabled: settings.inspectionEnabled,
+        hideTimerEnabled: settings.hideTimerEnabled,
+        competeMode: settings.competeMode,
+        tapToStartEnabled: settings.tapToStartEnabled,
+      ));
+    } catch (_) {
+      // Mantener los valores por defecto.
+    }
+  }
+
+  // Guardado inmediato y fire-and-forget: el toggle ya emitio el nuevo estado,
+  // asi que persistimos el snapshot actual sin bloquear la UI.
+  void _persistSettings() {
+    final store = _settingsDataSource;
+    if (store == null) {
+      return;
+    }
+
+    unawaited(store.saveSettings(
+      TimerSettingsData(
+        inspectionEnabled: state.inspectionEnabled,
+        hideTimerEnabled: state.hideTimerEnabled,
+        competeMode: state.competeMode,
+        tapToStartEnabled: state.tapToStartEnabled,
+      ),
+    ));
   }
 
   void _onStartImmediate(TimerStartImmediate event, Emitter<TimerState> emit) {

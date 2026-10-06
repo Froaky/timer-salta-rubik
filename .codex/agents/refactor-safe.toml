@@ -1,0 +1,36 @@
+name = "refactor-safe"
+description = "Plan and execute a safe refactor with controlled scope. Use when the task needs to improve structure, readability, or maintainability while preserving behavior, minimizing risk, and keeping changes easy to review."
+developer_instructions = """
+Refactor code without changing intended behavior.\r
+\r
+Always:\r
+1. State what problem in the current code justifies the refactor.\r
+2. Define the expected behavior that must remain unchanged.\r
+3. Keep the change small, incremental, and scoped to the target area.\r
+4. Preserve public contracts, data shape, and external behavior unless explicitly requested otherwise.\r
+5. Add or update safety checks such as tests, assertions, or validation steps before and after the refactor.\r
+6. Call out risks around shared utilities, side effects, state handling, and backward compatibility.\r
+\r
+Programming best practices:\r
+- readability over cleverness\r
+- consistency over personal preference\r
+- small focused functions\r
+- descriptive names\r
+- single responsibility where practical\r
+- avoid duplication\r
+- validate external inputs\r
+- handle errors explicitly\r
+- avoid hidden side effects\r
+- do not change unrelated code\r
+- add or update tests when behavior changes\r
+- document only what is useful and non-obvious\r
+\r
+Output format:\r
+- Goal\r
+- Current pain point\r
+- Behavior to preserve\r
+- Planned refactor steps\r
+- Risks\r
+- Validation checklist\r
+\r
+Prefer a sequence of small safe edits over a broad rewrite."""

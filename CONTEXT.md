@@ -239,7 +239,8 @@ Quedan visibles estos items sin cerrar en `lib/TODO.TXT`:
 - web/Railway pendiente: `WEB-US-001` (smoke test real post-deploy), `WEB-US-007`, `EPIC-WEB-003`, `WEB-US-008` a `WEB-US-010`, `EPIC-WEB-004` y `WEB-US-011` a `WEB-US-014`.
 - backend/API pendiente: `EPIC-BE-002` queda abierto por `BE-US-006`; `EPIC-BE-003` queda abierto por `BE-US-009`, `BE-US-010` y `BE-US-014`.
 - auth WCA cross-platform pendiente: deep links/app links mobile (`BE-US-014`).
-- validar el build del backend en Railway despues del fix de `auth_redirects.ts` (en esta maquina no hay Node.js para `npm run build`).
+- ~~validar el build del backend en Railway despues del fix de `auth_redirects.ts`~~ hecho: deploy `80b33f8` del `timer-api` SUCCESS (verificado 2026-10-06, `/health` OK).
+- commitear y validar en dispositivo/web el WIP de persistencia de ajustes del timer (ver journal 2026-10-06 y `GUIA_TRASPASO.md` §4.4).
 - retestear manualmente en dispositivo real: inspeccion con +2/DNF (nuevo flujo `pendingPenalty`), wakelock durante solves largos y el flujo compete completo (abort de ronda al salir/volver).
 
 ## 9. Tests utiles
@@ -271,8 +272,9 @@ flutter test
 
 Notas:
 - Al cierre del production pass 2026-07-07: `flutter test` 126/126 pasando, `flutter analyze` 0 issues, `flutter build web --release` OK.
-- El SDK Flutter local vive en `C:\nose\flutter` (3.29.3 stable, misma revision que `.metadata` y el Dockerfile); si desaparece, `android/local.properties` espera esa ruta.
-- En esta maquina no hay Node.js: el backend (`backend/`) se valida en Railway o en otro entorno.
+- El SDK Flutter local vive en `C:\nose\flutter` (3.29.3 stable, misma revision que `.metadata` y el Dockerfile) y NO esta en el PATH (usar `C:\nose\flutter\bin\flutter.bat`); si desaparece, `android/local.properties` espera esa ruta.
+- Desde 2026-10 hay Node.js v24 (winget) en esta maquina; el backend tambien se valida en Railway.
+- Estado 2026-10-06 con el WIP de ajustes: `flutter analyze` 0 issues, `flutter test` 201/201.
 
 ## 11. Convenciones de trabajo de este repo
 
@@ -307,10 +309,9 @@ Notas:
 
 ## 12. Notas de entorno local
 
-- En esta maquina (`2026-05-01`) el build Android quedo configurado sin Android Studio, usando herramientas portables en `E:`.
-- Android SDK: `E:\Android\Sdk`.
-- JDK 17: `E:\Java\jdk-17`.
-- Flutter quedo configurado con `flutter config --android-sdk E:\Android\Sdk` y `flutter config --jdk-dir E:\Java\jdk-17`.
+- En esta maquina (`2026-05-01`) el build Android quedo configurado sin Android Studio, usando herramientas portables (originalmente en `E:`, disco que ya no existe).
+- Hoy (2026-10-06): Android SDK en `C:\nose\android-sdk` (platforms 34/35, build-tools 34/35, NDK, cmake) y JDK 17 en `C:\nose\jdk-17.0.19+10`.
+- Flutter configurado con `flutter config --android-sdk C:/nose/android-sdk`.
 - `flutter doctor -v` ya marca verde `Android toolchain - develop for Android devices (Android SDK version 35.0.0)`.
 - El APK release se genero correctamente en `build\app\outputs\flutter-apk\app-release.apk`.
 
@@ -573,3 +574,16 @@ Entradas actuales:
   - entorno: el Flutter SDK habia desaparecido de `C:\nose\flutter`; se reinstalo Flutter 3.29.3 stable ahi. Sin Node.js local: `npm run build` del backend pendiente de validar en Railway
   - validacion post-merge: `dart format`, `flutter analyze` 0 issues, `flutter test` completo pasando, `flutter build web --release` OK
   - siguiente paso: push del merge, deploy a Railway (frontend + backend), smoke test browser real y retest manual en dispositivo de inspeccion con penalidades y compete
+
+- `2026-07-10` (sin commitear al 2026-10-06)
+  - persistencia de ajustes del timer (inspeccion, ocultar timer, modo competir, inicio rapido): `SettingsLocalDataSource` con export condicional (web `localStorage`, nativo `SharedPreferences`, stub en memoria), `TimerLoadSettings` al construir `TimerBloc` y guardado fire-and-forget en cada toggle; dependencia opcional para que los tests construyan `TimerBloc()` sin storage
+  - hallazgo durable: en el build web de esta app `SharedPreferences` NO persiste (no falla, pero se pierde al recargar); todo estado persistente web debe ir por `dart:html localStorage` con export condicional
+  - UI web/desktop sin tocar mobile: `ResponsiveCentered` (ancho maximo) en `SolveList`, `StatisticsPanel` y `SettingsPage` rediseñada por secciones; splash de carga en `web/index.html`; `tool/serve_web.dart` para servir `build/web` localmente; `.claude/launch.json` con previews `web`/`web-release`
+  - archivos: `lib/data/datasources/settings_local_datasource*.dart`, `lib/data/datasources/timer_settings_data.dart`, `lib/presentation/bloc/timer/timer_bloc.dart`, `timer_event.dart`, `lib/injection_container.dart`, `lib/presentation/pages/settings_page.dart`, `lib/presentation/widgets/{responsive_centered,solve_list,statistics_panel}.dart`, `test/presentation/bloc/timer_bloc_test.dart`, `web/index.html`, `tool/serve_web.dart`
+
+- `2026-10-06`
+  - relevamiento completo para traspaso a otra cuenta de Claude: se creo `GUIA_TRASPASO.md` (cuentas, accesos, Railway, entorno, arquitectura, historia, backlog priorizado, gotchas)
+  - verificado en vivo: Railway proyecto `TIMER SALTA` con servicios `timer-salta-rubik` (web), `timer-api` (backend, `/backend/Dockerfile`) y `Postgres`; ultimo deploy web+API = `80b33f8` SUCCESS; `/health` OK y WCA `configured: true`; cada push a `master` redeploya web+API (no hay staging)
+  - estado git: `master` = `origin/master` = `80b33f8`; stashes `stash@{0}` y `stash@{1}` obsoletos (ya incorporados/superados); ramas remotas mergeadas salvo `posible-new-ui` (experimento de UI de 2026-01, 1 commit propio, muy atrasado)
+  - validacion del WIP 2026-07-10: `flutter analyze --no-pub` 0 issues, `flutter test --no-pub` 201/201
+  - siguiente paso: commitear el WIP en una rama (no directo a `master`), probar persistencia de ajustes en Android y web, mergear, y seguir con smoke test web real (`WEB-US-001`) y checklist Play Store
